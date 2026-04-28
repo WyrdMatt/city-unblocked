@@ -105,12 +105,25 @@ Calculated in `showWinScreen()` from budget remaining:
 
 **Always run tests before committing:**
 ```
-node run-tests.js
+npm test
 ```
-All three suites must pass (0 failures) before any commit goes in.
+All 86 tests across 3 suites must pass (0 failures) before any commit goes in.
 
-**Commit convention:** Conventional Commits on branch `feature/big-update`.  
-Format: `type: short description` where type is `feat`, `refactor`, `fix`, or `test`.  
+**Toolchain:** Vite (dev server + bundler) + Vitest (test runner). Run `npm install` once after checkout.
+
+```
+npm run dev      # start Vite dev server → http://localhost:5173
+npm test         # run all Vitest tests
+npm run build    # production build to dist/
+```
+
+**Test files:**
+- `tests/effects.test.js` — calculateEffects, checkWinCondition (imports from `src/game-logic.js`)
+- `tests/balance.test.js` — balance simulations (imports from `src/game-logic.js`)
+- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds (inline algorithm)
+
+**Commit convention:** Conventional Commits.  
+Format: `type: short description` where type is `feat`, `refactor`, `fix`, `test`, or `chore`.  
 Always append the Co-Authored-By trailer:
 ```
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
@@ -121,7 +134,7 @@ Never commit directly to `main`. Never use `--no-verify`.
 ## GitHub
 
 Repo: https://github.com/WyrdMatt/city-unblocked  
-Branch: `feature/big-update` (merge to `main` when complete)
+Active branch: `chore/vite-migration` (merge to `feature/big-update`, then to `main`)
 
 ## Future scaling hooks
 
