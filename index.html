@@ -195,7 +195,7 @@
       position: relative;
       overflow: hidden;
     }
-    .tile:hover { filter: brightness(1.18) saturate(1.15); transform: scale(1.04); z-index: 2; }
+    .tile:hover { filter: brightness(1.22) saturate(1.2); transform: scale(1.06) translateY(-2px); z-index: 2; }
     .tile.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px #fbbf2460; z-index: 3; }
 
     /* ── Roads — same colour as gap → seamless dark network ─────────── */
@@ -237,31 +237,63 @@
       background: rgba(255,210,40,.2);
     }
 
-    /* ── Buildings — 6-colour palette with drop shadow depth ─────────── */
+    /* ── Buildings — pseudo-3D blocks: roof face + facade + right shadow wall ─ */
     .tile.building {
-      background: linear-gradient(175deg, var(--bt) 0%, var(--bb) 100%);
-      box-shadow: 4px 5px 0 rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.09);
+      /*
+       * Two-layer gradient:
+       *   1) Parapet line — sharp bright strip at the roof/wall boundary
+       *   2) Roof zone (lighter tint, top --rh%) → facade (bt → bb)
+       * Together these read clearly as "roof face" vs "front wall face".
+       */
+      background:
+        linear-gradient(180deg,
+          transparent                   calc(var(--rh, 26%) - 2px),
+          rgba(255,255,255,.42)          calc(var(--rh, 26%) - 2px),
+          rgba(255,255,255,.42)          var(--rh, 26%),
+          transparent                   var(--rh, 26%)
+        ),
+        linear-gradient(180deg,
+          color-mix(in srgb, var(--bt) 66%, #fff 34%) 0%,
+          color-mix(in srgb, var(--bt) 66%, #fff 34%) var(--rh, 26%),
+          var(--bt)                      var(--rh, 26%),
+          var(--bb)                      100%
+        );
+      /* Large hard shadow = building casting a shadow on the ground */
+      box-shadow:
+        7px 9px 0 rgba(0,0,0,.78),
+        inset 0 0 0 1px rgba(255,255,255,.08);
     }
-    /* Steel / glass */ .tile.building:nth-child(6n)   { --bt:#4e6882; --bb:#1a2b3d; }
-    /* Brick         */ .tile.building:nth-child(6n+1) { --bt:#8a4535; --bb:#3c1a12; }
-    /* Sandstone     */ .tile.building:nth-child(6n+2) { --bt:#8a6c3a; --bb:#3e2e18; }
-    /* Teal glass    */ .tile.building:nth-child(6n+3) { --bt:#2e6e7a; --bb:#143440; }
-    /* Industrial    */ .tile.building:nth-child(6n+4) { --bt:#4c5c4a; --bb:#232c22; }
-    /* Concrete      */ .tile.building:nth-child(6n+5) { --bt:#546070; --bb:#252d38; }
 
-    /* Rooftop: bright edge simulates flat roof parapet */
+    /*
+     * --rh = roof-height as % of tile (smaller % = taller building, less roof visible)
+     * Varying this creates a convincing skyline of different building heights.
+     */
+    /* Steel/glass  — tall   */ .tile.building:nth-child(6n)   { --bt:#4e6882; --bb:#1a2b3d; --rh:19%; }
+    /* Brick        — medium */ .tile.building:nth-child(6n+1) { --bt:#8a4535; --bb:#3c1a12; --rh:30%; }
+    /* Sandstone    — med-tall*/.tile.building:nth-child(6n+2) { --bt:#8a6c3a; --bb:#3e2e18; --rh:24%; }
+    /* Teal glass   — tall   */ .tile.building:nth-child(6n+3) { --bt:#2e6e7a; --bb:#143440; --rh:21%; }
+    /* Industrial   — squat  */ .tile.building:nth-child(6n+4) { --bt:#4c5c4a; --bb:#232c22; --rh:37%; }
+    /* Concrete     — medium */ .tile.building:nth-child(6n+5) { --bt:#546070; --bb:#252d38; --rh:28%; }
+
+    /* Right shadow wall — dark vertical strip = the right face of a 3D block */
     .tile.building::before {
       content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 7px;
-      background: linear-gradient(180deg, rgba(255,255,255,.22) 0%, transparent 100%);
+      top: var(--rh, 26%); right: 0;
+      width: 14px; bottom: 0;
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.20) 0%,
+        rgba(0,0,0,.55) 100%
+      );
     }
-    /* Windows: warm amber glow on a 15×15 grid */
+
+    /* Windows — on the facade only: below roof zone, left of the shadow wall */
     .tile.building::after {
       content: ''; position: absolute;
-      inset: 10px 8px 8px;
+      top: calc(var(--rh, 26%) + 5px);
+      left: 4px; right: 18px; bottom: 5px;
       background-image: radial-gradient(circle, rgba(255,240,140,.85) 2.5px, transparent 2.5px);
-      background-size: 15px 15px;
-      background-position: 4px 5px;
+      background-size: 14px 14px;
+      background-position: 4px 4px;
     }
 
     /* ── Parks ───────────────────────────────────────────────────────── */
