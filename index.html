@@ -9,7 +9,8 @@
 
     body {
       margin: 0;
-      background: #0f1117;
+      background: #07080d;
+      background-image: radial-gradient(ellipse at 50% -10%, rgba(30,60,120,.25) 0%, transparent 65%);
       font-family: 'Segoe UI', system-ui, sans-serif;
       color: #e2e8f0;
       min-height: 100vh;
@@ -21,9 +22,9 @@
     #game-area {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       gap: 0;
-      padding: 1.5rem;
+      padding: 2rem;
       flex: 1;
     }
 
@@ -31,56 +32,58 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 10px;
+      gap: 12px;
     }
 
     /* ── hud.css ─────────────────────────────────────────────────────── */
     .hud {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 2rem;
       width: 100%;
-      padding: 0.625rem 1.25rem;
-      background: #1e2433;
-      border-bottom: 2px solid #2d3348;
+      padding: 0.75rem 1.5rem;
+      background: rgba(14,16,24,.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
       position: sticky;
       top: 0;
       z-index: 100;
     }
-    .hud__brand { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
-    .hud__brand-icon { font-size: 1.25rem; line-height: 1; }
+    .hud__brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .hud__brand-icon { font-size: 1.5rem; line-height: 1; }
     .hud__brand-name {
-      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: #94a3b8; white-space: nowrap;
+      font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #e2e8f0; white-space: nowrap;
     }
-    .hud__meters { display: flex; align-items: center; gap: 1.25rem; flex: 1; min-width: 0; }
-    .hud-meter { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+    .hud__meters { display: flex; align-items: center; gap: 2rem; flex: 1; min-width: 0; }
+    .hud-meter { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
     .hud-meter__label {
-      display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem;
-      font-weight: 600; color: #94a3b8; text-transform: uppercase;
-      letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem;
+      font-weight: 700; color: #64748b; text-transform: uppercase;
+      letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
     }
     .hud-meter__track {
-      position: relative; flex: 1; height: 10px; background: #2d3348;
-      border-radius: 999px; overflow: hidden; min-width: 60px;
+      position: relative; flex: 1; height: 8px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px; overflow: hidden; min-width: 80px;
     }
     .hud-meter__fill {
       position: absolute; inset: 0 auto 0 0; width: 0%;
-      border-radius: 999px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+      border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
     }
-    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#16a34a,#4ade80); }
-    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#b91c1c,#f87171); }
+    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#059669,#34d399); }
+    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#dc2626,#f87171); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
-    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
     .hud-meter__value {
-      font-size: 0.72rem; font-weight: 700; color: #cbd5e1;
-      width: 2.2ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
+      font-size: 0.8rem; font-weight: 800; color: #e2e8f0;
+      width: 2.4ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
     }
-    .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0.1rem; }
-    .hud__budget-label { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
-    .hud__budget-value { font-size: 1.1rem; font-weight: 800; color: #e2e8f0; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
-    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1.2s ease-in-out infinite; }
-    @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; }
+    .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: #f8fafc; font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
+    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1s ease-in-out infinite; }
+    @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ── Overlays ────────────────────────────────────────────────────── */
     .overlay {
@@ -123,197 +126,188 @@
 
     /* ── actions-panel.css ───────────────────────────────────────────── */
     .actions-panel {
-      display: flex; flex-direction: column; gap: 1.25rem; width: 200px;
-      flex-shrink: 0; padding: 1.25rem 1rem; background: #1e2433;
-      border-left: 2px solid #2d3348; border-radius: 0 12px 12px 0;
+      display: flex; flex-direction: column; gap: 1rem; width: 220px;
+      flex-shrink: 0; padding: 1.25rem;
+      background: rgba(14,16,24,.95);
+      border-left: 1px solid rgba(255,255,255,.07);
+      border-radius: 0 16px 16px 0;
       color: #e2e8f0;
     }
-    .actions-panel__header { display: flex; flex-direction: column; gap: 0.25rem; }
-    .actions-panel__title { margin: 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
-    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #64748b; line-height: 1.4; }
-    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.625rem; }
+    .actions-panel__header { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .actions-panel__title { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; }
+    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #334155; line-height: 1.4; }
+    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
     .action-btn {
-      display: flex; align-items: center; gap: 0.625rem; width: 100%;
-      padding: 0.625rem 0.75rem; background: #2d3348; border: 2px solid transparent;
-      border-radius: 10px; cursor: pointer; color: #e2e8f0; font-family: inherit;
+      display: flex; align-items: center; gap: 0.75rem; width: 100%;
+      padding: 0.7rem 0.875rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px; cursor: pointer; color: #cbd5e1; font-family: inherit;
       text-align: left;
-      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-      position: relative;
+      transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
     }
-    .action-btn:hover { background: #374162; border-color: #4b5680; }
+    .action-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
     .action-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
     .action-btn:active { transform: scale(0.97); }
     .action-btn--active {
-      background: #374162;
+      background: rgba(255,255,255,.1);
       border-color: var(--action-color, #60a5fa);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color, #60a5fa) 30%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color,#60a5fa) 22%, transparent),
+                  inset 0 0 0 1px color-mix(in srgb, var(--action-color,#60a5fa) 40%, transparent);
     }
-    .action-btn--active .action-btn__cost { background: var(--action-color, #60a5fa); color: #0f172a; }
-    .action-btn__emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
+    .action-btn--active .action-btn__cost { background: var(--action-color,#60a5fa); color: #07080d; }
+    .action-btn__emoji { font-size: 1.6rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
     .action-btn__body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
-    .action-btn__name { font-size: 0.82rem; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .action-btn__cost { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1em 0.45em; border-radius: 4px; background: #1e2433; color: #94a3b8; align-self: flex-start; transition: background 0.15s ease, color 0.15s ease; }
-    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; font-size: 0.78rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
+    .action-btn__name { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: #e2e8f0; }
+    .action-btn__cost { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.1em 0.5em; border-radius: 5px; background: rgba(255,255,255,.08); color: #94a3b8; align-self: flex-start; transition: background .15s, color .15s; }
+    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: rgba(127,29,29,.5); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; font-size: 0.76rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
     .reset-btn {
-      margin-top: auto; padding: 0.55rem 0; width: 100%;
-      background: transparent; border: 1px solid #334155;
-      border-radius: 8px; color: #64748b; font-family: inherit;
-      font-size: 0.78rem; font-weight: 600; cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
+      margin-top: auto; padding: 0.6rem 0; width: 100%;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; color: #334155; font-family: inherit;
+      font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
     }
-    .reset-btn:hover { border-color: #94a3b8; color: #e2e8f0; }
-
-    /* Placed tile overlay — full styles live in the city-map section below */
-    .tile--placed {
-      display: flex; align-items: center; justify-content: center;
-      transition: background-color 0.2s ease; cursor: default;
-    }
+    .reset-btn:hover { border-color: rgba(255,255,255,.22); color: #94a3b8; background: rgba(255,255,255,.04); }
 
     /* ── city-map styles ─────────────────────────────────────────────── */
     #city-grid {
       display: grid;
       grid-template-columns: repeat(10, 80px);
       grid-template-rows: repeat(10, 80px);
-      gap: 3px;
-      background: #13151a;
-      padding: 3px;
-      border: 2px solid #2a2d35;
-      border-radius: 12px 0 0 12px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+      gap: 4px;
+      background: #0d0f14;   /* gap colour = road base → roads form a seamless network */
+      padding: 4px;
+      border-radius: 16px 0 0 16px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,.85),
+        0 0 0 1px rgba(255,255,255,.05);
     }
+
     .tile {
       width: 80px; height: 80px; cursor: pointer;
-      border: 3px solid transparent;
-      transition: border-color 0.12s, filter 0.12s;
+      border: 2px solid transparent;
+      transition: border-color .12s, filter .12s, transform .1s;
       position: relative;
       overflow: hidden;
     }
-    .tile:hover { filter: brightness(1.12); }
-    .tile.selected { border-color: #f1c40f; z-index: 1; }
+    .tile:hover { filter: brightness(1.18) saturate(1.15); transform: scale(1.04); z-index: 2; }
+    .tile.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px #fbbf2460; z-index: 3; }
 
-    /* ── Roads ───────────────────────────────────── */
-    .tile.road { background: #2a2d35; }
+    /* ── Roads — same colour as gap → seamless dark network ─────────── */
+    .tile.road { background: #0d0f14; }
 
-    /* Kerb / sidewalk strips as inset box-shadows */
-    .tile.road[data-road-dir="h"] {
-      box-shadow: inset 0 9px 0 rgba(180,158,115,0.38), inset 0 -9px 0 rgba(180,158,115,0.38);
-    }
-    .tile.road[data-road-dir="v"] {
-      box-shadow: inset 9px 0 0 rgba(180,158,115,0.38), inset -9px 0 0 rgba(180,158,115,0.38);
-    }
-    .tile.road[data-road-dir="x"] {
-      box-shadow:
-        inset 0 9px 0 rgba(180,158,115,0.38), inset 0 -9px 0 rgba(180,158,115,0.38),
-        inset 9px 0 0 rgba(180,158,115,0.38), inset -9px 0 0 rgba(180,158,115,0.38);
-    }
-
-    /* Dashed lane centre-line — horizontal */
+    /* Dashed centre-line: horizontal */
     .tile.road[data-road-dir="h"]::after {
       content: ''; position: absolute;
-      top: 50%; left: 14px; right: 14px; height: 2px;
+      top: 50%; left: 0; right: 0; height: 3px;
       transform: translateY(-50%);
-      background: repeating-linear-gradient(
-        90deg,
-        rgba(255,215,50,0.8) 0px, rgba(255,215,50,0.8) 14px,
-        transparent 14px, transparent 26px
+      background: repeating-linear-gradient(90deg,
+        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        transparent 18px, transparent 34px
       );
+      border-radius: 2px;
     }
-    /* Dashed lane centre-line — vertical */
+    /* Dashed centre-line: vertical */
     .tile.road[data-road-dir="v"]::after {
       content: ''; position: absolute;
-      left: 50%; top: 14px; bottom: 14px; width: 2px;
+      left: 50%; top: 0; bottom: 0; width: 3px;
       transform: translateX(-50%);
-      background: repeating-linear-gradient(
-        180deg,
-        rgba(255,215,50,0.8) 0px, rgba(255,215,50,0.8) 14px,
-        transparent 14px, transparent 26px
+      background: repeating-linear-gradient(180deg,
+        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        transparent 18px, transparent 34px
       );
+      border-radius: 2px;
     }
-    /* Intersection — solid faint cross */
+    /* Intersection: faint cross using both pseudo-elements */
     .tile.road[data-road-dir="x"]::before {
       content: ''; position: absolute;
-      top: 50%; left: 14px; right: 14px; height: 2px;
+      top: 50%; left: 0; right: 0; height: 3px;
       transform: translateY(-50%);
-      background: rgba(255,215,50,0.28);
+      background: rgba(255,210,40,.2);
     }
     .tile.road[data-road-dir="x"]::after {
       content: ''; position: absolute;
-      left: 50%; top: 14px; bottom: 14px; width: 2px;
+      left: 50%; top: 0; bottom: 0; width: 3px;
       transform: translateX(-50%);
-      background: rgba(255,215,50,0.28);
+      background: rgba(255,210,40,.2);
     }
 
-    /* ── Buildings ───────────────────────────────── */
-    /* 5-colour rotation via nth-child (counts all grid children) */
+    /* ── Buildings — 6-colour palette with drop shadow depth ─────────── */
     .tile.building {
-      background: linear-gradient(180deg,
-        var(--bt, #5e6d80) 0%,
-        var(--bm, #3a4a5e) 55%,
-        var(--bb, #242e3a) 100%
-      );
+      background: linear-gradient(175deg, var(--bt) 0%, var(--bb) 100%);
+      box-shadow: 4px 5px 0 rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.09);
     }
-    .tile.building:nth-child(5n)   { --bt:#5e6d80; --bm:#3a4a5e; --bb:#242e3a; }
-    .tile.building:nth-child(5n+1) { --bt:#72615a; --bm:#50413c; --bb:#302828; }
-    .tile.building:nth-child(5n+2) { --bt:#546a6a; --bm:#384e4e; --bb:#202e2e; }
-    .tile.building:nth-child(5n+3) { --bt:#6a6058; --bm:#48433c; --bb:#2c2824; }
-    .tile.building:nth-child(5n+4) { --bt:#4e6070; --bm:#344858; --bb:#1e2c38; }
+    /* Steel / glass */ .tile.building:nth-child(6n)   { --bt:#4e6882; --bb:#1a2b3d; }
+    /* Brick         */ .tile.building:nth-child(6n+1) { --bt:#8a4535; --bb:#3c1a12; }
+    /* Sandstone     */ .tile.building:nth-child(6n+2) { --bt:#8a6c3a; --bb:#3e2e18; }
+    /* Teal glass    */ .tile.building:nth-child(6n+3) { --bt:#2e6e7a; --bb:#143440; }
+    /* Industrial    */ .tile.building:nth-child(6n+4) { --bt:#4c5c4a; --bb:#232c22; }
+    /* Concrete      */ .tile.building:nth-child(6n+5) { --bt:#546070; --bb:#252d38; }
 
-    /* Rooftop highlight */
+    /* Rooftop: bright edge simulates flat roof parapet */
     .tile.building::before {
       content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 6px;
-      background: linear-gradient(90deg,
-        rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.04) 100%
-      );
+      top: 0; left: 0; right: 0; height: 7px;
+      background: linear-gradient(180deg, rgba(255,255,255,.22) 0%, transparent 100%);
     }
-    /* Window grid */
+    /* Windows: warm amber glow on a 15×15 grid */
     .tile.building::after {
       content: ''; position: absolute;
-      inset: 10px 7px 6px;
-      background-image: radial-gradient(circle, rgba(255,248,160,0.72) 2.5px, transparent 2.5px);
-      background-size: 14px 14px;
-      background-position: 3px 3px;
+      inset: 10px 8px 8px;
+      background-image: radial-gradient(circle, rgba(255,240,140,.85) 2.5px, transparent 2.5px);
+      background-size: 15px 15px;
+      background-position: 4px 5px;
     }
 
-    /* ── Parks ───────────────────────────────────── */
+    /* ── Parks ───────────────────────────────────────────────────────── */
     .tile.park {
       background:
-        radial-gradient(ellipse at 28% 28%, #4ade80 0%, transparent 55%),
-        radial-gradient(ellipse at 72% 72%, #16a34a 0%, transparent 50%),
-        linear-gradient(170deg, #166534 0%, #14532d 100%);
+        radial-gradient(circle at 35% 35%, #4ade80 0%, transparent 45%),
+        radial-gradient(circle at 68% 68%, #059669 0%, transparent 42%),
+        #065f46;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
     }
     .tile.park::after {
       content: '🌳'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 36px; line-height: 1;
-      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.45));
+      font-size: 38px; line-height: 1;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
     }
 
-    /* ── Empty lots ──────────────────────────────── */
+    /* ── Empty lots (construction sites) ────────────────────────────── */
     .tile.empty {
-      background-color: #8a7455;
-      background-image:
-        repeating-linear-gradient( 45deg, rgba(0,0,0,0.09) 0px, rgba(0,0,0,0.09) 2px, transparent 2px, transparent 10px),
-        repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 2px, transparent 2px, transparent 10px);
+      background: linear-gradient(155deg, #7a6244 0%, #52401e 100%);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.4);
+    }
+    .tile.empty::after {
+      content: '🚧'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; opacity: 0.6;
     }
 
-    /* ── Placed tiles ────────────────────────────── */
+    /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
-      font-size: 2.2rem;
-      background-color: var(--tile-placed-color, #374162) !important;
-      outline: 2px solid color-mix(in srgb, var(--tile-placed-color, #374162) 60%, #000);
-      outline-offset: -2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.4rem;
+      background-color: var(--tile-placed-color) !important;
+      box-shadow:
+        4px 5px 0 rgba(0,0,0,.6),
+        inset 0 0 0 1px color-mix(in srgb, var(--tile-placed-color) 50%, #fff);
+      cursor: default;
+      transition: background-color .2s;
     }
     .tile--placed::before,
     .tile--placed::after { display: none; }
 
-    #info-bar { font-size: 13px; color: #6b7280; height: 20px; letter-spacing: 0.02em; }
-    #legend { display: flex; gap: 20px; }
-    .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #6b7280; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; opacity: 0.85; }
+    #info-bar { font-size: 12px; color: #334155; height: 18px; letter-spacing: 0.03em; }
+    #legend { display: flex; gap: 18px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; letter-spacing: 0.02em; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -387,10 +381,10 @@
       <div id="city-grid"></div>
       <div id="info-bar">Click a tile to select it.</div>
       <div id="legend">
-        <div class="legend-item"><div class="legend-swatch" style="background:#c0392b"></div> Road</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#7f8c8d"></div> Building</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#27ae60"></div> Park</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#d4b896"></div> Empty</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#0d0f14"></div> Road</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#4e6882"></div> Building</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#065f46"></div> Park</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#7a6244"></div> Empty</div>
       </div>
     </div>
 
@@ -715,19 +709,27 @@
       const wasPlaced   = el.classList.contains('tile--placed');
       el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
       if (tile.type === 'road') {
-        // dark asphalt (0) → amber (0.5) → red (1.0)
+        // seamless dark (0) → stays dark until ~0.4 → amber → red (1.0)
         const c = tile.congestion;
         let r, g, b;
-        if (c < 0.5) {
-          const t = c * 2;
-          r = Math.round(37  + 200 * t);
-          g = Math.round(40  + 120 * t);
-          b = Math.round(48  -  20 * t);
+        if (c < 0.45) {
+          // Nearly invisible at low congestion — stays close to road/gap base
+          const t = c / 0.45;
+          r = Math.round(13 +  80 * t);
+          g = Math.round(15 +  50 * t);
+          b = Math.round(20 -  10 * t);
+        } else if (c < 0.75) {
+          // Olive → deep amber
+          const t = (c - 0.45) / 0.3;
+          r = Math.round(93  + 147 * t);
+          g = Math.round(65  +  55 * t);
+          b = Math.round(10);
         } else {
-          const t = (c - 0.5) * 2;
-          r = Math.round(237 +  18 * t);
-          g = Math.round(160 - 160 * t);
-          b = Math.round(28  -  28 * t);
+          // Deep amber → vivid red
+          const t = (c - 0.75) / 0.25;
+          r = Math.round(240 +  15 * t);
+          g = Math.round(120 - 120 * t);
+          b = Math.round(10  -  10 * t);
         }
         el.style.background = `rgb(${r},${g},${b})`;
       } else {
