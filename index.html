@@ -771,7 +771,7 @@
 
     .radial-backdrop {
       position: fixed; inset: 0;
-      pointer-events: auto;
+      pointer-events: none;
       background: transparent;
     }
 
@@ -1929,6 +1929,16 @@
     function onTileClick(e) {
       const tile = e.target.closest(".tile");
       if (!tile) return;
+
+      // Same tile tapped while radial is open → toggle it off
+      if (!radialEl.hasAttribute('hidden') && radialTile === tile) {
+        closeRadial();
+        return;
+      }
+
+      // Different tile tapped while radial is open → switch immediately (no fade wait)
+      if (!radialEl.hasAttribute('hidden')) closeRadialNow();
+
       if (window.gameState?.won) return;
       if (tile.classList.contains("blocker")) return;
       if (tile.classList.contains("tile--placed")) {
@@ -2037,6 +2047,12 @@
       }, 300);
     }
 
+    function closeRadialNow() {
+      radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
+      radialEl.setAttribute('hidden', '');
+      radialTile = null;
+    }
+
     function doPlace(tile, meta) {
       const budget = window.gameState?.budget ?? 0;
       if (budget < meta.cost) { showBudgetError(); return; }
@@ -2063,11 +2079,13 @@
       });
     }
 
-    radialBackdrop.addEventListener('click', closeRadial);
-    radialBackdrop.addEventListener('touchend', function (e) {
-      e.preventDefault();
+    // Outside-tap closes the radial; tile taps are handled by onTileClick
+    document.addEventListener('pointerdown', function (e) {
+      if (radialEl.hasAttribute('hidden')) return;
+      if (e.target.closest('.radial-btn')) return; // button — handleRadialAction fires
+      if (e.target.closest('.tile')) return;       // tile — onTileClick fires
       closeRadial();
-    }, { passive: false });
+    }, { capture: true });
 
     radialBtns.forEach(function (btn) {
       function handleRadialAction(e) {
