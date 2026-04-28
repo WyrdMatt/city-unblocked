@@ -8,7 +8,8 @@
 
 'use strict';
 
-const { EFFECTS, COMBOS, WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
+const { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
+        WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
         getGridNeighbours, hotspotScore, calculateEffects, checkWinCondition } = require('./game-logic');
 
 let passed = 0, failed = 0;
@@ -274,6 +275,80 @@ assert(checkWinCondition({ happiness: 70, congestion: 30, budget: 200, minAction
 // turnsLeft omitted = no turn limit
 assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 500, minActionCost: 40 }) === 'playing',
   'checkWinCondition: no turnsLeft key = no turn limit → playing');
+
+// ── WEATHER_TYPES / WEATHER_META constants ────────────────────────────────
+assert(Array.isArray(WEATHER_TYPES) && WEATHER_TYPES.length === 5, 'WEATHER_TYPES: 5 entries');
+assert(WEATHER_TYPES.includes('sunny'),   'WEATHER_TYPES includes sunny');
+assert(WEATHER_TYPES.includes('stormy'),  'WEATHER_TYPES includes stormy');
+assert(typeof WEATHER_META.sunny   === 'object' && WEATHER_META.sunny.emoji,   'WEATHER_META.sunny has emoji');
+assert(typeof WEATHER_META.stormy  === 'object' && WEATHER_META.stormy.hint,   'WEATHER_META.stormy has hint');
+
+// ── calculateEffects: sunny weather = no change ───────────────────────────
+{
+  const grid = buildGrid([{ row: 5, col: 5, type: 'empty' }]);
+  const p = [{ action: 'park', row: 5, col: 5 }];
+  const dNone  = calculateEffects(p, grid);
+  const dSunny = calculateEffects(p, grid, 'sunny');
+  assert(approx(dNone.happinessDelta,  dSunny.happinessDelta,  0.01), 'sunny weather: park happiness unchanged');
+  assert(approx(dNone.congestionDelta, dSunny.congestionDelta, 0.01), 'sunny weather: park congestion unchanged');
+}
+
+// ── calculateEffects: rainy weather reduces bike-lane ─────────────────────
+{
+  const grid = buildGrid([{ row: 5, col: 5, type: 'road' },
+    { row: 4, col: 5, type: 'road' }, { row: 6, col: 5, type: 'road' },
+    { row: 5, col: 4, type: 'road' }, { row: 5, col: 6, type: 'road' }]);
+  const p = [{ action: 'bike-lane', row: 5, col: 5 }];
+  const dBase  = calculateEffects(p, grid);           // no weather
+  const dRainy = calculateEffects(p, grid, 'rainy');  // cong×0.75, hap×0.60
+  assert(approx(dRainy.congestionDelta, dBase.congestionDelta * 0.75, 0.01),
+    'rainy weather: bike-lane congestion × 0.75');
+  assert(approx(dRainy.happinessDelta,  dBase.happinessDelta  * 0.60, 0.01),
+    'rainy weather: bike-lane happiness × 0.60');
+}
+
+// ── calculateEffects: snowy weather boosts bus-stop ───────────────────────
+{
+  // Bus-stop on road tile surrounded by roads (no adj bonus, no hotspot)
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'road' },
+    { row: 4, col: 5, type: 'road' }, { row: 6, col: 5, type: 'road' },
+    { row: 5, col: 4, type: 'road' }, { row: 5, col: 6, type: 'road' },
+  ]);
+  const p = [{ action: 'bus-stop', row: 5, col: 5 }];
+  const dBase  = calculateEffects(p, grid);
+  const dSnowy = calculateEffects(p, grid, 'snowy');  // cong×1.40, hap×1.20
+  assert(approx(dSnowy.congestionDelta, dBase.congestionDelta * 1.40, 0.01),
+    'snowy weather: bus-stop congestion × 1.40');
+  assert(approx(dSnowy.happinessDelta,  dBase.happinessDelta  * 1.20, 0.01),
+    'snowy weather: bus-stop happiness × 1.20');
+}
+
+// ── calculateEffects: stormy weather severely penalises bike-lane ─────────
+{
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'road' },
+    { row: 4, col: 5, type: 'road' }, { row: 6, col: 5, type: 'road' },
+    { row: 5, col: 4, type: 'road' }, { row: 5, col: 6, type: 'road' },
+  ]);
+  const p = [{ action: 'bike-lane', row: 5, col: 5 }];
+  const dBase   = calculateEffects(p, grid);
+  const dStormy = calculateEffects(p, grid, 'stormy');  // cong×0.30, hap×0.25
+  assert(approx(dStormy.congestionDelta, dBase.congestionDelta * 0.30, 0.01),
+    'stormy weather: bike-lane congestion × 0.30');
+  assert(approx(dStormy.happinessDelta,  dBase.happinessDelta  * 0.25, 0.01),
+    'stormy weather: bike-lane happiness × 0.25');
+}
+
+// ── calculateEffects: null/undefined weather = no multipliers ────────────
+{
+  const grid = buildGrid([{ row: 5, col: 5, type: 'empty' }]);
+  const p = [{ action: 'park', row: 5, col: 5 }];
+  const dNone = calculateEffects(p, grid);
+  const dNull = calculateEffects(p, grid, null);
+  assert(approx(dNone.happinessDelta, dNull.happinessDelta, 0.01),
+    'null weather: same as no-weather call');
+}
 
 // ── Summary ───────────────────────────────────────────────────────────────
 console.log(`Results:  ${passed} passed  /  ${failed} failed  /  ${passed + failed} total\n`);
