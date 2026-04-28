@@ -2315,8 +2315,9 @@
     function addCar(dir, lane, going, minCong = 0) {
       const el = document.createElement('span');
       el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
+      const carSize = Math.max(9, Math.round(TILE * 0.19));
       Object.assign(el.style, {
-        position: 'absolute', fontSize: '15px',
+        position: 'absolute', fontSize: carSize + 'px',
         lineHeight: '1', userSelect: 'none', willChange: 'transform',
         transition: 'filter 0.25s',
       });
@@ -2357,11 +2358,13 @@
         for (let p = 0; p < 3; p++) {
           const el = document.createElement('span');
           el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
+          const pedOff = Math.round(TILE * 0.2);
+          const pedSize = Math.max(9, Math.round(TILE * 0.16));
           Object.assign(el.style, {
             position: 'absolute',
-            fontSize: '13px', lineHeight: '1', userSelect: 'none',
-            top:  (tileEdge(row) + 18 + p * 18) + 'px',
-            left: (tileEdge(col) + 12 + p * 18) + 'px',
+            fontSize: pedSize + 'px', lineHeight: '1', userSelect: 'none',
+            top:  (tileEdge(row) + Math.round(TILE * 0.15) + p * pedOff) + 'px',
+            left: (tileEdge(col) + Math.round(TILE * 0.10) + p * pedOff) + 'px',
             animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
             animationDelay: `${-p * 2.1}s`,
           });
@@ -2477,13 +2480,14 @@
           const ty = tileEdge(start);
           const th = tileEdge(end) + TILE - ty;
           const n  = end - start >= 1 ? 2 : 1;
+          const swPad = Math.max(3, Math.round(TILE * 0.06));
           if (hasLeft) {
             makeSWStrip(tx, ty, SW_W, th);
-            for (let i = 0; i < n; i++) addSWPerson('v', tx + 1, ty + 5, ty + th - 14);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + 1, ty + swPad, ty + th - swPad * 2);
           }
           if (hasRight) {
             makeSWStrip(tx + TILE - SW_W, ty, SW_W, th);
-            for (let i = 0; i < n; i++) addSWPerson('v', tx + TILE - SW_W + 1, ty + 5, ty + th - 14);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + TILE - SW_W + 1, ty + swPad, ty + th - swPad * 2);
           }
         });
       });
@@ -2497,81 +2501,89 @@
           const tx = tileEdge(start);
           const tw = tileEdge(end) + TILE - tx;
           const n  = end - start >= 1 ? 2 : 1;
+          const swPadH = Math.max(3, Math.round(TILE * 0.06));
           if (hasTop) {
             makeSWStrip(tx, ty, tw, SW_W);
-            for (let i = 0; i < n; i++) addSWPerson('h', ty + 1, tx + 5, tx + tw - 14);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + 1, tx + swPadH, tx + tw - swPadH * 2);
           }
           if (hasBottom) {
             makeSWStrip(tx, ty + TILE - SW_W, tw, SW_W);
-            for (let i = 0; i < n; i++) addSWPerson('h', ty + TILE - SW_W + 1, tx + 5, tx + tw - 14);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + TILE - SW_W + 1, tx + swPadH, tx + tw - swPadH * 2);
           }
         });
       });
 
-      // ── Traffic lights at every road intersection
-      let tlIdx = 0;
-      roadRows.forEach(r => roadCols.forEach(c => {
-        const tx = tileEdge(c), ty = tileEdge(r);
-        const phase = -((tlIdx++ * 1.9) % TL_CYCLE);
-        makeTL(tx + 3,  ty + 3,  phase);
-        makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5);
-      }));
-
-      // ── Speed limit signs: two per road line at non-intersection tiles
+      // ── Traffic lights and signs only render at tiles ≥ 40px
       const allCols = Array.from({ length: cfg.cols }, (_, i) => i);
       const allRows = Array.from({ length: cfg.rows }, (_, i) => i);
       const nonRoadCols = allCols.filter(c => !colSet.has(c));
       const nonRoadRows = allRows.filter(r => !rowSet.has(r));
 
-      roadRows.forEach(r => {
-        const picks = nonRoadCols.length >= 4
-          ? [nonRoadCols[Math.floor(nonRoadCols.length * 0.25)], nonRoadCols[Math.floor(nonRoadCols.length * 0.75)]]
-          : nonRoadCols.slice(0, 1);
-        picks.forEach(c => {
+      if (TILE >= 40) {
+        // ── Traffic lights at every road intersection
+        const tlCorner = Math.max(0, TILE - 16);
+        let tlIdx = 0;
+        roadRows.forEach(r => roadCols.forEach(c => {
+          const tx = tileEdge(c), ty = tileEdge(r);
+          const phase = -((tlIdx++ * 1.9) % TL_CYCLE);
+          makeTL(tx + 3,        ty + 3,        phase);
+          makeTL(tx + tlCorner, ty + tlCorner,  phase - TL_CYCLE * 0.5);
+        }));
+
+        // ── Speed limit signs: two per road line at non-intersection tiles
+        roadRows.forEach(r => {
+          const picks = nonRoadCols.length >= 4
+            ? [nonRoadCols[Math.floor(nonRoadCols.length * 0.25)], nonRoadCols[Math.floor(nonRoadCols.length * 0.75)]]
+            : nonRoadCols.slice(0, 1);
+          picks.forEach(c => {
+            const s = document.createElement('div');
+            s.className = 'sign-speed'; s.textContent = '30';
+            s.style.left = (tileEdge(c) + 4) + 'px';
+            s.style.top  = (tileEdge(r) + 4) + 'px';
+            layer.appendChild(s);
+          });
+        });
+        roadCols.forEach(c => {
+          const picks = nonRoadRows.length >= 4
+            ? [nonRoadRows[Math.floor(nonRoadRows.length * 0.25)], nonRoadRows[Math.floor(nonRoadRows.length * 0.75)]]
+            : nonRoadRows.slice(0, 1);
+          picks.forEach(r => {
+            const s = document.createElement('div');
+            s.className = 'sign-speed'; s.textContent = '30';
+            s.style.left = (tileEdge(c) + 4) + 'px';
+            s.style.top  = (tileEdge(r) + 4) + 'px';
+            layer.appendChild(s);
+          });
+        });
+
+        // ── Street name signs: one per road line at its midpoint
+        const H_NAMES = ['City Ave', 'Main St', 'Park Rd', 'High St'];
+        const V_NAMES = ['Oak Lane', 'Elm Drive', 'Pine Way', 'Church Rd'];
+        const signMidV  = Math.round(TILE * 0.40);
+        const signMidH  = Math.round(TILE * 0.30);
+        const signEdgeH = Math.round(TILE * 0.10);
+
+        roadRows.forEach((r, ri) => {
+          if (nonRoadCols.length === 0) return;
+          const c = nonRoadCols[Math.floor(nonRoadCols.length / 2)];
           const s = document.createElement('div');
-          s.className = 'sign-speed'; s.textContent = '30';
-          s.style.left = (tileEdge(c) + 4) + 'px';
-          s.style.top  = (tileEdge(r) + 4) + 'px';
+          s.className = 'sign-street';
+          s.textContent = H_NAMES[ri % H_NAMES.length];
+          s.style.left = (tileEdge(c) + signMidH) + 'px';
+          s.style.top  = (tileEdge(r) + signMidV) + 'px';
           layer.appendChild(s);
         });
-      });
-      roadCols.forEach(c => {
-        const picks = nonRoadRows.length >= 4
-          ? [nonRoadRows[Math.floor(nonRoadRows.length * 0.25)], nonRoadRows[Math.floor(nonRoadRows.length * 0.75)]]
-          : nonRoadRows.slice(0, 1);
-        picks.forEach(r => {
+        roadCols.forEach((c, ci) => {
+          if (nonRoadRows.length === 0) return;
+          const r = nonRoadRows[Math.floor(nonRoadRows.length / 2)];
           const s = document.createElement('div');
-          s.className = 'sign-speed'; s.textContent = '30';
-          s.style.left = (tileEdge(c) + 4) + 'px';
-          s.style.top  = (tileEdge(r) + 4) + 'px';
+          s.className = 'sign-street';
+          s.textContent = V_NAMES[ci % V_NAMES.length];
+          s.style.left = (tileEdge(c) + signMidV) + 'px';
+          s.style.top  = (tileEdge(r) + signEdgeH) + 'px';
           layer.appendChild(s);
         });
-      });
-
-      // ── Street name signs: one per road line at its midpoint
-      const H_NAMES = ['City Ave', 'Main St', 'Park Rd', 'High St'];
-      const V_NAMES = ['Oak Lane', 'Elm Drive', 'Pine Way', 'Church Rd'];
-
-      roadRows.forEach((r, ri) => {
-        if (nonRoadCols.length === 0) return;
-        const c = nonRoadCols[Math.floor(nonRoadCols.length / 2)];
-        const s = document.createElement('div');
-        s.className = 'sign-street';
-        s.textContent = H_NAMES[ri % H_NAMES.length];
-        s.style.left = (tileEdge(c) + 8) + 'px';
-        s.style.top  = (tileEdge(r) + 32) + 'px';
-        layer.appendChild(s);
-      });
-      roadCols.forEach((c, ci) => {
-        if (nonRoadRows.length === 0) return;
-        const r = nonRoadRows[Math.floor(nonRoadRows.length / 2)];
-        const s = document.createElement('div');
-        s.className = 'sign-street';
-        s.textContent = V_NAMES[ci % V_NAMES.length];
-        s.style.left = (tileEdge(c) + 24) + 'px';
-        s.style.top  = (tileEdge(r) + 10) + 'px';
-        layer.appendChild(s);
-      });
+      }
 
       // ── Park pedestrians
       const parkTiles = [];
