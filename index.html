@@ -164,6 +164,16 @@
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
+    .action-btn__effects {
+      display: flex; gap: 0.35rem; margin-top: 0.25rem; flex-wrap: wrap;
+    }
+    .effect {
+      font-size: 0.62rem; font-weight: 700;
+      padding: 0.1em 0.45em; border-radius: 4px; line-height: 1.5;
+    }
+    .effect--happy { background: rgba(16,185,129,.15); color: #34d399; }
+    .effect--cong  { background: rgba(239,68,68,.15);  color: #f87171; }
+
     .reset-btn {
       margin-top: auto; padding: 0.6rem 0; width: 100%;
       background: transparent;
@@ -556,6 +566,10 @@
             <span class="action-btn__body">
               <span class="action-btn__name">Bus Stop</span>
               <span class="action-btn__cost">£80</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −10</span>
+                <span class="effect effect--happy">😊 +6</span>
+              </span>
             </span>
           </button>
         </li>
@@ -566,6 +580,10 @@
             <span class="action-btn__body">
               <span class="action-btn__name">Bike Lane</span>
               <span class="action-btn__cost">£40</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −6</span>
+                <span class="effect effect--happy">😊 +8</span>
+              </span>
             </span>
           </button>
         </li>
@@ -576,6 +594,10 @@
             <span class="action-btn__body">
               <span class="action-btn__name">Parking Garage</span>
               <span class="action-btn__cost">£120</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −8</span>
+                <span class="effect effect--happy">😊 +4</span>
+              </span>
             </span>
           </button>
         </li>
@@ -586,6 +608,10 @@
             <span class="action-btn__body">
               <span class="action-btn__name">Park</span>
               <span class="action-btn__cost">£60</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −4</span>
+                <span class="effect effect--happy">😊 +12</span>
+              </span>
             </span>
           </button>
         </li>
