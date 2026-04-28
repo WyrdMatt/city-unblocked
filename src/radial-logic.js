@@ -91,9 +91,9 @@ export function getRadialPosition(tileRect, containerRect, fanRadius) {
  * flipDown:         open downward instead of upward
  */
 export function getButtonPositions(originX, originY, fanRadius, count, flipDown) {
-  const ARC_DEG  = 140
-  const startDeg = flipDown ? 20 : -160   // start angle (degrees from positive x-axis)
-  const endDeg   = flipDown ? 160 : -20
+  const ARC_DEG  = 160
+  const startDeg = flipDown ? 10 : -170   // start angle (degrees from positive x-axis)
+  const endDeg   = flipDown ? 170 : -10
 
   return Array.from({ length: count }, (_, i) => {
     const t   = count === 1 ? 0.5 : i / (count - 1)
