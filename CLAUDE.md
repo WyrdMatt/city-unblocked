@@ -174,7 +174,7 @@ Never commit directly to `main`. Never use `--no-verify`.
 ## GitHub
 
 Repo: https://github.com/WyrdMatt/city-unblocked
-Active branch: `feat/mobile-layout` (merge to `feature/big-update`, then to `main`)
+Active branch: `main` (create feature branches, merge to `main`)
 Live: https://idyllic-cannoli-358897.netlify.app/ (auto-deploys from `main`)
 
 ## Skills
