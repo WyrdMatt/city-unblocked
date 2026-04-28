@@ -356,6 +356,77 @@
     }
     .hud__music-btn:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.22); color: #e2e8f0; }
 
+    /* ── Traffic light keyframes ────────────────────────────────────── */
+    /* Cycle: red 0–40 %, green 40–90 %, yellow 90–100 % */
+    @keyframes tl-r {
+      0%     { opacity: 1;    }
+      39.9%  { opacity: 1;    }
+      40%    { opacity: 0.1;  }
+      100%   { opacity: 0.1;  }
+    }
+    @keyframes tl-g {
+      0%     { opacity: 0.1;  }
+      39.9%  { opacity: 0.1;  }
+      40%    { opacity: 1;    }
+      89.9%  { opacity: 1;    }
+      90%    { opacity: 0.1;  }
+      100%   { opacity: 0.1;  }
+    }
+    @keyframes tl-y {
+      0%     { opacity: 0.1;  }
+      89.9%  { opacity: 0.1;  }
+      90%    { opacity: 1;    }
+      99.9%  { opacity: 1;    }
+      100%   { opacity: 0.1;  }
+    }
+
+    /* ── Traffic light post ─────────────────────────────────────────── */
+    .tl-post {
+      position: absolute;
+      display: flex; flex-direction: column;
+      gap: 1.5px;
+      background: #111316;
+      border-radius: 2px;
+      padding: 2px;
+      width: 9px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.7);
+      z-index: 6;
+      pointer-events: none;
+    }
+    .tl-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Street signs ───────────────────────────────────────────────── */
+    .sign-speed {
+      position: absolute;
+      width: 14px; height: 16px;
+      background: #fff;
+      border: 1.5px solid #b00;
+      border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5.5px; font-weight: 900; color: #111;
+      font-family: sans-serif;
+      box-shadow: 0 1px 4px rgba(0,0,0,.6);
+      z-index: 6; pointer-events: none;
+      line-height: 1;
+    }
+    .sign-street {
+      position: absolute;
+      background: #1a4f72;
+      color: #fff;
+      font-size: 4.5px; font-weight: 700;
+      font-family: sans-serif;
+      padding: 2px 4px;
+      border-radius: 1px;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,.6);
+      z-index: 6; pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+
     /* ── Pedestrian wander keyframes ─────────────────────────────────── */
     @keyframes wander-0 {
       0%   { transform: translate(0,0) }
@@ -1000,6 +1071,76 @@
         });
         layer.appendChild(el);
       }
+    });
+
+    /* ── Traffic lights ────────────────────────────────────────── */
+    const INTERSECTIONS = [
+      [0,0],[0,4],[0,8],
+      [4,0],[4,4],[4,8],
+      [8,0],[8,4],[8,8],
+    ];
+    const TL_CYCLE = 9; // seconds per full cycle
+
+    function makeTL(px, py, delaySec) {
+      const post = document.createElement('div');
+      post.className = 'tl-post';
+      post.style.left = px + 'px';
+      post.style.top  = py + 'px';
+      [
+        { anim: 'tl-r', color: '#ff2e2e' },
+        { anim: 'tl-y', color: '#ffdd00' },
+        { anim: 'tl-g', color: '#22ee44' },
+      ].forEach(({ anim, color }) => {
+        const dot = document.createElement('div');
+        dot.className = 'tl-dot';
+        dot.style.background = color;
+        dot.style.animation   = `${anim} ${TL_CYCLE}s linear ${delaySec}s infinite`;
+        post.appendChild(dot);
+      });
+      layer.appendChild(post);
+    }
+
+    // Two lights per intersection at opposite corners; alternate phase by TL_CYCLE/2
+    INTERSECTIONS.forEach(([row, col], i) => {
+      const tx = tileEdge(col), ty = tileEdge(row);
+      const phase = -((i * 1.9) % TL_CYCLE); // stagger so intersections are out of sync
+      makeTL(tx + 3,  ty + 3,  phase);
+      makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5); // opposite phase (green while other is red)
+    });
+
+    /* ── Street signs ───────────────────────────────────────────── */
+    // Speed limit signs on non-intersection road tiles
+    [
+      [0, 2], [0, 6],   // top horizontal road
+      [4, 1], [4, 6],   // mid horizontal road
+      [8, 3],           // bottom horizontal road
+      [2, 0], [6, 0],   // left vertical road
+      [3, 4], [7, 8],   // mid/right vertical roads
+    ].forEach(([row, col]) => {
+      const s = document.createElement('div');
+      s.className = 'sign-speed';
+      s.textContent = '30';
+      s.style.left = (tileEdge(col) + 4) + 'px';
+      s.style.top  = (tileEdge(row) + 4) + 'px';
+      layer.appendChild(s);
+    });
+
+    // Street name boards on horizontal & vertical roads
+    [
+      { row: 0, col: 1,  name: 'City Ave',  dx: 8, dy: 32 },
+      { row: 0, col: 5,  name: 'City Ave',  dx: 8, dy: 32 },
+      { row: 4, col: 2,  name: 'Main St',   dx: 8, dy: 32 },
+      { row: 4, col: 6,  name: 'Main St',   dx: 8, dy: 32 },
+      { row: 8, col: 5,  name: 'Park Rd',   dx: 8, dy: 32 },
+      { row: 1, col: 4,  name: 'Oak Ln',    dx: 24, dy: 10 },
+      { row: 6, col: 8,  name: 'Elm Dr',    dx: 24, dy: 10 },
+    ].forEach(({ row, col, name, dx, dy }) => {
+      const s = document.createElement('div');
+      s.className = 'sign-street';
+      s.textContent = name;
+      s.style.left = (tileEdge(col) + dx) + 'px';
+      s.style.top  = (tileEdge(row) + dy) + 'px';
+      layer.appendChild(s);
     });
 
     /* ── Main animation loop ────────────────────────────────────── */
