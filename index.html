@@ -9,7 +9,8 @@
 
     body {
       margin: 0;
-      background: #0f1117;
+      background: #07080d;
+      background-image: radial-gradient(ellipse at 50% -10%, rgba(30,60,120,.25) 0%, transparent 65%);
       font-family: 'Segoe UI', system-ui, sans-serif;
       color: #e2e8f0;
       min-height: 100vh;
@@ -21,9 +22,9 @@
     #game-area {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       gap: 0;
-      padding: 1.5rem;
+      padding: 2rem;
       flex: 1;
     }
 
@@ -31,56 +32,58 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 10px;
+      gap: 12px;
     }
 
     /* ── hud.css ─────────────────────────────────────────────────────── */
     .hud {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 2rem;
       width: 100%;
-      padding: 0.625rem 1.25rem;
-      background: #1e2433;
-      border-bottom: 2px solid #2d3348;
+      padding: 0.75rem 1.5rem;
+      background: rgba(14,16,24,.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
       position: sticky;
       top: 0;
       z-index: 100;
     }
-    .hud__brand { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
-    .hud__brand-icon { font-size: 1.25rem; line-height: 1; }
+    .hud__brand { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .hud__brand-icon { font-size: 1.5rem; line-height: 1; }
     .hud__brand-name {
-      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: #94a3b8; white-space: nowrap;
+      font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #e2e8f0; white-space: nowrap;
     }
-    .hud__meters { display: flex; align-items: center; gap: 1.25rem; flex: 1; min-width: 0; }
-    .hud-meter { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+    .hud__meters { display: flex; align-items: center; gap: 2rem; flex: 1; min-width: 0; }
+    .hud-meter { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
     .hud-meter__label {
-      display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem;
-      font-weight: 600; color: #94a3b8; text-transform: uppercase;
-      letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem;
+      font-weight: 700; color: #64748b; text-transform: uppercase;
+      letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
     }
     .hud-meter__track {
-      position: relative; flex: 1; height: 10px; background: #2d3348;
-      border-radius: 999px; overflow: hidden; min-width: 60px;
+      position: relative; flex: 1; height: 8px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px; overflow: hidden; min-width: 80px;
     }
     .hud-meter__fill {
       position: absolute; inset: 0 auto 0 0; width: 0%;
-      border-radius: 999px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+      border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
     }
-    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#16a34a,#4ade80); }
-    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#b91c1c,#f87171); }
+    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#059669,#34d399); }
+    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#dc2626,#f87171); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
-    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
     .hud-meter__value {
-      font-size: 0.72rem; font-weight: 700; color: #cbd5e1;
-      width: 2.2ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
+      font-size: 0.8rem; font-weight: 800; color: #e2e8f0;
+      width: 2.4ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
     }
-    .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0.1rem; }
-    .hud__budget-label { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
-    .hud__budget-value { font-size: 1.1rem; font-weight: 800; color: #e2e8f0; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
-    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1.2s ease-in-out infinite; }
-    @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; }
+    .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: #f8fafc; font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
+    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1s ease-in-out infinite; }
+    @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ── Overlays ────────────────────────────────────────────────────── */
     .overlay {
@@ -123,101 +126,341 @@
 
     /* ── actions-panel.css ───────────────────────────────────────────── */
     .actions-panel {
-      display: flex; flex-direction: column; gap: 1.25rem; width: 200px;
-      flex-shrink: 0; padding: 1.25rem 1rem; background: #1e2433;
-      border-left: 2px solid #2d3348; border-radius: 0 12px 12px 0;
+      display: flex; flex-direction: column; gap: 1rem; width: 220px;
+      flex-shrink: 0; padding: 1.25rem;
+      background: rgba(14,16,24,.95);
+      border-left: 1px solid rgba(255,255,255,.07);
+      border-radius: 0 16px 16px 0;
       color: #e2e8f0;
     }
-    .actions-panel__header { display: flex; flex-direction: column; gap: 0.25rem; }
-    .actions-panel__title { margin: 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
-    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #64748b; line-height: 1.4; }
-    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.625rem; }
+    .actions-panel__header { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .actions-panel__title { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; }
+    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #334155; line-height: 1.4; }
+    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
     .action-btn {
-      display: flex; align-items: center; gap: 0.625rem; width: 100%;
-      padding: 0.625rem 0.75rem; background: #2d3348; border: 2px solid transparent;
-      border-radius: 10px; cursor: pointer; color: #e2e8f0; font-family: inherit;
+      display: flex; align-items: center; gap: 0.75rem; width: 100%;
+      padding: 0.7rem 0.875rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px; cursor: pointer; color: #cbd5e1; font-family: inherit;
       text-align: left;
-      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-      position: relative;
+      transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
     }
-    .action-btn:hover { background: #374162; border-color: #4b5680; }
+    .action-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
     .action-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
     .action-btn:active { transform: scale(0.97); }
     .action-btn--active {
-      background: #374162;
+      background: rgba(255,255,255,.1);
       border-color: var(--action-color, #60a5fa);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color, #60a5fa) 30%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color,#60a5fa) 22%, transparent),
+                  inset 0 0 0 1px color-mix(in srgb, var(--action-color,#60a5fa) 40%, transparent);
     }
-    .action-btn--active .action-btn__cost { background: var(--action-color, #60a5fa); color: #0f172a; }
-    .action-btn__emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
+    .action-btn--active .action-btn__cost { background: var(--action-color,#60a5fa); color: #07080d; }
+    .action-btn__emoji { font-size: 1.6rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
     .action-btn__body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
-    .action-btn__name { font-size: 0.82rem; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .action-btn__cost { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1em 0.45em; border-radius: 4px; background: #1e2433; color: #94a3b8; align-self: flex-start; transition: background 0.15s ease, color 0.15s ease; }
-    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; font-size: 0.78rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
+    .action-btn__name { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: #e2e8f0; }
+    .action-btn__cost { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.1em 0.5em; border-radius: 5px; background: rgba(255,255,255,.08); color: #94a3b8; align-self: flex-start; transition: background .15s, color .15s; }
+    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: rgba(127,29,29,.5); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; font-size: 0.76rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
-    /* Placed tile overlay (applied by actions-panel.js) */
-    .tile--placed {
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; transition: background-color 0.2s ease; cursor: default;
-      background-color: var(--tile-placed-color, #374162) !important;
-      outline: 2px solid color-mix(in srgb, var(--tile-placed-color, #374162) 60%, #000);
-      outline-offset: -2px;
+    .reset-btn {
+      margin-top: auto; padding: 0.6rem 0; width: 100%;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; color: #334155; font-family: inherit;
+      font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
     }
+    .reset-btn:hover { border-color: rgba(255,255,255,.22); color: #94a3b8; background: rgba(255,255,255,.04); }
 
     /* ── city-map styles ─────────────────────────────────────────────── */
     #city-grid {
       display: grid;
-      grid-template-columns: repeat(10, 56px);
-      grid-template-rows: repeat(10, 56px);
-      gap: 3px;
-      background: #111;
-      padding: 3px;
-      border: 2px solid #333;
-      border-radius: 12px 0 0 12px;
+      grid-template-columns: repeat(10, 80px);
+      grid-template-rows: repeat(10, 80px);
+      gap: 4px;
+      background: #2e3240;   /* gap colour = road base → roads form a seamless network */
+      padding: 4px;
+      border-radius: 16px 0 0 16px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,.85),
+        0 0 0 1px rgba(255,255,255,.05);
     }
+
     .tile {
-      width: 56px; height: 56px; cursor: pointer;
-      border: 3px solid transparent;
-      transition: border-color 0.1s, filter 0.1s;
+      width: 80px; height: 80px; cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .12s, filter .12s, transform .1s;
       position: relative;
+      overflow: hidden;
     }
-    .tile:hover { filter: brightness(1.2); }
-    .tile.selected { border-color: #f1c40f; z-index: 1; }
-    .tile.road     { background: #c0392b; }
-    .tile.building { background: #7f8c8d; }
-    .tile.park     { background: #27ae60; }
-    .tile.empty    { background: #d4b896; }
-    .tile.road::after {
-      content: ''; position: absolute; inset: 0;
+    .tile:hover { filter: brightness(1.22) saturate(1.2); transform: scale(1.06) translateY(-2px); z-index: 2; }
+    .tile.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px #fbbf2460; z-index: 3; }
+
+    /* ── Roads — same colour as gap → seamless dark network ─────────── */
+    .tile.road { background: #2e3240; }
+
+    /* Dashed centre-line: horizontal */
+    .tile.road[data-road-dir="h"]::after {
+      content: ''; position: absolute;
+      top: 50%; left: 0; right: 0; height: 3px;
+      transform: translateY(-50%);
+      background: repeating-linear-gradient(90deg,
+        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        transparent 18px, transparent 34px
+      );
+      border-radius: 2px;
+    }
+    /* Dashed centre-line: vertical */
+    .tile.road[data-road-dir="v"]::after {
+      content: ''; position: absolute;
+      left: 50%; top: 0; bottom: 0; width: 3px;
+      transform: translateX(-50%);
+      background: repeating-linear-gradient(180deg,
+        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        transparent 18px, transparent 34px
+      );
+      border-radius: 2px;
+    }
+    /* Intersection: faint cross using both pseudo-elements */
+    .tile.road[data-road-dir="x"]::before {
+      content: ''; position: absolute;
+      top: 50%; left: 0; right: 0; height: 3px;
+      transform: translateY(-50%);
+      background: rgba(255,210,40,.2);
+    }
+    .tile.road[data-road-dir="x"]::after {
+      content: ''; position: absolute;
+      left: 50%; top: 0; bottom: 0; width: 3px;
+      transform: translateX(-50%);
+      background: rgba(255,210,40,.2);
+    }
+
+    /* ── Buildings — pseudo-3D blocks: roof face + facade + right shadow wall ─ */
+    .tile.building {
+      /*
+       * Two-layer gradient:
+       *   1) Parapet line — sharp bright strip at the roof/wall boundary
+       *   2) Roof zone (lighter tint, top --rh%) → facade (bt → bb)
+       * Together these read clearly as "roof face" vs "front wall face".
+       */
       background:
-        linear-gradient(transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%),
-        linear-gradient(90deg, transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%);
+        linear-gradient(180deg,
+          transparent                   calc(var(--rh, 26%) - 2px),
+          rgba(255,255,255,.42)          calc(var(--rh, 26%) - 2px),
+          rgba(255,255,255,.42)          var(--rh, 26%),
+          transparent                   var(--rh, 26%)
+        ),
+        linear-gradient(180deg,
+          color-mix(in srgb, var(--bt) 66%, #fff 34%) 0%,
+          color-mix(in srgb, var(--bt) 66%, #fff 34%) var(--rh, 26%),
+          var(--bt)                      var(--rh, 26%),
+          var(--bb)                      100%
+        );
+      /* Large hard shadow = building casting a shadow on the ground */
+      box-shadow:
+        7px 9px 0 rgba(0,0,0,.78),
+        inset 0 0 0 1px rgba(255,255,255,.08);
     }
+
+    /*
+     * --rh = roof-height as % of tile (smaller % = taller building, less roof visible)
+     * Varying this creates a convincing skyline of different building heights.
+     */
+    /* Steel/glass  — tall   */ .tile.building:nth-child(6n)   { --bt:#4e6882; --bb:#1a2b3d; --rh:19%; }
+    /* Brick        — medium */ .tile.building:nth-child(6n+1) { --bt:#8a4535; --bb:#3c1a12; --rh:30%; }
+    /* Sandstone    — med-tall*/.tile.building:nth-child(6n+2) { --bt:#8a6c3a; --bb:#3e2e18; --rh:24%; }
+    /* Teal glass   — tall   */ .tile.building:nth-child(6n+3) { --bt:#2e6e7a; --bb:#143440; --rh:21%; }
+    /* Industrial   — squat  */ .tile.building:nth-child(6n+4) { --bt:#4c5c4a; --bb:#232c22; --rh:37%; }
+    /* Concrete     — medium */ .tile.building:nth-child(6n+5) { --bt:#546070; --bb:#252d38; --rh:28%; }
+
+    /* Right shadow wall — dark vertical strip = the right face of a 3D block */
+    .tile.building::before {
+      content: ''; position: absolute;
+      top: var(--rh, 26%); right: 0;
+      width: 14px; bottom: 0;
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.20) 0%,
+        rgba(0,0,0,.55) 100%
+      );
+    }
+
+    /* Windows — on the facade only: below roof zone, left of the shadow wall */
     .tile.building::after {
-      content: ''; position: absolute; inset: 8px;
-      background-image:
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px);
+      content: ''; position: absolute;
+      top: calc(var(--rh, 26%) + 5px);
+      left: 4px; right: 18px; bottom: 5px;
+      background-image: radial-gradient(circle, rgba(255,240,140,.85) 2.5px, transparent 2.5px);
       background-size: 14px 14px;
-      background-position: 2px 2px, 16px 2px, 2px 16px, 16px 16px;
-      background-repeat: no-repeat;
+      background-position: 4px 4px;
+    }
+
+    /* ── Parks ───────────────────────────────────────────────────────── */
+    .tile.park {
+      background:
+        radial-gradient(circle at 35% 35%, #4ade80 0%, transparent 45%),
+        radial-gradient(circle at 68% 68%, #059669 0%, transparent 42%),
+        #065f46;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
     }
     .tile.park::after {
       content: '🌳'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; line-height: 1;
+      font-size: 38px; line-height: 1;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
     }
-    /* Suppress ::after on placed tiles so the emoji shows cleanly */
+
+    /* ── Empty lots (construction sites) ────────────────────────────── */
+    .tile.empty {
+      background: linear-gradient(155deg, #7a6244 0%, #52401e 100%);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.4);
+    }
+    .tile.empty::after {
+      content: '🚧'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; opacity: 0.6;
+    }
+
+    /* ── Placed tiles ────────────────────────────────────────────────── */
+    .tile--placed {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.4rem;
+      background-color: var(--tile-placed-color) !important;
+      box-shadow:
+        4px 5px 0 rgba(0,0,0,.6),
+        inset 0 0 0 1px color-mix(in srgb, var(--tile-placed-color) 50%, #fff);
+      cursor: default;
+      transition: background-color .2s;
+    }
+    .tile--placed::before,
     .tile--placed::after { display: none; }
 
-    #info-bar { font-size: 13px; color: #aaa; height: 20px; }
+    #info-bar { font-size: 12px; color: #334155; height: 18px; letter-spacing: 0.03em; }
     #legend { display: flex; gap: 18px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #bbb; }
-    .legend-swatch { width: 16px; height: 16px; border-radius: 3px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; letter-spacing: 0.02em; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+    /* ── Music toggle button ─────────────────────────────────────────── */
+    .hud__music-btn {
+      flex-shrink: 0;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      color: #475569;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.3rem 0.55rem;
+      line-height: 1;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__music-btn:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.22); color: #e2e8f0; }
+
+    /* ── Sidewalk strips ───────────────────────────────────────────── */
+    .sw-strip {
+      position: absolute;
+      background: rgba(195, 188, 178, 0.26);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ── Traffic light keyframes ────────────────────────────────────── */
+    /* Cycle: red 0–40 %, green 40–90 %, yellow 90–100 % */
+    @keyframes tl-r {
+      0%     { opacity: 1;    }
+      39.9%  { opacity: 1;    }
+      40%    { opacity: 0.1;  }
+      100%   { opacity: 0.1;  }
+    }
+    @keyframes tl-g {
+      0%     { opacity: 0.1;  }
+      39.9%  { opacity: 0.1;  }
+      40%    { opacity: 1;    }
+      89.9%  { opacity: 1;    }
+      90%    { opacity: 0.1;  }
+      100%   { opacity: 0.1;  }
+    }
+    @keyframes tl-y {
+      0%     { opacity: 0.1;  }
+      89.9%  { opacity: 0.1;  }
+      90%    { opacity: 1;    }
+      99.9%  { opacity: 1;    }
+      100%   { opacity: 0.1;  }
+    }
+
+    /* ── Traffic light post ─────────────────────────────────────────── */
+    .tl-post {
+      position: absolute;
+      display: flex; flex-direction: column;
+      gap: 1.5px;
+      background: #111316;
+      border-radius: 2px;
+      padding: 2px;
+      width: 9px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.7);
+      z-index: 6;
+      pointer-events: none;
+    }
+    .tl-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Street signs ───────────────────────────────────────────────── */
+    .sign-speed {
+      position: absolute;
+      width: 14px; height: 16px;
+      background: #fff;
+      border: 1.5px solid #b00;
+      border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5.5px; font-weight: 900; color: #111;
+      font-family: sans-serif;
+      box-shadow: 0 1px 4px rgba(0,0,0,.6);
+      z-index: 6; pointer-events: none;
+      line-height: 1;
+    }
+    .sign-street {
+      position: absolute;
+      background: #1a4f72;
+      color: #fff;
+      font-size: 4.5px; font-weight: 700;
+      font-family: sans-serif;
+      padding: 2px 4px;
+      border-radius: 1px;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,.6);
+      z-index: 6; pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Pedestrian wander keyframes ─────────────────────────────────── */
+    @keyframes wander-0 {
+      0%   { transform: translate(0,0) }
+      25%  { transform: translate(12px,6px) }
+      55%  { transform: translate(4px,16px) }
+      80%  { transform: translate(-9px,7px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-1 {
+      0%   { transform: translate(0,0) }
+      30%  { transform: translate(-10px,9px) }
+      65%  { transform: translate(8px,14px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-2 {
+      0%   { transform: translate(0,0) }
+      40%  { transform: translate(13px,-6px) }
+      72%  { transform: translate(-5px,10px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-3 {
+      0%   { transform: translate(0,0) }
+      35%  { transform: translate(-8px,-9px) }
+      68%  { transform: translate(10px,5px) }
+      100% { transform: translate(0,0) }
+    }
   </style>
 </head>
 <body>
@@ -250,6 +493,7 @@
       <span class="hud__budget-label">Budget</span>
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
+    <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
   </header>
 
   <!-- ── Win overlay ──────────────────────────────────────────────────── -->
@@ -291,10 +535,10 @@
       <div id="city-grid"></div>
       <div id="info-bar">Click a tile to select it.</div>
       <div id="legend">
-        <div class="legend-item"><div class="legend-swatch" style="background:#c0392b"></div> Road</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#7f8c8d"></div> Building</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#27ae60"></div> Park</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#d4b896"></div> Empty</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#2e3240"></div> Road</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#4e6882"></div> Building</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#065f46"></div> Park</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#7a6244"></div> Empty</div>
       </div>
     </div>
 
@@ -349,6 +593,7 @@
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
       </p>
+      <button class="reset-btn" id="resetBtn" type="button">↺ Reset</button>
     </aside>
 
   </div><!-- #game-area -->
@@ -576,12 +821,23 @@
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
 
+    // Detect road orientation so CSS can draw correct lane markings
+    function roadDir(r, c) {
+      const up    = r > 0 && LAYOUT[r-1][c] === 'R';
+      const down  = r < LAYOUT.length - 1 && LAYOUT[r+1][c] === 'R';
+      const left  = c > 0 && LAYOUT[r][c-1] === 'R';
+      const right = c < LAYOUT[r].length - 1 && LAYOUT[r][c+1] === 'R';
+      const h = left || right, v = up || down;
+      return (h && v) ? 'x' : v ? 'v' : 'h';
+    }
+
     LAYOUT.forEach((row, r) => {
       row.forEach((code, c) => {
         const type = TYPE_MAP[code];
         const el = document.createElement('div');
         el.className = `tile ${type}`;
         el.title = `(${r}, ${c})`;
+        if (type === 'road') el.dataset.roadDir = roadDir(r, c);
 
         const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
 
@@ -606,13 +862,8 @@
       const wasSelected = el.classList.contains('selected');
       const wasPlaced   = el.classList.contains('tile--placed');
       el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
-      if (tile.type === 'road') {
-        const r = Math.round(40 + 152 * tile.congestion);
-        const g = Math.round(174 - 174 * tile.congestion);
-        el.style.background = `rgb(${r},${g},27)`;
-      } else {
-        el.style.background = '';
-      }
+      // Roads keep their natural CSS colour — congestion is shown by car density instead
+      el.style.background = '';
     };
 
     window.setCityTileType = (row, col, newType) => {
@@ -727,6 +978,392 @@
     }
 
     attachGridListener();
+
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      if (typeof window.restartGame === "function") window.restartGame();
+    });
+  })();
+  </script>
+
+  <!-- ── Animations & music ───────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Grid geometry ──────────────────────────────────────────── */
+    const TILE = 80, GAP = 4, PAD = 4, CELL = TILE + GAP; // CELL = 84
+    const GRID_PX = PAD * 2 + 10 * CELL;                  // 848
+    const H_ROADS   = [0, 4, 8];   // row indices that are roads
+    const V_ROADS   = [0, 4, 8];   // col indices that are roads
+    const PARK_TILES = [[2,6],[6,2],[9,6]]; // [row,col] from layout
+
+    function tileEdge(i) { return PAD + i * CELL; } // pixel start of tile i
+
+    /* ── Animation layer ────────────────────────────────────────── */
+    const grid = document.getElementById('city-grid');
+    grid.style.position = 'relative';
+    grid.style.overflow = 'hidden';
+
+    const layer = document.createElement('div');
+    Object.assign(layer.style, {
+      position: 'absolute', inset: '0',
+      pointerEvents: 'none', zIndex: '10',
+    });
+    grid.appendChild(layer);
+
+    /* ── Cars ───────────────────────────────────────────────────── */
+    const CAR_EMOJI = ['🚗','🚕','🚙','🚐','🏎️','🚑','🚒'];
+    const cars = [];
+
+    function addCar(dir, lane, going, minCong = 0) {
+      const el = document.createElement('span');
+      el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
+      Object.assign(el.style, {
+        position: 'absolute', fontSize: '15px',
+        lineHeight: '1', userSelect: 'none', willChange: 'transform',
+        transition: 'filter 0.25s',
+      });
+
+      // Upper lane = going right/down, lower = going left/up
+      const laneOff = going > 0 ? 14 : 46;
+
+      if (dir === 'h') {
+        el.style.top  = (tileEdge(lane) + laneOff) + 'px';
+        el.style.left = '0';
+        if (going < 0) el.style.transform = 'scaleX(-1)';
+      } else {
+        el.style.left = (tileEdge(lane) + laneOff) + 'px';
+        el.style.top  = '0';
+        el.style.transform = `rotate(${going > 0 ? 90 : -90}deg)`;
+      }
+
+      const scatter  = (Math.random() - 0.5) * GRID_PX * 0.9;
+      const startPos = (going > 0 ? -30 : GRID_PX + 10) + scatter;
+      const speed    = (0.9 + Math.random() * 0.8) * going;
+
+      layer.appendChild(el);
+      // stopTimer: frames remaining stopped; goTimer: min frames to drive before next stop check
+      cars.push({ el, dir, going, speed, pos: startPos, minCong,
+                  stopTimer: 0, goTimer: Math.floor(Math.random() * 120) });
+    }
+
+    // Forward cars: minCong thresholds 0,0,35,55,72,88 → 2 always, more at higher congestion
+    // Backward cars: minCong thresholds 0,40,65,85 → 1 always, more at higher congestion
+    const FWD_THRESHOLDS = [0, 0, 35, 55, 72, 88];
+    const BWD_THRESHOLDS = [0, 40, 65, 85];
+
+    H_ROADS.forEach(r => {
+      FWD_THRESHOLDS.forEach(mc => addCar('h', r,  1, mc));
+      BWD_THRESHOLDS.forEach(mc => addCar('h', r, -1, mc));
+    });
+    V_ROADS.forEach(c => {
+      FWD_THRESHOLDS.forEach(mc => addCar('v', c,  1, mc));
+      BWD_THRESHOLDS.forEach(mc => addCar('v', c, -1, mc));
+    });
+
+    /* ── Pedestrians ────────────────────────────────────────────── */
+    const PERSON_EMOJI  = ['🚶','🚶‍♀️','👷','🧑','👩','🧓'];
+    const WANDER_NAMES  = ['wander-0','wander-1','wander-2','wander-3'];
+
+    PARK_TILES.forEach(([row, col], ti) => {
+      for (let p = 0; p < 3; p++) {
+        const el = document.createElement('span');
+        el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
+        Object.assign(el.style, {
+          position: 'absolute',
+          fontSize: '13px', lineHeight: '1', userSelect: 'none',
+          top:  (tileEdge(row) + 18 + p * 18) + 'px',
+          left: (tileEdge(col) + 12 + p * 18) + 'px',
+          animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
+          animationDelay: `${-p * 2.1}s`,
+        });
+        layer.appendChild(el);
+      }
+    });
+
+    /* ── Sidewalks & pavement pedestrians ──────────────────────── */
+    const SW_W = 8;
+    const SW_EMOJI = ['🚶','🚶‍♀️','🧑','👩','👨','🧓','🧕','👷'];
+    const sidewalkPeople = [];
+
+    function makeSWStrip(x, y, w, h) {
+      const d = document.createElement('div');
+      d.className = 'sw-strip';
+      Object.assign(d.style, { left:x+'px', top:y+'px', width:w+'px', height:h+'px' });
+      layer.appendChild(d);
+    }
+
+    function addSWPerson(axis, fixed, min, max) {
+      const el = document.createElement('span');
+      el.textContent = SW_EMOJI[Math.floor(Math.random() * SW_EMOJI.length)];
+      Object.assign(el.style, {
+        position:'absolute', fontSize:'10px', lineHeight:'1',
+        userSelect:'none', zIndex:'5',
+      });
+      const pos = min + Math.random() * (max - min);
+      const spd = (0.18 + Math.random() * 0.18) * (Math.random() < 0.5 ? 1 : -1);
+      el.style[axis === 'v' ? 'left' : 'top']  = fixed + 'px';
+      el.style[axis === 'v' ? 'top'  : 'left'] = pos   + 'px';
+      layer.appendChild(el);
+      sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max });
+    }
+
+    // Vertical road corridors: [col, fromRow, toRow, sides]
+    [
+      [0, 1,3, ['r']],       [0, 5,7, ['r']],       [0, 9,9, ['r']],
+      [4, 1,3, ['l','r']],   [4, 5,7, ['l','r']],   [4, 9,9, ['l','r']],
+      [8, 1,3, ['l','r']],   [8, 5,7, ['l','r']],   [8, 9,9, ['l','r']],
+    ].forEach(([col, fr, to, sides]) => {
+      const tx = tileEdge(col), ty = tileEdge(fr);
+      const th = tileEdge(to) + TILE - ty;
+      sides.forEach(side => {
+        const sx = tx + (side === 'r' ? TILE - SW_W : 0);
+        makeSWStrip(sx, ty, SW_W, th);
+        const n = fr === to ? 1 : 2;
+        for (let i = 0; i < n; i++) addSWPerson('v', sx + 1, ty + 5, ty + th - 14);
+      });
+    });
+
+    // Horizontal road corridors: [row, fromCol, toCol, sides]
+    [
+      [0, 1,3, ['b']],       [0, 5,7, ['b']],       [0, 9,9, ['b']],
+      [4, 1,3, ['t','b']],   [4, 5,7, ['t','b']],   [4, 9,9, ['t','b']],
+      [8, 1,3, ['t','b']],   [8, 5,7, ['t','b']],   [8, 9,9, ['t','b']],
+    ].forEach(([row, fc, tc, sides]) => {
+      const tx = tileEdge(fc), ty = tileEdge(row);
+      const tw = tileEdge(tc) + TILE - tx;
+      sides.forEach(side => {
+        const sy = ty + (side === 'b' ? TILE - SW_W : 0);
+        makeSWStrip(tx, sy, tw, SW_W);
+        const n = fc === tc ? 1 : 2;
+        for (let i = 0; i < n; i++) addSWPerson('h', sy + 1, tx + 5, tx + tw - 14);
+      });
+    });
+
+    /* ── Traffic lights ────────────────────────────────────────── */
+    const INTERSECTIONS = [
+      [0,0],[0,4],[0,8],
+      [4,0],[4,4],[4,8],
+      [8,0],[8,4],[8,8],
+    ];
+    const TL_CYCLE = 9; // seconds per full cycle
+
+    function makeTL(px, py, delaySec) {
+      const post = document.createElement('div');
+      post.className = 'tl-post';
+      post.style.left = px + 'px';
+      post.style.top  = py + 'px';
+      [
+        { anim: 'tl-r', color: '#ff2e2e' },
+        { anim: 'tl-y', color: '#ffdd00' },
+        { anim: 'tl-g', color: '#22ee44' },
+      ].forEach(({ anim, color }) => {
+        const dot = document.createElement('div');
+        dot.className = 'tl-dot';
+        dot.style.background = color;
+        dot.style.animation   = `${anim} ${TL_CYCLE}s linear ${delaySec}s infinite`;
+        post.appendChild(dot);
+      });
+      layer.appendChild(post);
+    }
+
+    // Two lights per intersection at opposite corners; alternate phase by TL_CYCLE/2
+    INTERSECTIONS.forEach(([row, col], i) => {
+      const tx = tileEdge(col), ty = tileEdge(row);
+      const phase = -((i * 1.9) % TL_CYCLE); // stagger so intersections are out of sync
+      makeTL(tx + 3,  ty + 3,  phase);
+      makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5); // opposite phase (green while other is red)
+    });
+
+    /* ── Street signs ───────────────────────────────────────────── */
+    // Speed limit signs on non-intersection road tiles
+    [
+      [0, 2], [0, 6],   // top horizontal road
+      [4, 1], [4, 6],   // mid horizontal road
+      [8, 3],           // bottom horizontal road
+      [2, 0], [6, 0],   // left vertical road
+      [3, 4], [7, 8],   // mid/right vertical roads
+    ].forEach(([row, col]) => {
+      const s = document.createElement('div');
+      s.className = 'sign-speed';
+      s.textContent = '30';
+      s.style.left = (tileEdge(col) + 4) + 'px';
+      s.style.top  = (tileEdge(row) + 4) + 'px';
+      layer.appendChild(s);
+    });
+
+    // Street name boards on horizontal & vertical roads
+    [
+      { row: 0, col: 1,  name: 'City Ave',  dx: 8, dy: 32 },
+      { row: 0, col: 5,  name: 'City Ave',  dx: 8, dy: 32 },
+      { row: 4, col: 2,  name: 'Main St',   dx: 8, dy: 32 },
+      { row: 4, col: 6,  name: 'Main St',   dx: 8, dy: 32 },
+      { row: 8, col: 5,  name: 'Park Rd',   dx: 8, dy: 32 },
+      { row: 1, col: 4,  name: 'Oak Ln',    dx: 24, dy: 10 },
+      { row: 6, col: 8,  name: 'Elm Dr',    dx: 24, dy: 10 },
+    ].forEach(({ row, col, name, dx, dy }) => {
+      const s = document.createElement('div');
+      s.className = 'sign-street';
+      s.textContent = name;
+      s.style.left = (tileEdge(col) + dx) + 'px';
+      s.style.top  = (tileEdge(row) + dy) + 'px';
+      layer.appendChild(s);
+    });
+
+    /* ── Main animation loop ────────────────────────────────────── */
+    function tick() {
+      const cong = window.gameState?.congestion ?? 80;
+      // Speed factor: near-zero (~0.08) at max congestion, full at zero congestion
+      const factor = 1 - (cong / 100) * 0.92;
+      // Stop-and-go probability per frame; only kicks in above congestion 25
+      const stopChance = Math.max(0, (cong - 25) / 75) * 0.007;
+
+      cars.forEach(car => {
+        // Hide cars that only appear above a certain congestion threshold
+        const active = cong >= car.minCong;
+        car.el.style.visibility = active ? '' : 'hidden';
+        if (!active) return;
+
+        if (car.stopTimer > 0) {
+          // Car is stopped — show brake-light dimming, don't move
+          car.stopTimer--;
+          car.el.style.filter = 'brightness(0.55) sepia(0.4)';
+          return;
+        }
+
+        car.el.style.filter = '';
+
+        if (car.goTimer > 0) {
+          car.goTimer--;
+        } else if (Math.random() < stopChance) {
+          // Randomly stop; longer waits at higher congestion
+          car.stopTimer = Math.floor(40 + Math.random() * 80 * (cong / 100));
+          return;
+        }
+
+        car.pos += car.speed * factor;
+
+        const exitEdge  = car.going > 0 ? GRID_PX + 50 : -50;
+        const resetEdge = car.going > 0 ? -40 : GRID_PX + 20;
+
+        if ((car.going > 0 && car.pos > exitEdge) ||
+            (car.going < 0 && car.pos < exitEdge)) {
+          car.pos = resetEdge + (Math.random() - 0.5) * 80;
+          // Minimum drive time after re-entering so cars don't stop right at the edge
+          car.goTimer = Math.floor(60 + Math.random() * 80);
+        }
+
+        if (car.dir === 'h') {
+          car.el.style.left = car.pos + 'px';
+        } else {
+          car.el.style.top  = car.pos + 'px';
+        }
+      });
+
+      // Animate sidewalk pedestrians
+      sidewalkPeople.forEach(p => {
+        p.pos += p.speed;
+        if (p.pos > p.max) { p.pos = p.max; p.speed = -Math.abs(p.speed); }
+        if (p.pos < p.min) { p.pos = p.min; p.speed =  Math.abs(p.speed); }
+        p.el.style.transform = p.speed < 0 ? 'scaleX(-1)' : '';
+        p.el.style[p.axis === 'v' ? 'top' : 'left'] = p.pos + 'px';
+      });
+
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    /* ── Ambient music (Web Audio API) ──────────────────────────── */
+    let audioCtx = null, masterGain = null, musicOn = false;
+    const musicBtn = document.getElementById('musicToggle');
+
+    function buildSound() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0;
+      masterGain.connect(audioCtx.destination);
+
+      /* — Traffic noise layer — */
+      const nLen = audioCtx.sampleRate * 4;
+      const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+      const nDat = nBuf.getChannelData(0);
+      for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+      const noise   = audioCtx.createBufferSource();
+      noise.buffer  = nBuf;
+      noise.loop    = true;
+      const nFilt   = audioCtx.createBiquadFilter();
+      nFilt.type    = 'bandpass';
+      nFilt.frequency.value = 380;
+      nFilt.Q.value = 0.45;
+      const nGain   = audioCtx.createGain();
+      nGain.gain.value = 0.13;
+      noise.connect(nFilt); nFilt.connect(nGain); nGain.connect(masterGain);
+      noise.start();
+
+      /* — Bass city hum — */
+      [55, 110, 165].forEach((freq, i) => {
+        const osc  = audioCtx.createOscillator();
+        osc.type   = 'sine';
+        osc.frequency.value = freq;
+        const g    = audioCtx.createGain();
+        g.gain.value = [0.2, 0.09, 0.04][i];
+        // slow LFO swell
+        const lfo  = audioCtx.createOscillator();
+        lfo.frequency.value = 0.05 + i * 0.02;
+        const lg   = audioCtx.createGain();
+        lg.gain.value = g.gain.value * 0.28;
+        lfo.connect(lg); lg.connect(g.gain); lfo.start();
+        osc.connect(g); g.connect(masterGain); osc.start();
+      });
+
+      /* — Melodic layer: slow pentatonic phrases with reverb — */
+      const rev  = makeReverb(audioCtx);
+      rev.connect(masterGain);
+      // A minor pentatonic: A3 C4 D4 E4 G4 A4 C5
+      const pitches = [220, 262, 294, 330, 392, 440, 523];
+      const seq     = [0,2,4,1,5,3,0,6,2,4,1,3,5,0,4,2];
+      let ni = 0;
+      (function sched() {
+        const freq = pitches[seq[ni++ % seq.length]];
+        const osc  = audioCtx.createOscillator();
+        osc.type   = 'triangle';
+        osc.frequency.value = freq;
+        const env  = audioCtx.createGain();
+        const t    = audioCtx.currentTime;
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.065, t + 0.12);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+        osc.connect(env); env.connect(rev);
+        osc.start(t); osc.stop(t + 3);
+        setTimeout(sched, 2400 + Math.random() * 700);
+      })();
+    }
+
+    function makeReverb(ctx) {
+      const conv = ctx.createConvolver();
+      const len  = ctx.sampleRate * 3;
+      const ir   = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.7);
+      }
+      conv.buffer = ir;
+      return conv;
+    }
+
+    musicBtn.addEventListener('click', () => {
+      buildSound();
+      musicOn = !musicOn;
+      const t = audioCtx.currentTime;
+      masterGain.gain.cancelScheduledValues(t);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.28 : 0, t + 1.5);
+      musicBtn.textContent = musicOn ? '🔊' : '🔇';
+      musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
+    });
+
   })();
   </script>
 
