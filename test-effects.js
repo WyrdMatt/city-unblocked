@@ -8,8 +8,8 @@
 
 'use strict';
 
-const { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
-        getGridNeighbours, calculateEffects, checkWinCondition } = require('./game-logic');
+const { EFFECTS, COMBOS, WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
+        getGridNeighbours, hotspotScore, calculateEffects, checkWinCondition } = require('./game-logic');
 
 let passed = 0, failed = 0;
 
@@ -102,15 +102,16 @@ assert(INITIAL_STATE.turnLimit  === 15,  'INITIAL turnLimit = 15');
   assert(approx(d.happinessDelta, +24),  'park adj: happiness +12 + 4×3 = +24');
 }
 
-// ── calculateEffects: bus-stop adjacency bonus ─────────────────────────────
+// ── calculateEffects: bus-stop adjacency bonus + hotspot multiplier ────────
 {
-  // Bus-stop at (5,5) surrounded by 4 building tiles
+  // Bus-stop at (5,5) surrounded by 4 building tiles (hotspot score = 4, ≥3 → ×1.25)
   const grid = buildGrid([{ row: 5, col: 5, type: 'road' }]);
   const placements = [{ action: 'bus-stop', row: 5, col: 5 }];
   const d = calculateEffects(placements, grid);
-  // base -10 congestion, -2 per adj building (4 neighbours) = -18
-  assert(approx(d.congestionDelta, -18), 'bus-stop adj: congestion -10 - 4×2 = -18');
-  assert(approx(d.happinessDelta,   +6), 'bus-stop adj: happiness +6 (no bonus)');
+  // base -10, adj -2×4=-8 → subtotal -18, then hotspot ×1.25 = -22.5
+  assert(approx(d.congestionDelta, -22.5, 0.01), 'bus-stop adj+hotspot: (-10 - 8) × 1.25 = -22.5');
+  // happiness: +6 × 1.25 = 7.5
+  assert(approx(d.happinessDelta, 7.5, 0.01), 'bus-stop adj+hotspot: +6 × 1.25 = 7.5');
 }
 
 // ── calculateEffects: diminishing returns ─────────────────────────────────
@@ -159,6 +160,80 @@ assert(INITIAL_STATE.turnLimit  === 15,  'INITIAL turnLimit = 15');
   assert(d.congestionDelta === 0, 'no placements: congestionDelta = 0');
   assert(d.happinessDelta  === 0, 'no placements: happinessDelta = 0');
 }
+
+// ── hotspotScore ──────────────────────────────────────────────────────────
+{
+  const grid = buildGrid([{ row: 5, col: 5, type: 'road' }]); // all others buildings
+  assert(hotspotScore({ row: 5, col: 5 }, grid) === 4, 'hotspotScore: road surrounded by 4 buildings → 4');
+
+  // Corner road tile surrounded by 2 buildings
+  const g2 = buildGrid([{ row: 0, col: 0, type: 'road' }, { row: 0, col: 1, type: 'road' }, { row: 1, col: 0, type: 'road' }]);
+  assert(hotspotScore({ row: 0, col: 0 }, g2) === 0, 'hotspotScore: corner surrounded by roads → 0');
+}
+
+// ── hotspot multiplier: ≥3 adj buildings boosts bus-stop / bike-lane ──────
+{
+  // Road at (5,5) surrounded by 4 buildings — hotspot 4
+  const grid = buildGrid([{ row: 5, col: 5, type: 'road' }]);
+  const d = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid);
+  // base -10 * 1, adj -2*4=-8, subtotal -18, then hotspot ×1.25 = -22.5
+  assert(approx(d.congestionDelta, -22.5, 0.01), 'hotspot bus-stop: ×1.25 amplification on 4-adj-building tile');
+  // happiness: +6 * 1.25 = 7.5
+  assert(approx(d.happinessDelta, 7.5, 0.01), 'hotspot bus-stop: happiness also amplified');
+}
+
+// ── combo bonuses: bus-stop + park adjacent ────────────────────────────────
+{
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'road' },
+    { row: 5, col: 6, type: 'empty' },
+  ]);
+  const d = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+    { action: 'park',     row: 5, col: 6 },
+  ], grid);
+  // Combo "Transit Hub": +5 happiness, 0 congestion
+  // Bus-stop adj: neighbours of (5,5) include (5,6)=empty not building — wait grid has buildings elsewhere
+  // Actual adj buildings for bus-stop at (5,5): all 4 neighbours are checked; (5,6) is 'empty', rest are buildings → 3 adj buildings
+  // For park at (5,6): neighbours: (5,5)=road, (5,7)=building, (4,6)=building, (6,6)=building → 3 buildings
+  // Park adj happiness: +3*3 = +9
+  // Bus-stop adj congestion: -2*3 = -6  → base -10 - 6 = -16
+  // Hotspot: bus-stop has 3 adj buildings → ×1.25: -16*1.25=-20, +6*1.25=+7.5
+  // Combo: +5 happiness
+  // Total happiness: (park: -4 cong, +12 happy + 9 adj) + (bus: -20 cong, +7.5 happy) + combo +5
+  // = happiness: 12 + 9 + 7.5 + 5 = 33.5
+
+  // Just check combo is included (happiness > without combo)
+  const dNoCombo = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+  ], grid);
+  const dParkOnly = calculateEffects([
+    { action: 'park', row: 5, col: 6 },
+  ], grid);
+  const sumNoCombo = dNoCombo.happinessDelta + dParkOnly.happinessDelta;
+  assert(d.happinessDelta > sumNoCombo, 'combo bus-stop+park: happiness > sum of individual effects (combo bonus applied)');
+}
+
+// ── combo bonuses: non-adjacent pair gets no bonus ─────────────────────────
+{
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'road' },
+    { row: 5, col: 7, type: 'empty' }, // col 7, not adjacent to col 5
+  ]);
+  const dCombo = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+    { action: 'park',     row: 5, col: 7 },
+  ], grid);
+  const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid);
+  const d2 = calculateEffects([{ action: 'park',     row: 5, col: 7 }], grid);
+  assert(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta, 0.01),
+    'no combo: non-adjacent bus-stop+park = sum of individual effects');
+}
+
+// ── COMBOS constant has expected entries ──────────────────────────────────
+assert(Array.isArray(COMBOS) && COMBOS.length >= 5, 'COMBOS: at least 5 combo definitions');
+assert(COMBOS.some(c => c.a === 'bus-stop' && c.b === 'park' && c.happiness === 5), 'COMBOS: Transit Hub defined');
+assert(COMBOS.some(c => c.a === 'park'     && c.b === 'park'),                       'COMBOS: Green Network defined');
 
 // ── calculateEffects: unknown action silently skipped ─────────────────────
 {

@@ -618,6 +618,18 @@
     .hud__turns-value { font-size: 1rem; font-weight: 900; color: var(--c-text-muted); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
     .hud__turns-value--urgent { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
 
+    /* ── Hotspot road tile glow ──────────────────────────────────── */
+    .tile.road[data-hotspot="1"] { box-shadow: inset 0 0 5px rgba(251,146,60,.12); }
+    .tile.road[data-hotspot="2"] { box-shadow: inset 0 0 7px rgba(251,146,60,.22); }
+    .tile.road[data-hotspot="3"] { box-shadow: inset 0 0 10px rgba(251,146,60,.36); }
+    .tile.road[data-hotspot="4"] { box-shadow: inset 0 0 14px rgba(251,146,60,.52); }
+
+    /* ── Combo notification popup ────────────────────────────────── */
+    .popup-combo {
+      color: #fbbf24; font-size: 0.72rem;
+      text-shadow: 0 0 8px rgba(251,191,36,.7), 0 1px 6px rgba(0,0,0,.9);
+    }
+
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
     .tile, .action-btn, .reset-btn, .hud__music-btn,
     .overlay__btn, .hud-meter__track { touch-action: manipulation; }
@@ -1043,6 +1055,15 @@
     var WIN_HAPPINESS  = 70;
     var WIN_CONGESTION = 30;
 
+    var COMBOS = [
+      { a: "bus-stop",       b: "park",          congestion:  0, happiness: +5, label: "Transit Hub"    },
+      { a: "bike-lane",      b: "park",          congestion: -2, happiness: +3, label: "Green Corridor" },
+      { a: "bus-stop",       b: "bike-lane",     congestion: -3, happiness:  0, label: "Active Streets" },
+      { a: "park",           b: "park",          congestion:  0, happiness: +3, label: "Green Network"  },
+      { a: "parking-garage", b: "bus-stop",      congestion: -3, happiness:  0, label: "Park & Ride"   },
+      { a: "road-widening",  b: "bus-stop",      congestion: -4, happiness:  0, label: "Express Lane"  },
+    ];
+
     function getGridNeighbours(row, col, grid) {
       var offsets = [[-1,0],[1,0],[0,-1],[0,1]];
       return offsets.map(function (o) {
@@ -1066,15 +1087,32 @@
         var cDelta = effect.congestion * diminish;
         var hDelta = effect.happiness  * diminish;
         var neighbours = getGridNeighbours(p.row, p.col, grid);
-        if (p.action === "park") {
-          hDelta += neighbours.filter(function (n) { return n.type === "building"; }).length * 3;
-        }
-        if (p.action === "bus-stop") {
-          cDelta -= neighbours.filter(function (n) { return n.type === "building"; }).length * 2;
+        var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
+        if (p.action === "park")     hDelta += adjBuildings * 3;
+        if (p.action === "bus-stop") cDelta -= adjBuildings * 2;
+        if (adjBuildings >= 3 && (p.action === "bus-stop" || p.action === "bike-lane")) {
+          cDelta *= 1.25;
+          hDelta *= 1.25;
         }
         congestionDelta += cDelta;
         happinessDelta  += hDelta;
       });
+      // Combo bonuses
+      for (var i = 0; i < placements.length; i++) {
+        for (var j = i + 1; j < placements.length; j++) {
+          var pi = placements[i], pj = placements[j];
+          var adj = (pi.row === pj.row && Math.abs(pi.col - pj.col) === 1) ||
+                    (pi.col === pj.col && Math.abs(pi.row - pj.row) === 1);
+          if (!adj) continue;
+          var ai = pi.action, aj = pj.action;
+          COMBOS.forEach(function (combo) {
+            if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
+              congestionDelta += combo.congestion;
+              happinessDelta  += combo.happiness;
+            }
+          });
+        }
+      }
       return { congestionDelta: congestionDelta, happinessDelta: happinessDelta };
     }
 
@@ -1085,7 +1123,7 @@
     }
 
     // Expose for test harness (test-effects.js loads this via jsdom or similar)
-    window.GAME_LOGIC = { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, calculateEffects, checkWinCondition, getGridNeighbours };
+    window.GAME_LOGIC = { EFFECTS, COMBOS, WIN_HAPPINESS, WIN_CONGESTION, calculateEffects, checkWinCondition, getGridNeighbours };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
@@ -1402,14 +1440,26 @@
           el.title     = `(${r},${c})`;
           if (type === 'road') el.dataset.roadDir = roadDir(layout, r, c);
 
-          const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+          // Hotspot: count adjacent building/park tiles on this road tile
+          let hotspot = 0;
+          if (type === 'road') {
+            hotspot = [[-1,0],[1,0],[0,-1],[0,1]].filter(([dr,dc]) => {
+              const nr = r+dr, nc = c+dc;
+              return nr >= 0 && nr < layout.length && nc >= 0 && nc < layout[0].length &&
+                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P');
+            }).length;
+            if (hotspot >= 1) el.dataset.hotspot = hotspot;
+          }
+
+          const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, hotspot, element: el };
 
           el.addEventListener('click', () => {
             if (selectedTile) selectedTile.element.classList.remove('selected');
             selectedTile = tile;
             el.classList.add('selected');
+            const hotspotStr = tile.hotspot >= 2 ? `  ★`.repeat(Math.min(tile.hotspot,4)) + ` hotspot` : '';
             infoBar.textContent =
-              `(${r},${c})  ${tile.type}` +
+              `(${r},${c})  ${tile.type}${hotspotStr}` +
               (tile.type === 'road' ? `  congestion: ${tile.congestion.toFixed(2)}` : '');
           });
 
@@ -1540,7 +1590,8 @@
       void tile.offsetWidth;
       tile.classList.add("tile--bounce");
       tile.addEventListener("animationend", () => tile.classList.remove("tile--bounce"), { once: true });
-      showPlacementPopup(tile, selectedAction);
+      const cgTile = window.cityGrid?.find(t => t.element === tile);
+      showPlacementPopup(tile, selectedAction, cgTile);
       window.gameState.budget -= selectedAction.cost;
 
       if (typeof window.updateMeters === "function") window.updateMeters();
@@ -1596,32 +1647,51 @@
     }
 
     // Base effects used for popup preview (adjacency/diminish applied live in game-state)
-    const POPUP_EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness: +6  },
-      "bike-lane":      { congestion:  -6, happiness: +8  },
-      "parking-garage": { congestion:  -8, happiness: +4  },
-      "park":           { congestion:  -4, happiness: +12 },
-    };
-    function showPlacementPopup(tileEl, action) {
-      const effect = POPUP_EFFECTS[action.action];
+    function showPlacementPopup(tileEl, action, cgTile) {
+      const effects = window.GAME_LOGIC?.EFFECTS ?? {};
+      const effect  = effects[action.action];
       if (!effect) return;
 
-      // Count same-type already placed (before this one) for diminishing returns preview
-      const placed = document.querySelectorAll(".tile--placed[data-placed-action='" + action.action + "']").length;
+      const placed   = document.querySelectorAll(".tile--placed[data-placed-action='" + action.action + "']").length;
       const diminish = Math.pow(0.85, Math.max(0, placed - 1));
-      const hVal = Math.round(effect.happiness  * diminish);
-      const cVal = Math.round(effect.congestion * diminish);
+      const hVal     = Math.round(effect.happiness  * diminish);
+      const cVal     = Math.round(effect.congestion * diminish);
+
+      let inner = "";
+      if (hVal > 0) inner += `<span class="popup-happy">😊 +${hVal}</span>`;
+      if (hVal < 0) inner += `<span class="popup-cong">😞 ${hVal}</span>`;
+      inner += `<span class="popup-cong">🚗 ${cVal}</span>`;
+
+      // Detect new combos formed by this placement
+      if (cgTile && Array.isArray(window.cityGrid) && window.GAME_LOGIC?.COMBOS) {
+        const adjPlaced = window.cityGrid.filter(t =>
+          t !== cgTile && t.element.dataset.placedAction &&
+          ((t.row === cgTile.row && Math.abs(t.col - cgTile.col) === 1) ||
+           (t.col === cgTile.col && Math.abs(t.row - cgTile.row) === 1))
+        );
+        const seen = new Set();
+        adjPlaced.forEach(function (adj) {
+          const adjAct = adj.element.dataset.placedAction;
+          window.GAME_LOGIC.COMBOS.forEach(function (combo) {
+            if ((combo.a === action.action && combo.b === adjAct) ||
+                (combo.a === adjAct && combo.b === action.action)) {
+              if (!seen.has(combo.label)) {
+                seen.add(combo.label);
+                inner += `<span class="popup-combo">★ ${combo.label}!</span>`;
+              }
+            }
+          });
+        });
+      }
 
       const popup = document.createElement("div");
       popup.className = "tile-popup";
-      popup.innerHTML =
-        `<span class="popup-happy">😊 +${hVal}</span>` +
-        `<span class="popup-cong">🚗 ${cVal}</span>`;
+      popup.innerHTML = inner;
       const rect = tileEl.getBoundingClientRect();
       popup.style.left = (rect.left + rect.width / 2) + "px";
       popup.style.top  = rect.top + "px";
       document.body.appendChild(popup);
-      setTimeout(() => popup.remove(), 1200);
+      setTimeout(() => popup.remove(), 1400);
     }
 
     window.updateActionAvailability = function () {
@@ -1642,9 +1712,12 @@
         const nextHappy = Math.round(baseHappy * mult);
 
         const congSpan  = btn.querySelector(".effect--cong");
-        const happySpan = btn.querySelector(".effect--happy");
+        const happySpan = btn.querySelector(".effect--happy,.effect--sad");
         if (congSpan)  congSpan.textContent  = "🚗 " + nextCong;
-        if (happySpan) happySpan.textContent = "😊 +" + nextHappy;
+        if (happySpan) {
+          if (nextHappy >= 0) happySpan.textContent = "😊 +" + nextHappy;
+          else                happySpan.textContent = "😞 "  + nextHappy;
+        }
       });
     };
 
