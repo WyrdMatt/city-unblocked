@@ -208,6 +208,26 @@
     .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
     .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
     .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+    /* ── How to play ─────────────────────────────────────────────── */
+    .how-to-play { width: 100%; text-align: left; }
+    .how-to-play__toggle {
+      font-size: 0.78rem; color: var(--c-text-muted); cursor: pointer; user-select: none;
+      list-style: none; display: flex; align-items: center; justify-content: center;
+      gap: 0.3rem; padding: 0.15rem 0;
+    }
+    .how-to-play__toggle::-webkit-details-marker { display: none; }
+    .how-to-play__toggle::after { content: '▾'; display: inline-block; transition: transform 0.2s; }
+    details[open] .how-to-play__toggle::after { transform: rotate(-180deg); }
+    .how-to-play__steps {
+      margin: 0.6rem 0 0; padding: 0.75rem 1rem; list-style: none;
+      background: rgba(255,255,255,0.04); border-radius: 10px;
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .how-to-play__steps li {
+      font-size: 0.77rem; color: var(--c-text-muted);
+      display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.45;
+    }
+    .how-to-play__steps li .htp-icon { flex-shrink: 0; font-size: 1rem; }
     .overlay__btn--play { background: #16a34a; color: #fff; font-size: 1rem; padding: 0.75rem 2.5rem; }
     .overlay__card {
       display: flex; flex-direction: column; align-items: center; gap: 1rem;
@@ -956,6 +976,16 @@
       </div>
 
       <p class="landing__hint" id="landingHint">Balance transport, green space and infrastructure.</p>
+
+      <details class="how-to-play">
+        <summary class="how-to-play__toggle">How to play</summary>
+        <ol class="how-to-play__steps">
+          <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — road, building, or empty lot</li>
+          <li><span class="htp-icon" aria-hidden="true">🚌</span>Place an action: buses &amp; bike lanes on roads, parking on buildings, parks on empty lots</li>
+          <li><span class="htp-icon" aria-hidden="true">📉</span>Each action cuts congestion and boosts happiness — but repeating the same type gives diminishing returns</li>
+          <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by getting congestion ≤30 and happiness ≥70 before your budget and turns run out</li>
+        </ol>
+      </details>
 
       <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
     </div>
