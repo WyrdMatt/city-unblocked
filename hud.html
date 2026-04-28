@@ -1,0 +1,98 @@
+<!--
+  HUD — paste this before your main game layout (above the grid + sidebar row).
+  Include hud.css in <head> and hud.js before </body>.
+
+  Exposes on window:
+    refreshHUD()       — re-reads gameState and updates all displays
+    updateMeters()     — alias for refreshHUD (called by actions-panel.js)
+    checkWinLose()     — shows win/game-over overlay if conditions are met
+    showWinScreen()    — call directly to trigger win overlay
+    showGameOverScreen() — call directly to trigger game-over overlay
+-->
+
+<!-- ── Top bar ─────────────────────────────────────────────── -->
+<header class="hud" id="hud" role="banner">
+
+  <div class="hud__brand">
+    <span class="hud__brand-icon" aria-hidden="true">🏙️</span>
+    <span class="hud__brand-name">City Unblocked</span>
+  </div>
+
+  <div class="hud__meters" role="group" aria-label="City meters">
+
+    <div class="hud-meter hud-meter--happiness">
+      <span class="hud-meter__label">
+        <span aria-hidden="true">😊</span> Happiness
+      </span>
+      <div class="hud-meter__track" role="progressbar"
+           aria-label="Happiness" aria-valuemin="0" aria-valuemax="100"
+           aria-valuenow="0" id="happinessBar">
+        <div class="hud-meter__fill" id="happinessFill"></div>
+      </div>
+      <span class="hud-meter__value" id="happinessValue">0</span>
+    </div>
+
+    <div class="hud-meter hud-meter--congestion">
+      <span class="hud-meter__label">
+        <span aria-hidden="true">🚗</span> Congestion
+      </span>
+      <div class="hud-meter__track" role="progressbar"
+           aria-label="Congestion" aria-valuemin="0" aria-valuemax="100"
+           aria-valuenow="0" id="congestionBar">
+        <div class="hud-meter__fill" id="congestionFill"></div>
+      </div>
+      <span class="hud-meter__value" id="congestionValue">0</span>
+    </div>
+
+  </div>
+
+  <div class="hud__budget" aria-label="Remaining budget">
+    <span class="hud__budget-label">Budget</span>
+    <span class="hud__budget-value" id="budgetValue">£0</span>
+  </div>
+
+</header>
+
+<!-- ── Win overlay ────────────────────────────────────────── -->
+<div class="overlay overlay--win" id="winOverlay" hidden
+     role="dialog" aria-modal="true" aria-labelledby="winTitle">
+
+  <div class="overlay__card">
+    <div class="overlay__confetti" aria-hidden="true">🎉🏆🎊</div>
+    <h2 class="overlay__title" id="winTitle">City Unblocked!</h2>
+    <p class="overlay__body">
+      You made this city more livable in
+      <strong id="winTurns">—</strong> turns.
+    </p>
+    <p class="overlay__stats">
+      <span>😊 Happiness: <strong id="winHappiness">—</strong></span>
+      <span>🚗 Congestion: <strong id="winCongestion">—</strong></span>
+      <span>💰 Budget left: <strong id="winBudget">—</strong></span>
+    </p>
+    <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">
+      Play Again
+    </button>
+  </div>
+
+</div>
+
+<!-- ── Game-over overlay ──────────────────────────────────── -->
+<div class="overlay overlay--gameover" id="gameOverOverlay" hidden
+     role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+
+  <div class="overlay__card">
+    <div class="overlay__icon" aria-hidden="true">💸</div>
+    <h2 class="overlay__title" id="gameOverTitle">Budget Depleted</h2>
+    <p class="overlay__body">The city ran out of funds.</p>
+    <div class="overlay__built">
+      <p class="overlay__built-heading">What you built:</p>
+      <ul class="overlay__built-list" id="gameOverBuiltList">
+        <li>Nothing was built.</li>
+      </ul>
+    </div>
+    <button class="overlay__btn overlay__btn--gameover" id="gameOverRestart" type="button">
+      Try Again
+    </button>
+  </div>
+
+</div>
