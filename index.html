@@ -12,7 +12,7 @@
      * ─────────────────────────────────────────────────────────────────── */
     :root {
       /* Geometry — tile-size scales so the 10-col grid always fits the viewport */
-      --tile-size:  clamp(30px, calc((100vw - 52px) / 10), 80px);
+      --tile-size:  clamp(30px, min(calc((100vw - 52px) / 10), calc((100vh - 184px) / 10)), 80px);
       --grid-gap:   4px;
       --grid-pad:   4px;
 
@@ -112,7 +112,7 @@
       justify-content: center;
       align-items: center;
       gap: 0;
-      padding: 2rem;
+      padding: 0.75rem 1.5rem;
       flex: 1;
     }
 
@@ -120,7 +120,7 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 12px;
+      gap: 8px;
     }
 
     /* ── HUD ─────────────────────────────────────────────────────────── */
@@ -750,6 +750,64 @@
       text-shadow: 0 0 8px rgba(251,191,36,.7), 0 1px 6px rgba(0,0,0,.9);
     }
 
+    /* ── Weather modifier badge on action cards ─────────────────── */
+    .action-btn__weather { font-size: 0.59rem; margin-top: 0.18rem; display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .action-btn__weather:empty { display: none; }
+    .mas-card__weather { font-size: 0.55rem; text-align: center; min-height: 0; }
+    .mas-card__weather:empty { display: none; }
+    .weather-mod-up   { color: #4ade80; font-weight: 700; }
+    .weather-mod-down { color: #f87171; font-weight: 700; }
+
+    /* ── Combos section — desktop panel ─────────────────────────── */
+    .combos-section {
+      border-top: 1px solid var(--c-border-sub); padding-top: 0.6rem;
+      display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .combos-section__title {
+      margin: 0; font-size: 0.66rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--c-text-dim);
+    }
+    .combos-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+    .combo-item {
+      display: grid; grid-template-columns: 2.6ch 1fr auto;
+      align-items: center; gap: 0.3rem;
+      font-size: 0.65rem; color: var(--c-text-muted);
+      padding: 0.25rem 0.4rem; border-radius: 6px; transition: background 0.15s;
+    }
+    .combo-item--active {
+      background: rgba(251,191,36,.10); color: var(--c-text);
+      box-shadow: inset 0 0 0 1px rgba(251,191,36,.22);
+    }
+    .combo-item__pair  { font-size: 0.78rem; }
+    .combo-item__label { font-weight: 600; line-height: 1.2; }
+    .combo-item__bonus { display: flex; gap: 0.2rem; font-weight: 700; font-size: 0.6rem; }
+    .combo-cong { color: #f87171; }
+    .combo-hap  { color: #4ade80; }
+
+    /* ── Combos section — mobile (collapsible, below action strip) ─ */
+    .mobile-combos { width: 100%; display: none; }
+    @media (max-width: 640px) { .mobile-combos { display: block; } }
+    .mobile-combos__toggle {
+      font-size: 0.72rem; color: var(--c-text-muted); cursor: pointer; user-select: none;
+      list-style: none; display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.25rem;
+    }
+    .mobile-combos__toggle::-webkit-details-marker { display: none; }
+    .mobile-combos__toggle::after { content: '▾'; display: inline-block; transition: transform 0.2s; }
+    details[open].mobile-combos .mobile-combos__toggle::after { transform: rotate(-180deg); }
+    .mobile-combos__list {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      padding: 0.35rem 0.25rem; border-radius: 8px; background: rgba(255,255,255,.03);
+    }
+    .mobile-combo-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.64rem; color: var(--c-text-muted);
+      padding: 0.2rem 0.35rem; border-radius: 5px;
+    }
+    .mobile-combo-item--active { background: rgba(251,191,36,.1); color: var(--c-text); }
+    .mci-pair  { font-size: 0.8rem; flex-shrink: 0; }
+    .mci-label { flex: 1; font-weight: 600; }
+    .mci-bonus { display: flex; gap: 0.2rem; font-size: 0.6rem; font-weight: 700; }
+
     /* ── Meter goal marker — pulse when within 10 of target ─────── */
     @keyframes goal-pulse {
       0%, 100% { opacity: 0.6; box-shadow: 0 0 4px rgba(255,255,255,.4); }
@@ -1160,6 +1218,7 @@
             <span class="mas-card__cong" id="mas-cong-bus-stop">🚗 −10</span>
             <span class="mas-card__hap"  id="mas-hap-bus-stop">😊 +6</span>
           </div>
+          <span class="mas-card__weather" id="mas-weather-bus-stop"></span>
         </div>
         <div class="mas-card" data-action="bike-lane"      data-cost="40"  data-base-cong="-6"  data-base-happy="8">
           <span class="mas-card__emoji">🚲</span>
@@ -1168,6 +1227,7 @@
             <span class="mas-card__cong" id="mas-cong-bike-lane">🚗 −6</span>
             <span class="mas-card__hap"  id="mas-hap-bike-lane">😊 +8</span>
           </div>
+          <span class="mas-card__weather" id="mas-weather-bike-lane"></span>
         </div>
         <div class="mas-card" data-action="parking-garage" data-cost="120" data-base-cong="-8"  data-base-happy="4">
           <span class="mas-card__emoji">🅿️</span>
@@ -1176,6 +1236,7 @@
             <span class="mas-card__cong" id="mas-cong-parking-garage">🚗 −8</span>
             <span class="mas-card__hap"  id="mas-hap-parking-garage">😊 +4</span>
           </div>
+          <span class="mas-card__weather" id="mas-weather-parking-garage"></span>
         </div>
         <div class="mas-card" data-action="park"           data-cost="60"  data-base-cong="-4"  data-base-happy="12">
           <span class="mas-card__emoji">🌳</span>
@@ -1184,6 +1245,7 @@
             <span class="mas-card__cong" id="mas-cong-park">🚗 −4</span>
             <span class="mas-card__hap"  id="mas-hap-park">😊 +12</span>
           </div>
+          <span class="mas-card__weather" id="mas-weather-park"></span>
         </div>
         <div class="mas-card" data-action="road-widening"  data-cost="90"  data-base-cong="-15" data-base-happy="-5">
           <span class="mas-card__emoji">🚧</span>
@@ -1192,8 +1254,14 @@
             <span class="mas-card__cong" id="mas-cong-road-widening">🚗 −15</span>
             <span class="mas-card__hap"  id="mas-hap-road-widening">😞 −5</span>
           </div>
+          <span class="mas-card__weather" id="mas-weather-road-widening"></span>
         </div>
       </div>
+      <!-- Mobile combos reference — hidden on desktop -->
+      <details class="mobile-combos" id="mobileCombos">
+        <summary class="mobile-combos__toggle">Combos</summary>
+        <div class="mobile-combos__list" id="mobileCombosListEl"></div>
+      </details>
     </div>
 
     <!-- Actions panel -->
@@ -1215,6 +1283,7 @@
                 <span class="effect effect--cong">🚗 −10</span>
                 <span class="effect effect--happy">😊 +6</span>
               </span>
+              <span class="action-btn__weather" id="weather-mod-bus-stop"></span>
             </span>
           </button>
         </li>
@@ -1230,6 +1299,7 @@
                 <span class="effect effect--cong">🚗 −6</span>
                 <span class="effect effect--happy">😊 +8</span>
               </span>
+              <span class="action-btn__weather" id="weather-mod-bike-lane"></span>
             </span>
           </button>
         </li>
@@ -1245,6 +1315,7 @@
                 <span class="effect effect--cong">🚗 −8</span>
                 <span class="effect effect--happy">😊 +4</span>
               </span>
+              <span class="action-btn__weather" id="weather-mod-parking-garage"></span>
             </span>
           </button>
         </li>
@@ -1260,6 +1331,7 @@
                 <span class="effect effect--cong">🚗 −4</span>
                 <span class="effect effect--happy">😊 +12</span>
               </span>
+              <span class="action-btn__weather" id="weather-mod-park"></span>
             </span>
           </button>
         </li>
@@ -1275,10 +1347,16 @@
                 <span class="effect effect--cong">🚗 −15</span>
                 <span class="effect effect--sad">😞 −5</span>
               </span>
+              <span class="action-btn__weather" id="weather-mod-road-widening"></span>
             </span>
           </button>
         </li>
       </ul>
+      <!-- Combos reference — desktop only -->
+      <div class="combos-section" id="combosSection">
+        <h3 class="combos-section__title">Combos</h3>
+        <ul class="combos-list" id="combosList" aria-label="Available action combos"></ul>
+      </div>
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
       </p>
@@ -2368,6 +2446,77 @@
       setTimeout(() => popup.remove(), 1400);
     }
 
+    function weatherModHTML(action, weather, wMultipliers) {
+      if (weather === 'sunny') return '';
+      const wm   = wMultipliers[action] || {};
+      const meta = window.GAME_LOGIC?.WEATHER_META?.[weather] || {};
+      const icon = meta.emoji || '🌤️';
+      const parts = [];
+      if (wm.cong != null && wm.cong !== 1) {
+        const pct = Math.round((wm.cong - 1) * 100);
+        parts.push('<span class="weather-mod-' + (wm.cong > 1 ? 'up' : 'down') + '">' + icon + ' 🚗' + (pct > 0 ? '+' : '') + pct + '%</span>');
+      }
+      if (wm.hap != null && wm.hap !== 1) {
+        const pct = Math.round((wm.hap - 1) * 100);
+        parts.push('<span class="weather-mod-' + (wm.hap > 1 ? 'up' : 'down') + '">' + icon + ' 😊' + (pct > 0 ? '+' : '') + pct + '%</span>');
+      }
+      return parts.join(' ');
+    }
+
+    function buildComboLists() {
+      const combos = window.GAME_LOGIC?.COMBOS || [];
+      const EMOJI  = { 'bus-stop':'🚌','bike-lane':'🚲','parking-garage':'🅿️','park':'🌳','road-widening':'🚧' };
+      const desktopList = document.getElementById('combosList');
+      const mobileList  = document.getElementById('mobileCombosListEl');
+      combos.forEach(function (c) {
+        const ea = EMOJI[c.a] || '?', eb = EMOJI[c.b] || '?';
+        let bonus = '';
+        if (c.congestion !== 0) bonus += '<span class="combo-cong">' + (c.congestion > 0 ? '+' : '') + c.congestion + '🚗</span>';
+        if (c.happiness  !== 0) bonus += '<span class="combo-hap">'  + (c.happiness  > 0 ? '+' : '') + c.happiness  + '😊</span>';
+        if (desktopList) {
+          const li = document.createElement('li');
+          li.className = 'combo-item'; li.dataset.combo = c.label;
+          li.innerHTML = '<span class="combo-item__pair">' + ea + '+' + eb + '</span>' +
+                         '<span class="combo-item__label">' + c.label + '</span>' +
+                         '<span class="combo-item__bonus">' + bonus + '</span>';
+          desktopList.appendChild(li);
+        }
+        if (mobileList) {
+          const div = document.createElement('div');
+          div.className = 'mobile-combo-item'; div.dataset.combo = c.label;
+          div.innerHTML = '<span class="mci-pair">' + ea + '+' + eb + '</span>' +
+                          '<span class="mci-label">' + c.label + '</span>' +
+                          '<span class="mci-bonus">' + bonus + '</span>';
+          mobileList.appendChild(div);
+        }
+      });
+    }
+
+    function updateCombosDisplay() {
+      const combos = window.GAME_LOGIC?.COMBOS || [];
+      const grid   = window.cityGrid || [];
+      const active = new Set();
+      const placed = grid.filter(function (t) { return t.element && t.element.dataset.placedAction; });
+      for (var i = 0; i < placed.length; i++) {
+        for (var j = i + 1; j < placed.length; j++) {
+          var pi = placed[i], pj = placed[j];
+          var adj = (pi.row === pj.row && Math.abs(pi.col - pj.col) === 1) ||
+                    (pi.col === pj.col && Math.abs(pi.row - pj.row) === 1);
+          if (!adj) continue;
+          var ai = pi.element.dataset.placedAction, aj = pj.element.dataset.placedAction;
+          combos.forEach(function (c) {
+            if ((c.a === ai && c.b === aj) || (c.a === aj && c.b === ai)) active.add(c.label);
+          });
+        }
+      }
+      document.querySelectorAll('.combo-item').forEach(function (el) {
+        el.classList.toggle('combo-item--active', active.has(el.dataset.combo));
+      });
+      document.querySelectorAll('.mobile-combo-item').forEach(function (el) {
+        el.classList.toggle('mobile-combo-item--active', active.has(el.dataset.combo));
+      });
+    }
+
     window.updateActionAvailability = function () {
       const budget  = window.gameState?.budget ?? 0;
       const weather = window.currentWeather || "sunny";
@@ -2398,6 +2547,8 @@
           if (happy >= 0) happySpan.textContent = "😊 +" + happy;
           else            happySpan.textContent = "😞 "  + happy;
         }
+        const wSpan = btn.querySelector(".action-btn__weather");
+        if (wSpan) wSpan.innerHTML = weatherModHTML(action, weather, wMultipliers);
       });
 
       // Mobile action strip
@@ -2416,8 +2567,14 @@
           if (happy >= 0) hapSpan.textContent = "😊 +" + happy;
           else            hapSpan.textContent = "😞 "  + happy;
         }
+        const wSpan = card.querySelector(".mas-card__weather");
+        if (wSpan) wSpan.innerHTML = weatherModHTML(action, weather, wMultipliers);
       });
+
+      updateCombosDisplay();
     };
+
+    buildComboLists();
 
     attachGridListener();
 
