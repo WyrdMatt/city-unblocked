@@ -449,15 +449,18 @@
       filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
     }
 
-    /* ── Empty lots (construction sites) ────────────────────────────── */
+    /* ── Empty lots (vacant land, eligible for parks) ───────────────── */
     .tile.empty {
-      background: linear-gradient(155deg, #7a6244 0%, #52401e 100%);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,.4);
+      background:
+        radial-gradient(ellipse at 28% 65%, rgba(130,170,55,0.22) 0%, transparent 55%),
+        radial-gradient(ellipse at 72% 30%, rgba(100,140,40,0.18) 0%, transparent 50%),
+        linear-gradient(160deg, #3d5020 0%, #263314 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
     }
     .tile.empty::after {
-      content: '🚧'; position: absolute; inset: 0;
+      content: '🌱'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.6;
+      font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.75;
     }
 
     .tile.blocker {
