@@ -180,7 +180,7 @@
       grid-template-columns: repeat(10, 80px);
       grid-template-rows: repeat(10, 80px);
       gap: 4px;
-      background: #0d0f14;   /* gap colour = road base → roads form a seamless network */
+      background: #2e3240;   /* gap colour = road base → roads form a seamless network */
       padding: 4px;
       border-radius: 16px 0 0 16px;
       box-shadow:
@@ -199,7 +199,7 @@
     .tile.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px #fbbf2460; z-index: 3; }
 
     /* ── Roads — same colour as gap → seamless dark network ─────────── */
-    .tile.road { background: #0d0f14; }
+    .tile.road { background: #2e3240; }
 
     /* Dashed centre-line: horizontal */
     .tile.road[data-road-dir="h"]::after {
@@ -456,7 +456,7 @@
       <div id="city-grid"></div>
       <div id="info-bar">Click a tile to select it.</div>
       <div id="legend">
-        <div class="legend-item"><div class="legend-swatch" style="background:#0d0f14"></div> Road</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#2e3240"></div> Road</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#4e6882"></div> Building</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#065f46"></div> Park</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#7a6244"></div> Empty</div>
