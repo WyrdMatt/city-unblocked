@@ -557,6 +557,24 @@
       100% { transform: translate(0,0) }
     }
 
+    /* ── Weather particle keyframes ──────────────────────────────── */
+    @keyframes rain-fall {
+      0%   { transform: translateY(-20px)  translateX(0);    opacity: 0; }
+      8%   { opacity: 1; }
+      92%  { opacity: 1; }
+      100% { transform: translateY(920px)  translateX(-70px); opacity: 0; }
+    }
+    @keyframes snow-fall {
+      0%   { transform: translateY(-10px) translateX(0);    opacity: 0; }
+      10%  { opacity: 0.9; }
+      48%  { transform: translateY(440px) translateX(22px); opacity: 0.9; }
+      100% { transform: translateY(920px) translateX(-12px); opacity: 0; }
+    }
+    @keyframes lightning-flash {
+      0%, 92%, 95.5%, 100% { opacity: 0; }
+      93%, 95%             { opacity: 1; }
+    }
+
     /* ── HUD goal markers ────────────────────────────────────────── */
     .hud-meter__goal {
       position: absolute; top: -3px; bottom: -3px; width: 2px;
@@ -1257,6 +1275,7 @@
       Object.assign(window.gameState, INITIAL);
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
+      if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
       // Generate a fresh random map and rebuild the grid
       var newMap = (typeof window.generateMap === "function") ? window.generateMap() : null;
@@ -1827,6 +1846,65 @@
     });
     grid.appendChild(layer);
 
+    /* ── Weather particle layer ─────────────────────────────────── */
+    const weatherLayer = document.createElement('div');
+    Object.assign(weatherLayer.style, {
+      position: 'absolute', inset: '0',
+      pointerEvents: 'none', zIndex: '20', overflow: 'hidden',
+    });
+    grid.appendChild(weatherLayer);
+
+    function applyWeatherParticles(weather) {
+      while (weatherLayer.firstChild) weatherLayer.removeChild(weatherLayer.firstChild);
+
+      if (weather === 'rainy' || weather === 'stormy') {
+        const count  = weather === 'stormy' ? 80 : 50;
+        const minDur = weather === 'stormy' ? 0.45 : 0.65;
+        const rngDur = weather === 'stormy' ? 0.45 : 0.55;
+        for (let i = 0; i < count; i++) {
+          const d = document.createElement('div');
+          Object.assign(d.style, {
+            position: 'absolute',
+            width:  weather === 'stormy' ? '1.5px' : '1px',
+            height: weather === 'stormy' ? '15px'  : '10px',
+            background: weather === 'stormy'
+              ? 'rgba(150,175,220,0.9)' : 'rgba(180,210,255,0.65)',
+            borderRadius: '1px',
+            left: (Math.random() * 115 - 8) + '%',
+            top:  '-20px',
+            animation: `rain-fall ${(minDur + Math.random() * rngDur).toFixed(2)}s linear ${(Math.random() * 2).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(d);
+        }
+        if (weather === 'stormy') {
+          const flash = document.createElement('div');
+          Object.assign(flash.style, {
+            position: 'absolute', inset: '0',
+            background: 'rgba(200,215,255,0.35)',
+            animation: `lightning-flash ${(6 + Math.random() * 5).toFixed(1)}s linear ${(Math.random()).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(flash);
+        }
+      } else if (weather === 'snowy') {
+        for (let i = 0; i < 40; i++) {
+          const sz = (2 + Math.random() * 3).toFixed(1);
+          const d  = document.createElement('div');
+          Object.assign(d.style, {
+            position: 'absolute',
+            width: sz + 'px', height: sz + 'px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.88)',
+            left: (Math.random() * 110 - 5) + '%',
+            top:  '-10px',
+            animation: `snow-fall ${(2.5 + Math.random() * 2.5).toFixed(2)}s ease-in-out ${(Math.random() * 4).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(d);
+        }
+      }
+    }
+
+    window.applyWeatherParticles = applyWeatherParticles;
+
     /* ── Cars ───────────────────────────────────────────────────── */
     const CAR_EMOJI = ['🚗','🚕','🚙','🚐','🏎️','🚑','🚒'];
     const cars = [];
@@ -2095,6 +2173,9 @@
         row.forEach((code, c) => { if (code === 'P') parkTiles.push([r, c]); });
       });
       spawnParkPedsInternal(parkTiles);
+
+      // ── Weather particles
+      applyWeatherParticles(window.currentWeather || 'sunny');
     };
 
     window.rebuildAnimations(window.currentMap);
