@@ -924,7 +924,7 @@
 
         // Show new seed in info bar
         var infoBar = document.getElementById('info-bar');
-        if (infoBar) infoBar.textContent = 'Seed: ' + newMap.seed;
+        if (infoBar) infoBar.textContent = 'Seed: ' + newMap.seed + '  |  ' + newMap.roadRows.length + '×' + newMap.roadCols.length + ' road grid';
       }
 
       syncRoadCongestion(INITIAL.congestion);
@@ -960,11 +960,13 @@
 
     /* ── Default config — override any field via generateMap(overrides) ─ */
     var DEFAULT_CONFIG = {
-      rows:        10,
-      cols:        10,
-      roadSpacing: 4,    // road every N tiles; increase for larger maps
-      emptyRate:   0.20, // fraction of eligible building tiles → empty lots
-      parkCount:   2,    // decorative (pre-existing) park tiles per map
+      rows:         10,
+      cols:         10,
+      minRoads:     2,    // min road lines per axis
+      maxRoads:     3,    // max road lines per axis (raise for larger grids)
+      minBlockSize: 2,    // min non-road tiles between parallel roads
+      emptyRate:    0.20, // fraction of eligible building tiles → empty lots
+      parkCount:    2,    // decorative (pre-existing) park tiles per map
       // Future hooks (not yet used):
       //   blockerRate: 0,     // fraction of building tiles → impassable blocker
       //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
@@ -979,24 +981,56 @@
       }, []);
     }
 
+    /*
+     * Pick `count` road line positions across `total` tiles using a jittered
+     * grid: divide the axis into equal segments, pick one random position in
+     * each segment. This guarantees roads are spread across the full map while
+     * still varying each game, and respects minBlockSize so blocks always have
+     * interior space for tile placement.
+     */
+    function pickRoadLines(total, count, minBlockSize, rng) {
+      var lines  = [];
+      var segSize = total / count;
+      for (var i = 0; i < count; i++) {
+        var lo = Math.round(i * segSize);
+        var hi = Math.round((i + 1) * segSize) - 1;
+        // Enforce minBlockSize gap from the previous road
+        if (lines.length > 0) lo = Math.max(lo, lines[lines.length - 1] + minBlockSize + 1);
+        if (lo > hi) lo = hi;
+        lines.push(lo + Math.floor(rng() * (hi - lo + 1)));
+      }
+      return lines;
+    }
+
     /* ── generateMap ─────────────────────────────────────────────── */
     function generateMap(userConfig) {
       var cfg  = Object.assign({}, DEFAULT_CONFIG, userConfig || {});
       var seed = (cfg.seed != null) ? (cfg.seed >>> 0) : (Math.random() * 0xFFFFFFFF | 0);
       var rng  = makeRNG(seed);
 
-      // Step 1 — Road skeleton: roads at multiples of roadSpacing
+      // Step 1 — Road skeleton: randomly placed road lines, spread across map
+      var maxR = Math.min(cfg.maxRoads, Math.floor((cfg.rows - 1) / (cfg.minBlockSize + 1)));
+      var maxC = Math.min(cfg.maxRoads, Math.floor((cfg.cols - 1) / (cfg.minBlockSize + 1)));
+      var roadRowCount = cfg.minRoads + Math.floor(rng() * (maxR - cfg.minRoads + 1));
+      var roadColCount = cfg.minRoads + Math.floor(rng() * (maxC - cfg.minRoads + 1));
+      var roadRows = pickRoadLines(cfg.rows, roadRowCount, cfg.minBlockSize, rng);
+      var roadCols = pickRoadLines(cfg.cols, roadColCount, cfg.minBlockSize, rng);
+
+      var roadRowSet = {};
+      roadRows.forEach(function (r) { roadRowSet[r] = true; });
+      var roadColSet = {};
+      roadCols.forEach(function (c) { roadColSet[c] = true; });
+
       var grid = [];
       for (var r = 0; r < cfg.rows; r++) {
         var row = [];
         for (var c = 0; c < cfg.cols; c++) {
-          row.push((r % cfg.roadSpacing === 0 || c % cfg.roadSpacing === 0) ? 'R' : 'B');
+          row.push((roadRowSet[r] || roadColSet[c]) ? 'R' : 'B');
         }
         grid.push(row);
       }
 
       // Step 2 — Empty lots: only building tiles with ≥1 building neighbour
-      // (guarantees every empty lot borders at least one building for adjacency bonus)
       for (var r = 0; r < cfg.rows; r++) {
         for (var c = 0; c < cfg.cols; c++) {
           if (grid[r][c] !== 'B') continue;
@@ -1005,8 +1039,45 @@
           if (adjB >= 1 && rng() < cfg.emptyRate) grid[r][c] = 'E';
         }
       }
+      // Post-process: revert any empty lot whose building neighbours were all
+      // converted to 'E' earlier in the same pass (scan order artifact)
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          if (grid[r][c] !== 'E') continue;
+          var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                       .filter(function (t) { return t === 'B'; }).length;
+          if (adjB === 0) grid[r][c] = 'B';
+        }
+      }
 
-      // Step 3 — Decorative parks: prefer tiles with most building neighbours
+      // Top-up: if the revert pass left fewer than 4 empty lots, force-convert the
+      // building tiles with the most building neighbours until we hit the minimum
+      var MIN_EMPTY = 4;
+      var emptyCount = 0;
+      for (var r = 0; r < cfg.rows; r++)
+        for (var c = 0; c < cfg.cols; c++)
+          if (grid[r][c] === 'E') emptyCount++;
+
+      if (emptyCount < MIN_EMPTY) {
+        var extras = [];
+        for (var r = 0; r < cfg.rows; r++) {
+          for (var c = 0; c < cfg.cols; c++) {
+            if (grid[r][c] !== 'B') continue;
+            var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                         .filter(function (t) { return t === 'B'; }).length;
+            if (adjB >= 1) extras.push([r, c, adjB]);
+          }
+        }
+        extras.sort(function (a, b) { return b[2] - a[2]; });
+        for (var i = 0; i < extras.length && emptyCount < MIN_EMPTY; i++) {
+          grid[extras[i][0]][extras[i][1]] = 'E';
+          emptyCount++;
+        }
+      }
+
+      // Step 3 — Decorative parks: prefer tiles with most building neighbours.
+      // Re-check the live grid before each placement so stale scores from
+      // earlier parks don't cause under-connected placement.
       var parkCandidates = [];
       for (var r = 0; r < cfg.rows; r++) {
         for (var c = 0; c < cfg.cols; c++) {
@@ -1019,11 +1090,17 @@
       parkCandidates.sort(function (a, b) {
         return (b[2] - a[2]) + (rng() - 0.5) * 0.6; // weighted shuffle
       });
-      for (var i = 0; i < Math.min(cfg.parkCount, parkCandidates.length); i++) {
-        grid[parkCandidates[i][0]][parkCandidates[i][1]] = 'P';
+      var parksPlaced = 0;
+      for (var i = 0; i < parkCandidates.length && parksPlaced < cfg.parkCount; i++) {
+        var pr = parkCandidates[i][0], pc = parkCandidates[i][1];
+        var adjLive = nbValues(grid, pr, pc, cfg.rows, cfg.cols)
+                        .filter(function (t) { return t === 'B'; }).length;
+        if (adjLive < 2) continue; // earlier park took a neighbour slot — skip
+        grid[pr][pc] = 'P';
+        parksPlaced++;
       }
 
-      var result = { grid: grid, seed: seed, config: cfg };
+      var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
     }
@@ -1128,7 +1205,7 @@
     // Generate initial map and build grid
     window.currentMap = window.generateMap();
     window.buildCityGrid(window.currentMap.grid);
-    infoBar.textContent = 'Seed: ' + window.currentMap.seed;
+    infoBar.textContent = 'Seed: ' + window.currentMap.seed + '  |  ' + window.currentMap.roadRows.length + '×' + window.currentMap.roadCols.length + ' road grid';
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
   })();
   </script>
