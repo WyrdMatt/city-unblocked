@@ -1903,10 +1903,7 @@
     const actionsList = document.getElementById("actionsList");
     const budgetError = document.getElementById("budgetError");
 
-    if (!panel || !actionsList || !budgetError) {
-      console.warn("[actions-panel] Required DOM elements not found.");
-      return;
-    }
+    if (!panel || !actionsList || !budgetError) return;
 
     // Action panel is reference-only — clicking buttons does nothing.
     // Placement is triggered by tapping a tile (radial menu).
@@ -1914,7 +1911,7 @@
     // Bridge fix: use the DOM element directly (window.cityGrid is the tile array)
     function attachGridListener() {
       const grid = document.getElementById("city-grid");
-      if (!grid) { console.warn("[actions-panel] #city-grid not found."); return; }
+      if (!grid) return;
       grid.addEventListener("click", onTileClick);
       // On touch devices, fire immediately on touchend to avoid the 300ms click delay.
       // preventDefault stops the subsequent synthetic click from firing twice.
