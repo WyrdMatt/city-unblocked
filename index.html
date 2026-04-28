@@ -308,6 +308,48 @@
     #legend { display: flex; gap: 18px; }
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; letter-spacing: 0.02em; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+    /* ── Music toggle button ─────────────────────────────────────────── */
+    .hud__music-btn {
+      flex-shrink: 0;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      color: #475569;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.3rem 0.55rem;
+      line-height: 1;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__music-btn:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.22); color: #e2e8f0; }
+
+    /* ── Pedestrian wander keyframes ─────────────────────────────────── */
+    @keyframes wander-0 {
+      0%   { transform: translate(0,0) }
+      25%  { transform: translate(12px,6px) }
+      55%  { transform: translate(4px,16px) }
+      80%  { transform: translate(-9px,7px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-1 {
+      0%   { transform: translate(0,0) }
+      30%  { transform: translate(-10px,9px) }
+      65%  { transform: translate(8px,14px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-2 {
+      0%   { transform: translate(0,0) }
+      40%  { transform: translate(13px,-6px) }
+      72%  { transform: translate(-5px,10px) }
+      100% { transform: translate(0,0) }
+    }
+    @keyframes wander-3 {
+      0%   { transform: translate(0,0) }
+      35%  { transform: translate(-8px,-9px) }
+      68%  { transform: translate(10px,5px) }
+      100% { transform: translate(0,0) }
+    }
   </style>
 </head>
 <body>
@@ -340,6 +382,7 @@
       <span class="hud__budget-label">Budget</span>
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
+    <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
   </header>
 
   <!-- ── Win overlay ──────────────────────────────────────────────────── -->
@@ -853,6 +896,215 @@
     document.getElementById("resetBtn").addEventListener("click", function () {
       if (typeof window.restartGame === "function") window.restartGame();
     });
+  })();
+  </script>
+
+  <!-- ── Animations & music ───────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Grid geometry ──────────────────────────────────────────── */
+    const TILE = 80, GAP = 4, PAD = 4, CELL = TILE + GAP; // CELL = 84
+    const GRID_PX = PAD * 2 + 10 * CELL;                  // 848
+    const H_ROADS   = [0, 4, 8];   // row indices that are roads
+    const V_ROADS   = [0, 4, 8];   // col indices that are roads
+    const PARK_TILES = [[2,6],[6,2],[9,6]]; // [row,col] from layout
+
+    function tileEdge(i) { return PAD + i * CELL; } // pixel start of tile i
+
+    /* ── Animation layer ────────────────────────────────────────── */
+    const grid = document.getElementById('city-grid');
+    grid.style.position = 'relative';
+    grid.style.overflow = 'hidden';
+
+    const layer = document.createElement('div');
+    Object.assign(layer.style, {
+      position: 'absolute', inset: '0',
+      pointerEvents: 'none', zIndex: '10',
+    });
+    grid.appendChild(layer);
+
+    /* ── Cars ───────────────────────────────────────────────────── */
+    const CAR_EMOJI = ['🚗','🚕','🚙','🚐','🏎️','🚑','🚒'];
+    const cars = [];
+
+    function addCar(dir, lane, going) {
+      const el = document.createElement('span');
+      el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
+      Object.assign(el.style, {
+        position: 'absolute', fontSize: '15px',
+        lineHeight: '1', userSelect: 'none', willChange: 'transform',
+      });
+
+      // Upper lane = going right/down, lower = going left/up
+      const laneOff = going > 0 ? 14 : 46;
+
+      if (dir === 'h') {
+        el.style.top  = (tileEdge(lane) + laneOff) + 'px';
+        el.style.left = '0';
+        if (going < 0) el.style.transform = 'scaleX(-1)';
+      } else {
+        el.style.left = (tileEdge(lane) + laneOff) + 'px';
+        el.style.top  = '0';
+        el.style.transform = `rotate(${going > 0 ? 90 : -90}deg)`;
+      }
+
+      const scatter = (Math.random() - 0.5) * GRID_PX * 0.9;
+      const startPos = (going > 0 ? -30 : GRID_PX + 10) + scatter;
+      const speed    = (0.9 + Math.random() * 0.8) * going;
+
+      layer.appendChild(el);
+      cars.push({ el, dir, going, speed, pos: startPos });
+    }
+
+    H_ROADS.forEach(r => {
+      for (let i = 0; i < 3; i++) addCar('h', r,  1);
+      for (let i = 0; i < 2; i++) addCar('h', r, -1);
+    });
+    V_ROADS.forEach(c => {
+      for (let i = 0; i < 3; i++) addCar('v', c,  1);
+      for (let i = 0; i < 2; i++) addCar('v', c, -1);
+    });
+
+    /* ── Pedestrians ────────────────────────────────────────────── */
+    const PERSON_EMOJI  = ['🚶','🚶‍♀️','👷','🧑','👩','🧓'];
+    const WANDER_NAMES  = ['wander-0','wander-1','wander-2','wander-3'];
+
+    PARK_TILES.forEach(([row, col], ti) => {
+      for (let p = 0; p < 3; p++) {
+        const el = document.createElement('span');
+        el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
+        Object.assign(el.style, {
+          position: 'absolute',
+          fontSize: '13px', lineHeight: '1', userSelect: 'none',
+          top:  (tileEdge(row) + 18 + p * 18) + 'px',
+          left: (tileEdge(col) + 12 + p * 18) + 'px',
+          animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
+          animationDelay: `${-p * 2.1}s`,
+        });
+        layer.appendChild(el);
+      }
+    });
+
+    /* ── Main animation loop ────────────────────────────────────── */
+    function tick() {
+      const cong   = window.gameState?.congestion ?? 80;
+      const factor = 1 - (cong / 100) * 0.75; // crawl at full congestion
+
+      cars.forEach(car => {
+        car.pos += car.speed * factor;
+
+        const exitEdge  = car.going > 0 ? GRID_PX + 50 : -50;
+        const resetEdge = car.going > 0 ? -40 : GRID_PX + 20;
+
+        if ((car.going > 0 && car.pos > exitEdge) ||
+            (car.going < 0 && car.pos < exitEdge)) {
+          car.pos = resetEdge + (Math.random() - 0.5) * 80;
+        }
+
+        if (car.dir === 'h') {
+          car.el.style.left = car.pos + 'px';
+        } else {
+          car.el.style.top  = car.pos + 'px';
+        }
+      });
+
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    /* ── Ambient music (Web Audio API) ──────────────────────────── */
+    let audioCtx = null, masterGain = null, musicOn = false;
+    const musicBtn = document.getElementById('musicToggle');
+
+    function buildSound() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0;
+      masterGain.connect(audioCtx.destination);
+
+      /* — Traffic noise layer — */
+      const nLen = audioCtx.sampleRate * 4;
+      const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+      const nDat = nBuf.getChannelData(0);
+      for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+      const noise   = audioCtx.createBufferSource();
+      noise.buffer  = nBuf;
+      noise.loop    = true;
+      const nFilt   = audioCtx.createBiquadFilter();
+      nFilt.type    = 'bandpass';
+      nFilt.frequency.value = 380;
+      nFilt.Q.value = 0.45;
+      const nGain   = audioCtx.createGain();
+      nGain.gain.value = 0.13;
+      noise.connect(nFilt); nFilt.connect(nGain); nGain.connect(masterGain);
+      noise.start();
+
+      /* — Bass city hum — */
+      [55, 110, 165].forEach((freq, i) => {
+        const osc  = audioCtx.createOscillator();
+        osc.type   = 'sine';
+        osc.frequency.value = freq;
+        const g    = audioCtx.createGain();
+        g.gain.value = [0.2, 0.09, 0.04][i];
+        // slow LFO swell
+        const lfo  = audioCtx.createOscillator();
+        lfo.frequency.value = 0.05 + i * 0.02;
+        const lg   = audioCtx.createGain();
+        lg.gain.value = g.gain.value * 0.28;
+        lfo.connect(lg); lg.connect(g.gain); lfo.start();
+        osc.connect(g); g.connect(masterGain); osc.start();
+      });
+
+      /* — Melodic layer: slow pentatonic phrases with reverb — */
+      const rev  = makeReverb(audioCtx);
+      rev.connect(masterGain);
+      // A minor pentatonic: A3 C4 D4 E4 G4 A4 C5
+      const pitches = [220, 262, 294, 330, 392, 440, 523];
+      const seq     = [0,2,4,1,5,3,0,6,2,4,1,3,5,0,4,2];
+      let ni = 0;
+      (function sched() {
+        const freq = pitches[seq[ni++ % seq.length]];
+        const osc  = audioCtx.createOscillator();
+        osc.type   = 'triangle';
+        osc.frequency.value = freq;
+        const env  = audioCtx.createGain();
+        const t    = audioCtx.currentTime;
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.065, t + 0.12);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+        osc.connect(env); env.connect(rev);
+        osc.start(t); osc.stop(t + 3);
+        setTimeout(sched, 2400 + Math.random() * 700);
+      })();
+    }
+
+    function makeReverb(ctx) {
+      const conv = ctx.createConvolver();
+      const len  = ctx.sampleRate * 3;
+      const ir   = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.7);
+      }
+      conv.buffer = ir;
+      return conv;
+    }
+
+    musicBtn.addEventListener('click', () => {
+      buildSound();
+      musicOn = !musicOn;
+      const t = audioCtx.currentTime;
+      masterGain.gain.cancelScheduledValues(t);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.28 : 0, t + 1.5);
+      musicBtn.textContent = musicOn ? '🔊' : '🔇';
+      musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
+    });
+
   })();
   </script>
 
