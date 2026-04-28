@@ -783,33 +783,8 @@
       const wasSelected = el.classList.contains('selected');
       const wasPlaced   = el.classList.contains('tile--placed');
       el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
-      if (tile.type === 'road') {
-        // seamless dark (0) → stays dark until ~0.4 → amber → red (1.0)
-        const c = tile.congestion;
-        let r, g, b;
-        if (c < 0.45) {
-          // Nearly invisible at low congestion — stays close to road/gap base
-          const t = c / 0.45;
-          r = Math.round(13 +  80 * t);
-          g = Math.round(15 +  50 * t);
-          b = Math.round(20 -  10 * t);
-        } else if (c < 0.75) {
-          // Olive → deep amber
-          const t = (c - 0.45) / 0.3;
-          r = Math.round(93  + 147 * t);
-          g = Math.round(65  +  55 * t);
-          b = Math.round(10);
-        } else {
-          // Deep amber → vivid red
-          const t = (c - 0.75) / 0.25;
-          r = Math.round(240 +  15 * t);
-          g = Math.round(120 - 120 * t);
-          b = Math.round(10  -  10 * t);
-        }
-        el.style.background = `rgb(${r},${g},${b})`;
-      } else {
-        el.style.background = '';
-      }
+      // Roads keep their natural CSS colour — congestion is shown by car density instead
+      el.style.background = '';
     };
 
     window.setCityTileType = (row, col, newType) => {
@@ -961,7 +936,7 @@
     const CAR_EMOJI = ['🚗','🚕','🚙','🚐','🏎️','🚑','🚒'];
     const cars = [];
 
-    function addCar(dir, lane, going) {
+    function addCar(dir, lane, going, minCong = 0) {
       const el = document.createElement('span');
       el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
       Object.assign(el.style, {
@@ -989,17 +964,22 @@
 
       layer.appendChild(el);
       // stopTimer: frames remaining stopped; goTimer: min frames to drive before next stop check
-      cars.push({ el, dir, going, speed, pos: startPos,
+      cars.push({ el, dir, going, speed, pos: startPos, minCong,
                   stopTimer: 0, goTimer: Math.floor(Math.random() * 120) });
     }
 
+    // Forward cars: minCong thresholds 0,0,35,55,72,88 → 2 always, more at higher congestion
+    // Backward cars: minCong thresholds 0,40,65,85 → 1 always, more at higher congestion
+    const FWD_THRESHOLDS = [0, 0, 35, 55, 72, 88];
+    const BWD_THRESHOLDS = [0, 40, 65, 85];
+
     H_ROADS.forEach(r => {
-      for (let i = 0; i < 3; i++) addCar('h', r,  1);
-      for (let i = 0; i < 2; i++) addCar('h', r, -1);
+      FWD_THRESHOLDS.forEach(mc => addCar('h', r,  1, mc));
+      BWD_THRESHOLDS.forEach(mc => addCar('h', r, -1, mc));
     });
     V_ROADS.forEach(c => {
-      for (let i = 0; i < 3; i++) addCar('v', c,  1);
-      for (let i = 0; i < 2; i++) addCar('v', c, -1);
+      FWD_THRESHOLDS.forEach(mc => addCar('v', c,  1, mc));
+      BWD_THRESHOLDS.forEach(mc => addCar('v', c, -1, mc));
     });
 
     /* ── Pedestrians ────────────────────────────────────────────── */
@@ -1031,6 +1011,11 @@
       const stopChance = Math.max(0, (cong - 25) / 75) * 0.007;
 
       cars.forEach(car => {
+        // Hide cars that only appear above a certain congestion threshold
+        const active = cong >= car.minCong;
+        car.el.style.visibility = active ? '' : 'hidden';
+        if (!active) return;
+
         if (car.stopTimer > 0) {
           // Car is stopped — show brake-light dimming, don't move
           car.stopTimer--;
