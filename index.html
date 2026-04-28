@@ -783,7 +783,7 @@
       if (!winOverlay.hidden || !gameOverOverlay.hidden) return;
       const happiness  = clamp(gs.happiness  ?? 0, 0, 100);
       const congestion = clamp(gs.congestion ?? 0, 0, 100);
-      if (gs.won === true || (happiness >= 80 && congestion <= 20)) {
+      if (gs.won === true || (happiness >= 70 && congestion <= 30)) {
         window.showWinScreen(); return;
       }
       if ((gs.budget ?? 0) <= 0) window.showGameOverScreen();
@@ -906,18 +906,27 @@
 
     window.restartGame = function restartGame() {
       Object.assign(window.gameState, INITIAL);
-      if (Array.isArray(window.cityGrid)) {
-        window.cityGrid.forEach(function (tile) {
-          var el = tile.element;
-          if (!el) return;
-          delete el.dataset.placedAction;
-          delete el.dataset.placedCost;
-          el.style.removeProperty("--tile-placed-color");
-          el.classList.remove("tile--placed");
-          el.textContent = "";
-          el.removeAttribute("aria-label");
-        });
+
+      // Generate a fresh random map and rebuild the grid
+      var newMap = (typeof window.generateMap === "function") ? window.generateMap() : null;
+      if (newMap && typeof window.buildCityGrid === "function") {
+        window.currentMap = newMap;
+        window.buildCityGrid(newMap.grid);
+
+        // Respawn park pedestrians at new park positions
+        if (typeof window.spawnParkPeds === "function") {
+          var parkTiles = [];
+          newMap.grid.forEach(function (row, r) {
+            row.forEach(function (code, c) { if (code === 'P') parkTiles.push([r, c]); });
+          });
+          window.spawnParkPeds(parkTiles);
+        }
+
+        // Show new seed in info bar
+        var infoBar = document.getElementById('info-bar');
+        if (infoBar) infoBar.textContent = 'Seed: ' + newMap.seed;
       }
+
       syncRoadCongestion(INITIAL.congestion);
       if (typeof window.refreshHUD === "function") window.refreshHUD();
     };
@@ -933,83 +942,193 @@
   })();
   </script>
 
-  <!-- ── city-map (inline script from city-map.html) ───────────────────── -->
+  <!-- ── Map generator ───────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const LAYOUT = [
-      ['R','R','R','R','R','R','R','R','R','R'],
-      ['R','B','B','B','R','B','B','B','R','B'],
-      ['R','B','E','B','R','E','B','B','R','B'],  // (2,2) surrounded by 4B; (2,5) 3B
-      ['R','B','B','E','R','B','P','B','R','B'],  // (3,3) 2B; P=existing park
-      ['R','R','R','R','R','R','R','R','R','R'],
-      ['R','B','B','B','R','B','B','E','R','B'],  // (5,7) 2B
-      ['R','E','B','B','R','B','E','B','R','B'],  // (6,1) 3B; (6,6) surrounded by 4B
-      ['R','B','P','B','R','B','B','B','R','B'],  // P=existing park
-      ['R','R','R','R','R','R','R','R','R','R'],
-      ['R','B','E','B','R','E','B','E','R','B'],  // (9,2) 2B; (9,5) 1B; (9,7) 1B
-    ];
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty' };
+    'use strict';
 
-    window.cityGrid = [];
+    /* ── Seeded PRNG (mulberry32) — deterministic, portable, fast ─── */
+    function makeRNG(seed) {
+      var s = (seed >>> 0) || 1;
+      return function () {
+        s += 0x6D2B79F5;
+        var t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /* ── Default config — override any field via generateMap(overrides) ─ */
+    var DEFAULT_CONFIG = {
+      rows:        10,
+      cols:        10,
+      roadSpacing: 4,    // road every N tiles; increase for larger maps
+      emptyRate:   0.20, // fraction of eligible building tiles → empty lots
+      parkCount:   2,    // decorative (pre-existing) park tiles per map
+      // Future hooks (not yet used):
+      //   blockerRate: 0,     // fraction of building tiles → impassable blocker
+      //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
+    };
+
+    /* ── Neighbour helper ────────────────────────────────────────── */
+    function nbValues(grid, r, c, rows, cols) {
+      return [[-1,0],[1,0],[0,-1],[0,1]].reduce(function (acc, o) {
+        var nr = r + o[0], nc = c + o[1];
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) acc.push(grid[nr][nc]);
+        return acc;
+      }, []);
+    }
+
+    /* ── generateMap ─────────────────────────────────────────────── */
+    function generateMap(userConfig) {
+      var cfg  = Object.assign({}, DEFAULT_CONFIG, userConfig || {});
+      var seed = (cfg.seed != null) ? (cfg.seed >>> 0) : (Math.random() * 0xFFFFFFFF | 0);
+      var rng  = makeRNG(seed);
+
+      // Step 1 — Road skeleton: roads at multiples of roadSpacing
+      var grid = [];
+      for (var r = 0; r < cfg.rows; r++) {
+        var row = [];
+        for (var c = 0; c < cfg.cols; c++) {
+          row.push((r % cfg.roadSpacing === 0 || c % cfg.roadSpacing === 0) ? 'R' : 'B');
+        }
+        grid.push(row);
+      }
+
+      // Step 2 — Empty lots: only building tiles with ≥1 building neighbour
+      // (guarantees every empty lot borders at least one building for adjacency bonus)
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          if (grid[r][c] !== 'B') continue;
+          var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                       .filter(function (t) { return t === 'B'; }).length;
+          if (adjB >= 1 && rng() < cfg.emptyRate) grid[r][c] = 'E';
+        }
+      }
+
+      // Step 3 — Decorative parks: prefer tiles with most building neighbours
+      var parkCandidates = [];
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          if (grid[r][c] !== 'B') continue;
+          var adjB2 = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                        .filter(function (t) { return t === 'B'; }).length;
+          if (adjB2 >= 2) parkCandidates.push([r, c, adjB2]);
+        }
+      }
+      parkCandidates.sort(function (a, b) {
+        return (b[2] - a[2]) + (rng() - 0.5) * 0.6; // weighted shuffle
+      });
+      for (var i = 0; i < Math.min(cfg.parkCount, parkCandidates.length); i++) {
+        grid[parkCandidates[i][0]][parkCandidates[i][1]] = 'P';
+      }
+
+      var result = { grid: grid, seed: seed, config: cfg };
+      result.validation = validateMap(grid, cfg);
+      return result;
+    }
+
+    /* ── validateMap — call any time to audit a layout ──────────── */
+    function validateMap(grid, cfg) {
+      var counts = {}, emptyWithAdj = 0;
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          var t = grid[r][c];
+          counts[t] = (counts[t] || 0) + 1;
+          if (t === 'E') {
+            var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                         .filter(function (n) { return n === 'B' || n === 'P'; }).length;
+            if (adjB > 0) emptyWithAdj++;
+          }
+        }
+      }
+      var issues = [];
+      if ((counts.E || 0) < 4)  issues.push('Too few empty lots: '           + (counts.E || 0));
+      if ((counts.R || 0) < 10) issues.push('Too few road tiles: '            + (counts.R || 0));
+      if (emptyWithAdj < 3)     issues.push('Too few empty lots adj buildings: ' + emptyWithAdj);
+      return { counts: counts, emptyWithAdj: emptyWithAdj, valid: issues.length === 0, issues: issues };
+    }
+
+    window.generateMap = generateMap;
+    window.validateMap = validateMap;
+    window.MAP_CONFIG  = DEFAULT_CONFIG; // expose for overrides / future difficulty config
+  })();
+  </script>
+
+  <!-- ── city-map ─────────────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
 
-    // Detect road orientation so CSS can draw correct lane markings
-    function roadDir(r, c) {
-      const up    = r > 0 && LAYOUT[r-1][c] === 'R';
-      const down  = r < LAYOUT.length - 1 && LAYOUT[r+1][c] === 'R';
-      const left  = c > 0 && LAYOUT[r][c-1] === 'R';
-      const right = c < LAYOUT[r].length - 1 && LAYOUT[r][c+1] === 'R';
-      const h = left || right, v = up || down;
-      return (h && v) ? 'x' : v ? 'v' : 'h';
+    function roadDir(layout, r, c) {
+      const rows = layout.length, cols = layout[0].length;
+      const up    = r > 0            && layout[r-1][c] === 'R';
+      const down  = r < rows - 1     && layout[r+1][c] === 'R';
+      const left  = c > 0            && layout[r][c-1] === 'R';
+      const right = c < cols - 1     && layout[r][c+1] === 'R';
+      return (left || right) && (up || down) ? 'x' : (up || down) ? 'v' : 'h';
     }
 
-    LAYOUT.forEach((row, r) => {
-      row.forEach((code, c) => {
-        const type = TYPE_MAP[code];
-        const el = document.createElement('div');
-        el.className = `tile ${type}`;
-        el.title = `(${r}, ${c})`;
-        if (type === 'road') el.dataset.roadDir = roadDir(r, c);
+    /* Rebuild the entire tile DOM from a layout array.
+       Preserves the animation layer (absolute-positioned child of gridEl). */
+    window.buildCityGrid = function buildCityGrid(layout) {
+      gridEl.querySelectorAll('.tile').forEach(el => el.remove());
+      window.cityGrid = [];
+      selectedTile = null;
 
-        const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+      layout.forEach((row, r) => {
+        row.forEach((code, c) => {
+          const type = TYPE_MAP[code] || 'empty';
+          const el   = document.createElement('div');
+          el.className = `tile ${type}`;
+          el.title     = `(${r},${c})`;
+          if (type === 'road') el.dataset.roadDir = roadDir(layout, r, c);
 
-        el.addEventListener('click', () => {
-          if (selectedTile) selectedTile.element.classList.remove('selected');
-          selectedTile = tile;
-          el.classList.add('selected');
-          infoBar.textContent =
-            `(${r}, ${c})  type: ${tile.type}` +
-            (tile.type === 'road' ? `  |  congestion: ${tile.congestion.toFixed(2)}` : '');
+          const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+
+          el.addEventListener('click', () => {
+            if (selectedTile) selectedTile.element.classList.remove('selected');
+            selectedTile = tile;
+            el.classList.add('selected');
+            infoBar.textContent =
+              `(${r},${c})  ${tile.type}` +
+              (tile.type === 'road' ? `  congestion: ${tile.congestion.toFixed(2)}` : '');
+          });
+
+          gridEl.appendChild(el);
+          window.cityGrid.push(tile);
         });
-
-        gridEl.appendChild(el);
-        window.cityGrid.push(tile);
       });
-    });
 
-    window.getCityTile = (row, col) => window.cityGrid.find(t => t.row === row && t.col === col) ?? null;
+      window.cityGrid.filter(t => t.type === 'road').forEach(window.refreshTile);
+    };
+
+    window.getCityTile = (row, col) =>
+      window.cityGrid.find(t => t.row === row && t.col === col) ?? null;
 
     window.refreshTile = (tile) => {
       const el = tile.element;
-      const wasSelected = el.classList.contains('selected');
-      const wasPlaced   = el.classList.contains('tile--placed');
-      el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
-      // Roads keep their natural CSS colour — congestion is shown by car density instead
+      const sel    = el.classList.contains('selected');
+      const placed = el.classList.contains('tile--placed');
+      el.className = `tile ${tile.type}${sel ? ' selected' : ''}${placed ? ' tile--placed' : ''}`;
       el.style.background = '';
     };
 
     window.setCityTileType = (row, col, newType) => {
       const tile = window.getCityTile(row, col);
       if (!tile) return;
-      tile.type = newType;
+      tile.type       = newType;
       tile.congestion = newType === 'road' ? 0.5 : 0;
       window.refreshTile(tile);
     };
 
-    // Apply initial congestion shading + trigger HUD to show starting values
-    window.cityGrid.filter(t => t.type === 'road').forEach(window.refreshTile);
+    // Generate initial map and build grid
+    window.currentMap = window.generateMap();
+    window.buildCityGrid(window.currentMap.grid);
+    infoBar.textContent = 'Seed: ' + window.currentMap.seed;
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
   })();
   </script>
@@ -1224,8 +1343,6 @@
     const GRID_PX = PAD * 2 + 10 * CELL;                  // 848
     const H_ROADS   = [0, 4, 8];   // row indices that are roads
     const V_ROADS   = [0, 4, 8];   // col indices that are roads
-    const PARK_TILES = [[3,6],[7,2]]; // [row,col] from layout
-
     function tileEdge(i) { return PAD + i * CELL; } // pixel start of tile i
 
     /* ── Animation layer ────────────────────────────────────────── */
@@ -1291,24 +1408,37 @@
     });
 
     /* ── Pedestrians ────────────────────────────────────────────── */
-    const PERSON_EMOJI  = ['🚶','🚶‍♀️','👷','🧑','👩','🧓'];
-    const WANDER_NAMES  = ['wander-0','wander-1','wander-2','wander-3'];
+    const PERSON_EMOJI = ['🚶','🚶‍♀️','👷','🧑','👩','🧓'];
+    const WANDER_NAMES = ['wander-0','wander-1','wander-2','wander-3'];
+    let parkPedEls = [];
 
-    PARK_TILES.forEach(([row, col], ti) => {
-      for (let p = 0; p < 3; p++) {
-        const el = document.createElement('span');
-        el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
-        Object.assign(el.style, {
-          position: 'absolute',
-          fontSize: '13px', lineHeight: '1', userSelect: 'none',
-          top:  (tileEdge(row) + 18 + p * 18) + 'px',
-          left: (tileEdge(col) + 12 + p * 18) + 'px',
-          animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
-          animationDelay: `${-p * 2.1}s`,
-        });
-        layer.appendChild(el);
-      }
+    window.spawnParkPeds = function spawnParkPeds(parkTiles) {
+      parkPedEls.forEach(el => el.remove());
+      parkPedEls = [];
+      (parkTiles || []).forEach(([row, col], ti) => {
+        for (let p = 0; p < 3; p++) {
+          const el = document.createElement('span');
+          el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
+          Object.assign(el.style, {
+            position: 'absolute',
+            fontSize: '13px', lineHeight: '1', userSelect: 'none',
+            top:  (tileEdge(row) + 18 + p * 18) + 'px',
+            left: (tileEdge(col) + 12 + p * 18) + 'px',
+            animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
+            animationDelay: `${-p * 2.1}s`,
+          });
+          layer.appendChild(el);
+          parkPedEls.push(el);
+        }
+      });
+    };
+
+    // Initial spawn: read park positions from the generated map
+    const initParkTiles = [];
+    (window.currentMap?.grid || []).forEach((row, r) => {
+      row.forEach((code, c) => { if (code === 'P') initParkTiles.push([r, c]); });
     });
+    window.spawnParkPeds(initParkTiles);
 
     /* ── Sidewalks & pavement pedestrians ──────────────────────── */
     const SW_W = 8;
