@@ -967,6 +967,7 @@
       Object.assign(el.style, {
         position: 'absolute', fontSize: '15px',
         lineHeight: '1', userSelect: 'none', willChange: 'transform',
+        transition: 'filter 0.25s',
       });
 
       // Upper lane = going right/down, lower = going left/up
@@ -982,12 +983,14 @@
         el.style.transform = `rotate(${going > 0 ? 90 : -90}deg)`;
       }
 
-      const scatter = (Math.random() - 0.5) * GRID_PX * 0.9;
+      const scatter  = (Math.random() - 0.5) * GRID_PX * 0.9;
       const startPos = (going > 0 ? -30 : GRID_PX + 10) + scatter;
       const speed    = (0.9 + Math.random() * 0.8) * going;
 
       layer.appendChild(el);
-      cars.push({ el, dir, going, speed, pos: startPos });
+      // stopTimer: frames remaining stopped; goTimer: min frames to drive before next stop check
+      cars.push({ el, dir, going, speed, pos: startPos,
+                  stopTimer: 0, goTimer: Math.floor(Math.random() * 120) });
     }
 
     H_ROADS.forEach(r => {
@@ -1021,10 +1024,30 @@
 
     /* ── Main animation loop ────────────────────────────────────── */
     function tick() {
-      const cong   = window.gameState?.congestion ?? 80;
-      const factor = 1 - (cong / 100) * 0.75; // crawl at full congestion
+      const cong = window.gameState?.congestion ?? 80;
+      // Speed factor: near-zero (~0.08) at max congestion, full at zero congestion
+      const factor = 1 - (cong / 100) * 0.92;
+      // Stop-and-go probability per frame; only kicks in above congestion 25
+      const stopChance = Math.max(0, (cong - 25) / 75) * 0.007;
 
       cars.forEach(car => {
+        if (car.stopTimer > 0) {
+          // Car is stopped — show brake-light dimming, don't move
+          car.stopTimer--;
+          car.el.style.filter = 'brightness(0.55) sepia(0.4)';
+          return;
+        }
+
+        car.el.style.filter = '';
+
+        if (car.goTimer > 0) {
+          car.goTimer--;
+        } else if (Math.random() < stopChance) {
+          // Randomly stop; longer waits at higher congestion
+          car.stopTimer = Math.floor(40 + Math.random() * 80 * (cong / 100));
+          return;
+        }
+
         car.pos += car.speed * factor;
 
         const exitEdge  = car.going > 0 ? GRID_PX + 50 : -50;
@@ -1033,6 +1056,8 @@
         if ((car.going > 0 && car.pos > exitEdge) ||
             (car.going < 0 && car.pos < exitEdge)) {
           car.pos = resetEdge + (Math.random() - 0.5) * 80;
+          // Minimum drive time after re-entering so cars don't stop right at the edge
+          car.goTimer = Math.floor(60 + Math.random() * 80);
         }
 
         if (car.dir === 'h') {
