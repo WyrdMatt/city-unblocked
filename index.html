@@ -449,15 +449,18 @@
       filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
     }
 
-    /* ── Empty lots (construction sites) ────────────────────────────── */
+    /* ── Empty lots (vacant land, eligible for parks) ───────────────── */
     .tile.empty {
-      background: linear-gradient(155deg, #7a6244 0%, #52401e 100%);
-      box-shadow: inset 0 0 0 1px rgba(0,0,0,.4);
+      background:
+        radial-gradient(ellipse at 28% 65%, rgba(130,170,55,0.22) 0%, transparent 55%),
+        radial-gradient(ellipse at 72% 30%, rgba(100,140,40,0.18) 0%, transparent 50%),
+        linear-gradient(160deg, #3d5020 0%, #263314 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
     }
     .tile.empty::after {
-      content: '🚧'; position: absolute; inset: 0;
+      content: '🌱'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.6;
+      font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.75;
     }
 
     .tile.blocker {
@@ -747,6 +750,39 @@
       text-shadow: 0 0 8px rgba(251,191,36,.7), 0 1px 6px rgba(0,0,0,.9);
     }
 
+    /* ── Meter goal marker — pulse when within 10 of target ─────── */
+    @keyframes goal-pulse {
+      0%, 100% { opacity: 0.6; box-shadow: 0 0 4px rgba(255,255,255,.4); }
+      50%       { opacity: 1;   box-shadow: 0 0 12px rgba(255,255,255,.85), 0 0 22px rgba(255,255,255,.25); }
+    }
+    .hud-meter__goal--near { animation: goal-pulse 0.85s ease-in-out infinite; }
+
+    /* Meter numeric value colour states */
+    .hud-meter__value--good  { color: #4ade80; }
+    .hud-meter__value--close { color: #fbbf24; }
+
+    /* ── Mobile action strip ─────────────────────────────────────── */
+    .mobile-action-strip {
+      display: none;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      gap: 0.4rem; padding: 0.35rem 0.25rem; width: 100%; box-sizing: border-box;
+    }
+    .mobile-action-strip::-webkit-scrollbar { display: none; }
+    @media (max-width: 640px) { .mobile-action-strip { display: flex; } }
+
+    .mas-card {
+      flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+      gap: 2px; padding: 6px 9px; border-radius: 10px; min-width: 56px;
+      background: var(--c-btn-bg); border: 1px solid var(--c-border); text-align: center;
+    }
+    .mas-card--unaffordable { opacity: 0.4; }
+    .mas-card__emoji  { font-size: 1.25rem; line-height: 1; }
+    .mas-card__cost   { font-size: 0.62rem; font-weight: 700; color: var(--c-text-muted); }
+    .mas-card__effects { display: flex; flex-direction: column; gap: 1px; }
+    .mas-card__cong   { font-size: 0.58rem; color: #f87171; font-weight: 600; }
+    .mas-card__hap    { font-size: 0.58rem; color: #86efac; font-weight: 600; }
+    .mas-card__hap--sad { color: #f87171; }
+
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
     .tile, .action-btn, .reset-btn, .hud__music-btn,
     .overlay__btn, .hud-meter__track { touch-action: manipulation; }
@@ -983,6 +1019,8 @@
           <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — road, building, or empty lot</li>
           <li><span class="htp-icon" aria-hidden="true">🚌</span>Place an action: buses &amp; bike lanes on roads, parking on buildings, parks on empty lots</li>
           <li><span class="htp-icon" aria-hidden="true">📉</span>Each action cuts congestion and boosts happiness — but repeating the same type gives diminishing returns</li>
+          <li><span class="htp-icon" aria-hidden="true">⭐</span>Adjacent actions unlock combos — Bus Stop + Park = <em>Transit Hub</em>, Bike Lane + Park = <em>Green Corridor</em>, and more. Watch for the ★ popup!</li>
+          <li><span class="htp-icon" aria-hidden="true">🌦️</span>Weather changes each game and affects action strength — rain boosts bus stops, snow makes bike lanes nearly useless. Check the HUD badge.</li>
           <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by getting congestion ≤30 and happiness ≥70 before your budget and turns run out</li>
         </ol>
       </details>
@@ -1003,7 +1041,7 @@
         <div class="hud-meter__track" role="progressbar" aria-label="Happiness"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="happinessBar">
           <div class="hud-meter__fill" id="happinessFill"></div>
-          <div class="hud-meter__goal" style="left:70%" title="Goal: reach 70"></div>
+          <div class="hud-meter__goal" id="happinessGoal" style="left:70%" title="Goal: reach 70"></div>
         </div>
         <span class="hud-meter__value" id="happinessValue">0</span>
         <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
@@ -1013,7 +1051,7 @@
         <div class="hud-meter__track" role="progressbar" aria-label="Congestion"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="congestionBar">
           <div class="hud-meter__fill" id="congestionFill"></div>
-          <div class="hud-meter__goal" style="left:30%" title="Goal: get below 30"></div>
+          <div class="hud-meter__goal" id="congestionGoal" style="left:30%" title="Goal: get below 30"></div>
         </div>
         <span class="hud-meter__value" id="congestionValue">0</span>
         <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
@@ -1111,7 +1149,50 @@
         <div class="legend-item"><div class="legend-swatch" style="background:#2e3240"></div> Road</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#4e6882"></div> Building</div>
         <div class="legend-item"><div class="legend-swatch" style="background:#065f46"></div> Park</div>
-        <div class="legend-item"><div class="legend-swatch" style="background:#7a6244"></div> Empty</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#3d5020"></div> Empty lot</div>
+      </div>
+      <!-- Mobile action reference strip — hidden on desktop, shown at ≤640px -->
+      <div class="mobile-action-strip" id="mobileActionStrip" aria-label="Action costs and effects">
+        <div class="mas-card" data-action="bus-stop"       data-cost="80"  data-base-cong="-10" data-base-happy="6">
+          <span class="mas-card__emoji">🚌</span>
+          <span class="mas-card__cost">£80</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-bus-stop">🚗 −10</span>
+            <span class="mas-card__hap"  id="mas-hap-bus-stop">😊 +6</span>
+          </div>
+        </div>
+        <div class="mas-card" data-action="bike-lane"      data-cost="40"  data-base-cong="-6"  data-base-happy="8">
+          <span class="mas-card__emoji">🚲</span>
+          <span class="mas-card__cost">£40</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-bike-lane">🚗 −6</span>
+            <span class="mas-card__hap"  id="mas-hap-bike-lane">😊 +8</span>
+          </div>
+        </div>
+        <div class="mas-card" data-action="parking-garage" data-cost="120" data-base-cong="-8"  data-base-happy="4">
+          <span class="mas-card__emoji">🅿️</span>
+          <span class="mas-card__cost">£120</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-parking-garage">🚗 −8</span>
+            <span class="mas-card__hap"  id="mas-hap-parking-garage">😊 +4</span>
+          </div>
+        </div>
+        <div class="mas-card" data-action="park"           data-cost="60"  data-base-cong="-4"  data-base-happy="12">
+          <span class="mas-card__emoji">🌳</span>
+          <span class="mas-card__cost">£60</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-park">🚗 −4</span>
+            <span class="mas-card__hap"  id="mas-hap-park">😊 +12</span>
+          </div>
+        </div>
+        <div class="mas-card" data-action="road-widening"  data-cost="90"  data-base-cong="-15" data-base-happy="-5">
+          <span class="mas-card__emoji">🚧</span>
+          <span class="mas-card__cost">£90</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-road-widening">🚗 −15</span>
+            <span class="mas-card__hap"  id="mas-hap-road-widening">😞 −5</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1217,10 +1298,12 @@
     const happinessBar   = document.getElementById("happinessBar");
     const happinessValue = document.getElementById("happinessValue");
     const happinessDelta = document.getElementById("happinessDelta");
+    const happinessGoal  = document.getElementById("happinessGoal");
     const congestionFill  = document.getElementById("congestionFill");
     const congestionBar   = document.getElementById("congestionBar");
     const congestionValue = document.getElementById("congestionValue");
     const congestionDelta = document.getElementById("congestionDelta");
+    const congestionGoal  = document.getElementById("congestionGoal");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl  = document.getElementById("weatherBadge");
     const weatherIconEl   = document.getElementById("weatherIcon");
@@ -1261,12 +1344,22 @@
       happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
       happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
       updateDelta(happinessDelta, happiness, 70, false);
+      const hapDone  = happiness >= 70;
+      const hapClose = !hapDone && happiness >= 60;
+      happinessValue.classList.toggle("hud-meter__value--good",  hapDone);
+      happinessValue.classList.toggle("hud-meter__value--close", hapClose);
+      if (happinessGoal) happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
 
       congestionFill.style.width = congestion + "%";
       congestionValue.textContent = Math.round(congestion);
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
       congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
       updateDelta(congestionDelta, congestion, 30, true);
+      const congDone  = congestion <= 30;
+      const congClose = !congDone && congestion <= 40;
+      congestionValue.classList.toggle("hud-meter__value--good",  congDone);
+      congestionValue.classList.toggle("hud-meter__value--close", congClose);
+      if (congestionGoal) congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
 
       const turnsLeft = turnLimit - turn;
       turnsValueEl.textContent = turn + " / " + turnLimit;
@@ -2276,29 +2369,52 @@
     }
 
     window.updateActionAvailability = function () {
-      const budget = window.gameState?.budget ?? 0;
+      const budget  = window.gameState?.budget ?? 0;
+      const weather = window.currentWeather || "sunny";
+      const wMultipliers = window.GAME_LOGIC?.WEATHER_MULTIPLIERS?.[weather] || {};
+
+      function calcLiveEffects(action, baseCong, baseHappy) {
+        const placed = document.querySelectorAll('[data-placed-action="' + action + '"]').length;
+        const mult   = Math.pow(0.85, placed);
+        const wm     = wMultipliers[action] || {};
+        return {
+          cong:  Math.round(baseCong  * mult * (wm.cong ?? 1)),
+          happy: Math.round(baseHappy * mult * (wm.hap  ?? 1)),
+        };
+      }
+
+      // Desktop action panel
       document.querySelectorAll(".action-btn[data-cost]").forEach(function (btn) {
         btn.classList.toggle("action-btn--disabled", Number(btn.getAttribute("data-cost")) > budget);
-
         const action    = btn.getAttribute("data-action");
         const baseCong  = Number(btn.getAttribute("data-base-cong"));
         const baseHappy = Number(btn.getAttribute("data-base-happy"));
         if (!action || isNaN(baseCong) || isNaN(baseHappy)) return;
-
-        const placed = document.querySelectorAll(
-          '[data-placed-action="' + action + '"]'
-        ).length;
-        const mult = Math.pow(0.85, placed);
-        const wMult = window.GAME_LOGIC?.WEATHER_MULTIPLIERS?.[window.currentWeather || "sunny"]?.[action] || {};
-        const nextCong  = Math.round(baseCong  * mult * (wMult.cong ?? 1));
-        const nextHappy = Math.round(baseHappy * mult * (wMult.hap  ?? 1));
-
+        const { cong, happy } = calcLiveEffects(action, baseCong, baseHappy);
         const congSpan  = btn.querySelector(".effect--cong");
         const happySpan = btn.querySelector(".effect--happy,.effect--sad");
-        if (congSpan)  congSpan.textContent  = "🚗 " + nextCong;
+        if (congSpan)  congSpan.textContent  = "🚗 " + cong;
         if (happySpan) {
-          if (nextHappy >= 0) happySpan.textContent = "😊 +" + nextHappy;
-          else                happySpan.textContent = "😞 "  + nextHappy;
+          if (happy >= 0) happySpan.textContent = "😊 +" + happy;
+          else            happySpan.textContent = "😞 "  + happy;
+        }
+      });
+
+      // Mobile action strip
+      document.querySelectorAll(".mas-card[data-cost]").forEach(function (card) {
+        const action    = card.getAttribute("data-action");
+        const baseCong  = Number(card.getAttribute("data-base-cong"));
+        const baseHappy = Number(card.getAttribute("data-base-happy"));
+        card.classList.toggle("mas-card--unaffordable", Number(card.getAttribute("data-cost")) > budget);
+        if (!action || isNaN(baseCong) || isNaN(baseHappy)) return;
+        const { cong, happy } = calcLiveEffects(action, baseCong, baseHappy);
+        const congSpan  = card.querySelector(".mas-card__cong");
+        const hapSpan   = card.querySelector(".mas-card__hap");
+        if (congSpan) congSpan.textContent = "🚗 " + cong;
+        if (hapSpan) {
+          hapSpan.classList.toggle("mas-card__hap--sad", happy < 0);
+          if (happy >= 0) hapSpan.textContent = "😊 +" + happy;
+          else            hapSpan.textContent = "😞 "  + happy;
         }
       });
     };
