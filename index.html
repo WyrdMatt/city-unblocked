@@ -2228,7 +2228,11 @@
     let TILE = 80, GAP = 4, PAD = 4, CELL = 84, GRID_PX = 848;
     function refreshGeometry() {
       const cs = getComputedStyle(document.documentElement);
-      TILE    = parseInt(cs.getPropertyValue('--tile-size'), 10) || 80;
+      // Read actual rendered tile width — getPropertyValue returns the raw CSS string
+      // (e.g. "clamp(...)") which parseInt can't parse, so measure a real tile instead.
+      const tileEl = document.querySelector('#city-grid .tile');
+      TILE    = tileEl ? Math.round(tileEl.getBoundingClientRect().width)
+                       : (parseInt(cs.getPropertyValue('--tile-size'), 10) || 80);
       GAP     = parseInt(cs.getPropertyValue('--grid-gap'),  10) || 4;
       PAD     = parseInt(cs.getPropertyValue('--grid-pad'),  10) || 4;
       CELL    = TILE + GAP;
