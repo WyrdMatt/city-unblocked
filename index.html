@@ -1976,20 +1976,20 @@
     let radialTile       = null;
 
     function radialGetPos(tileRect, containerRect, fanRadius) {
-      const BUTTON_HALF = 38, EDGE_MARGIN = 10;
+      const BUTTON_HALF = 30, EDGE_MARGIN = 10;
       const originX   = tileRect.left + tileRect.width / 2;
       const originY   = tileRect.top;
       const spaceAbove = originY - containerRect.top;
       const flipDown  = spaceAbove < fanRadius + BUTTON_HALF;
-      const sideReach = fanRadius * 0.87;
+      const sideReach = fanRadius * 0.985;
       const flipRight = (originX - sideReach) < containerRect.left + EDGE_MARGIN;
       const flipLeft  = (originX + sideReach) > containerRect.right - EDGE_MARGIN;
       return { originX, originY, flipDown, flipLeft, flipRight };
     }
 
     function radialGetBtnPositions(originX, originY, fanRadius, count, flipDown) {
-      const startDeg = flipDown ? 20 : -160;
-      const endDeg   = flipDown ? 160 : -20;
+      const startDeg = flipDown ? 10 : -170;
+      const endDeg   = flipDown ? 170 : -10;
       return Array.from({ length: count }, (_, i) => {
         const t   = count === 1 ? 0.5 : i / (count - 1);
         const deg = startDeg + t * (endDeg - startDeg);
@@ -2012,7 +2012,7 @@
       const gridEl    = document.getElementById('city-grid');
       const gridRect  = gridEl.getBoundingClientRect();
       const tileRect  = tile.getBoundingClientRect();
-      const FAN_RADIUS = 85;
+      const FAN_RADIUS = 130;
 
       const pos      = radialGetPos(tileRect, gridRect, FAN_RADIUS);
       const btnPositions = radialGetBtnPositions(pos.originX, pos.originY, FAN_RADIUS, radialBtns.length, pos.flipDown);
@@ -2228,7 +2228,11 @@
     let TILE = 80, GAP = 4, PAD = 4, CELL = 84, GRID_PX = 848;
     function refreshGeometry() {
       const cs = getComputedStyle(document.documentElement);
-      TILE    = parseInt(cs.getPropertyValue('--tile-size'), 10) || 80;
+      // Read actual rendered tile width — getPropertyValue returns the raw CSS string
+      // (e.g. "clamp(...)") which parseInt can't parse, so measure a real tile instead.
+      const tileEl = document.querySelector('#city-grid .tile');
+      TILE    = tileEl ? Math.round(tileEl.getBoundingClientRect().width)
+                       : (parseInt(cs.getPropertyValue('--tile-size'), 10) || 80);
       GAP     = parseInt(cs.getPropertyValue('--grid-gap'),  10) || 4;
       PAD     = parseInt(cs.getPropertyValue('--grid-pad'),  10) || 4;
       CELL    = TILE + GAP;
