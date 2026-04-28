@@ -913,13 +913,9 @@
         window.currentMap = newMap;
         window.buildCityGrid(newMap.grid);
 
-        // Respawn park pedestrians at new park positions
-        if (typeof window.spawnParkPeds === "function") {
-          var parkTiles = [];
-          newMap.grid.forEach(function (row, r) {
-            row.forEach(function (code, c) { if (code === 'P') parkTiles.push([r, c]); });
-          });
-          window.spawnParkPeds(parkTiles);
+        // Rebuild all animations (cars, sidewalks, lights, signs, park peds)
+        if (typeof window.rebuildAnimations === "function") {
+          window.rebuildAnimations(newMap);
         }
 
         // Show new seed in info bar
@@ -1418,9 +1414,7 @@
     /* ── Grid geometry ──────────────────────────────────────────── */
     const TILE = 80, GAP = 4, PAD = 4, CELL = TILE + GAP; // CELL = 84
     const GRID_PX = PAD * 2 + 10 * CELL;                  // 848
-    const H_ROADS   = [0, 4, 8];   // row indices that are roads
-    const V_ROADS   = [0, 4, 8];   // col indices that are roads
-    function tileEdge(i) { return PAD + i * CELL; } // pixel start of tile i
+    function tileEdge(i) { return PAD + i * CELL; }
 
     /* ── Animation layer ────────────────────────────────────────── */
     const grid = document.getElementById('city-grid');
@@ -1447,7 +1441,6 @@
         transition: 'filter 0.25s',
       });
 
-      // Upper lane = going right/down, lower = going left/up
       const laneOff = going > 0 ? 14 : 46;
 
       if (dir === 'h') {
@@ -1465,31 +1458,19 @@
       const speed    = (0.9 + Math.random() * 0.8) * going;
 
       layer.appendChild(el);
-      // stopTimer: frames remaining stopped; goTimer: min frames to drive before next stop check
       cars.push({ el, dir, going, speed, pos: startPos, minCong,
                   stopTimer: 0, goTimer: Math.floor(Math.random() * 120) });
     }
 
-    // Forward cars: minCong thresholds 0,0,35,55,72,88 → 2 always, more at higher congestion
-    // Backward cars: minCong thresholds 0,40,65,85 → 1 always, more at higher congestion
     const FWD_THRESHOLDS = [0, 0, 35, 55, 72, 88];
     const BWD_THRESHOLDS = [0, 40, 65, 85];
-
-    H_ROADS.forEach(r => {
-      FWD_THRESHOLDS.forEach(mc => addCar('h', r,  1, mc));
-      BWD_THRESHOLDS.forEach(mc => addCar('h', r, -1, mc));
-    });
-    V_ROADS.forEach(c => {
-      FWD_THRESHOLDS.forEach(mc => addCar('v', c,  1, mc));
-      BWD_THRESHOLDS.forEach(mc => addCar('v', c, -1, mc));
-    });
 
     /* ── Pedestrians ────────────────────────────────────────────── */
     const PERSON_EMOJI = ['🚶','🚶‍♀️','👷','🧑','👩','🧓'];
     const WANDER_NAMES = ['wander-0','wander-1','wander-2','wander-3'];
     let parkPedEls = [];
 
-    window.spawnParkPeds = function spawnParkPeds(parkTiles) {
+    function spawnParkPedsInternal(parkTiles) {
       parkPedEls.forEach(el => el.remove());
       parkPedEls = [];
       (parkTiles || []).forEach(([row, col], ti) => {
@@ -1508,14 +1489,9 @@
           parkPedEls.push(el);
         }
       });
-    };
+    }
 
-    // Initial spawn: read park positions from the generated map
-    const initParkTiles = [];
-    (window.currentMap?.grid || []).forEach((row, r) => {
-      row.forEach((code, c) => { if (code === 'P') initParkTiles.push([r, c]); });
-    });
-    window.spawnParkPeds(initParkTiles);
+    window.spawnParkPeds = spawnParkPedsInternal;
 
     /* ── Sidewalks & pavement pedestrians ──────────────────────── */
     const SW_W = 8;
@@ -1544,45 +1520,8 @@
       sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max });
     }
 
-    // Vertical road corridors: [col, fromRow, toRow, sides]
-    [
-      [0, 1,3, ['r']],       [0, 5,7, ['r']],       [0, 9,9, ['r']],
-      [4, 1,3, ['l','r']],   [4, 5,7, ['l','r']],   [4, 9,9, ['l','r']],
-      [8, 1,3, ['l','r']],   [8, 5,7, ['l','r']],   [8, 9,9, ['l','r']],
-    ].forEach(([col, fr, to, sides]) => {
-      const tx = tileEdge(col), ty = tileEdge(fr);
-      const th = tileEdge(to) + TILE - ty;
-      sides.forEach(side => {
-        const sx = tx + (side === 'r' ? TILE - SW_W : 0);
-        makeSWStrip(sx, ty, SW_W, th);
-        const n = fr === to ? 1 : 2;
-        for (let i = 0; i < n; i++) addSWPerson('v', sx + 1, ty + 5, ty + th - 14);
-      });
-    });
-
-    // Horizontal road corridors: [row, fromCol, toCol, sides]
-    [
-      [0, 1,3, ['b']],       [0, 5,7, ['b']],       [0, 9,9, ['b']],
-      [4, 1,3, ['t','b']],   [4, 5,7, ['t','b']],   [4, 9,9, ['t','b']],
-      [8, 1,3, ['t','b']],   [8, 5,7, ['t','b']],   [8, 9,9, ['t','b']],
-    ].forEach(([row, fc, tc, sides]) => {
-      const tx = tileEdge(fc), ty = tileEdge(row);
-      const tw = tileEdge(tc) + TILE - tx;
-      sides.forEach(side => {
-        const sy = ty + (side === 'b' ? TILE - SW_W : 0);
-        makeSWStrip(tx, sy, tw, SW_W);
-        const n = fc === tc ? 1 : 2;
-        for (let i = 0; i < n; i++) addSWPerson('h', sy + 1, tx + 5, tx + tw - 14);
-      });
-    });
-
     /* ── Traffic lights ────────────────────────────────────────── */
-    const INTERSECTIONS = [
-      [0,0],[0,4],[0,8],
-      [4,0],[4,4],[4,8],
-      [8,0],[8,4],[8,8],
-    ];
-    const TL_CYCLE = 9; // seconds per full cycle
+    const TL_CYCLE = 9;
 
     function makeTL(px, py, delaySec) {
       const post = document.createElement('div');
@@ -1603,48 +1542,163 @@
       layer.appendChild(post);
     }
 
-    // Two lights per intersection at opposite corners; alternate phase by TL_CYCLE/2
-    INTERSECTIONS.forEach(([row, col], i) => {
-      const tx = tileEdge(col), ty = tileEdge(row);
-      const phase = -((i * 1.9) % TL_CYCLE); // stagger so intersections are out of sync
-      makeTL(tx + 3,  ty + 3,  phase);
-      makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5); // opposite phase (green while other is red)
-    });
+    /* ── Road segment helper ────────────────────────────────────── */
+    // Returns [{start,end}] for consecutive runs of non-road indices
+    function getSegments(total, roadLines) {
+      const roadSet = new Set(roadLines);
+      const segs = [];
+      let start = null;
+      for (let i = 0; i < total; i++) {
+        if (!roadSet.has(i)) {
+          if (start === null) start = i;
+        } else {
+          if (start !== null) { segs.push({ start, end: i - 1 }); start = null; }
+        }
+      }
+      if (start !== null) segs.push({ start, end: total - 1 });
+      return segs;
+    }
 
-    /* ── Street signs ───────────────────────────────────────────── */
-    // Speed limit signs on non-intersection road tiles
-    [
-      [0, 2], [0, 6],   // top horizontal road
-      [4, 1], [4, 6],   // mid horizontal road
-      [8, 3],           // bottom horizontal road
-      [2, 0], [6, 0],   // left vertical road
-      [3, 4], [7, 8],   // mid/right vertical roads
-    ].forEach(([row, col]) => {
-      const s = document.createElement('div');
-      s.className = 'sign-speed';
-      s.textContent = '30';
-      s.style.left = (tileEdge(col) + 4) + 'px';
-      s.style.top  = (tileEdge(row) + 4) + 'px';
-      layer.appendChild(s);
-    });
+    /* ── rebuildAnimations ──────────────────────────────────────── */
+    // Called on initial load and every time a new map is generated.
+    // Derives all animation elements from map.roadRows / map.roadCols.
+    window.rebuildAnimations = function rebuildAnimations(map) {
+      // Clear every animation child; reset tracking arrays
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      cars.length = 0;
+      sidewalkPeople.length = 0;
+      parkPedEls = [];
 
-    // Street name boards on horizontal & vertical roads
-    [
-      { row: 0, col: 1,  name: 'City Ave',  dx: 8, dy: 32 },
-      { row: 0, col: 5,  name: 'City Ave',  dx: 8, dy: 32 },
-      { row: 4, col: 2,  name: 'Main St',   dx: 8, dy: 32 },
-      { row: 4, col: 6,  name: 'Main St',   dx: 8, dy: 32 },
-      { row: 8, col: 5,  name: 'Park Rd',   dx: 8, dy: 32 },
-      { row: 1, col: 4,  name: 'Oak Ln',    dx: 24, dy: 10 },
-      { row: 6, col: 8,  name: 'Elm Dr',    dx: 24, dy: 10 },
-    ].forEach(({ row, col, name, dx, dy }) => {
-      const s = document.createElement('div');
-      s.className = 'sign-street';
-      s.textContent = name;
-      s.style.left = (tileEdge(col) + dx) + 'px';
-      s.style.top  = (tileEdge(row) + dy) + 'px';
-      layer.appendChild(s);
-    });
+      const { roadRows, roadCols, config: cfg } = map;
+      const rowSet = new Set(roadRows);
+      const colSet = new Set(roadCols);
+      const rowSegs = getSegments(cfg.rows, roadRows);
+      const colSegs = getSegments(cfg.cols, roadCols);
+
+      // ── Cars on each road line
+      roadRows.forEach(r => {
+        FWD_THRESHOLDS.forEach(mc => addCar('h', r,  1, mc));
+        BWD_THRESHOLDS.forEach(mc => addCar('h', r, -1, mc));
+      });
+      roadCols.forEach(c => {
+        FWD_THRESHOLDS.forEach(mc => addCar('v', c,  1, mc));
+        BWD_THRESHOLDS.forEach(mc => addCar('v', c, -1, mc));
+      });
+
+      // ── Sidewalks along vertical road columns
+      roadCols.forEach(c => {
+        const tx = tileEdge(c);
+        const hasLeft  = c > 0 && !colSet.has(c - 1);
+        const hasRight = c < cfg.cols - 1 && !colSet.has(c + 1);
+        rowSegs.forEach(({ start, end }) => {
+          const ty = tileEdge(start);
+          const th = tileEdge(end) + TILE - ty;
+          const n  = end - start >= 1 ? 2 : 1;
+          if (hasLeft) {
+            makeSWStrip(tx, ty, SW_W, th);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + 1, ty + 5, ty + th - 14);
+          }
+          if (hasRight) {
+            makeSWStrip(tx + TILE - SW_W, ty, SW_W, th);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + TILE - SW_W + 1, ty + 5, ty + th - 14);
+          }
+        });
+      });
+
+      // ── Sidewalks along horizontal road rows
+      roadRows.forEach(r => {
+        const ty = tileEdge(r);
+        const hasTop    = r > 0 && !rowSet.has(r - 1);
+        const hasBottom = r < cfg.rows - 1 && !rowSet.has(r + 1);
+        colSegs.forEach(({ start, end }) => {
+          const tx = tileEdge(start);
+          const tw = tileEdge(end) + TILE - tx;
+          const n  = end - start >= 1 ? 2 : 1;
+          if (hasTop) {
+            makeSWStrip(tx, ty, tw, SW_W);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + 1, tx + 5, tx + tw - 14);
+          }
+          if (hasBottom) {
+            makeSWStrip(tx, ty + TILE - SW_W, tw, SW_W);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + TILE - SW_W + 1, tx + 5, tx + tw - 14);
+          }
+        });
+      });
+
+      // ── Traffic lights at every road intersection
+      let tlIdx = 0;
+      roadRows.forEach(r => roadCols.forEach(c => {
+        const tx = tileEdge(c), ty = tileEdge(r);
+        const phase = -((tlIdx++ * 1.9) % TL_CYCLE);
+        makeTL(tx + 3,  ty + 3,  phase);
+        makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5);
+      }));
+
+      // ── Speed limit signs: two per road line at non-intersection tiles
+      const allCols = Array.from({ length: cfg.cols }, (_, i) => i);
+      const allRows = Array.from({ length: cfg.rows }, (_, i) => i);
+      const nonRoadCols = allCols.filter(c => !colSet.has(c));
+      const nonRoadRows = allRows.filter(r => !rowSet.has(r));
+
+      roadRows.forEach(r => {
+        const picks = nonRoadCols.length >= 4
+          ? [nonRoadCols[Math.floor(nonRoadCols.length * 0.25)], nonRoadCols[Math.floor(nonRoadCols.length * 0.75)]]
+          : nonRoadCols.slice(0, 1);
+        picks.forEach(c => {
+          const s = document.createElement('div');
+          s.className = 'sign-speed'; s.textContent = '30';
+          s.style.left = (tileEdge(c) + 4) + 'px';
+          s.style.top  = (tileEdge(r) + 4) + 'px';
+          layer.appendChild(s);
+        });
+      });
+      roadCols.forEach(c => {
+        const picks = nonRoadRows.length >= 4
+          ? [nonRoadRows[Math.floor(nonRoadRows.length * 0.25)], nonRoadRows[Math.floor(nonRoadRows.length * 0.75)]]
+          : nonRoadRows.slice(0, 1);
+        picks.forEach(r => {
+          const s = document.createElement('div');
+          s.className = 'sign-speed'; s.textContent = '30';
+          s.style.left = (tileEdge(c) + 4) + 'px';
+          s.style.top  = (tileEdge(r) + 4) + 'px';
+          layer.appendChild(s);
+        });
+      });
+
+      // ── Street name signs: one per road line at its midpoint
+      const H_NAMES = ['City Ave', 'Main St', 'Park Rd', 'High St'];
+      const V_NAMES = ['Oak Lane', 'Elm Drive', 'Pine Way', 'Church Rd'];
+
+      roadRows.forEach((r, ri) => {
+        if (nonRoadCols.length === 0) return;
+        const c = nonRoadCols[Math.floor(nonRoadCols.length / 2)];
+        const s = document.createElement('div');
+        s.className = 'sign-street';
+        s.textContent = H_NAMES[ri % H_NAMES.length];
+        s.style.left = (tileEdge(c) + 8) + 'px';
+        s.style.top  = (tileEdge(r) + 32) + 'px';
+        layer.appendChild(s);
+      });
+      roadCols.forEach((c, ci) => {
+        if (nonRoadRows.length === 0) return;
+        const r = nonRoadRows[Math.floor(nonRoadRows.length / 2)];
+        const s = document.createElement('div');
+        s.className = 'sign-street';
+        s.textContent = V_NAMES[ci % V_NAMES.length];
+        s.style.left = (tileEdge(c) + 24) + 'px';
+        s.style.top  = (tileEdge(r) + 10) + 'px';
+        layer.appendChild(s);
+      });
+
+      // ── Park pedestrians
+      const parkTiles = [];
+      map.grid.forEach((row, r) => {
+        row.forEach((code, c) => { if (code === 'P') parkTiles.push([r, c]); });
+      });
+      spawnParkPedsInternal(parkTiles);
+    };
+
+    window.rebuildAnimations(window.currentMap);
 
     /* ── Main animation loop ────────────────────────────────────── */
     function tick() {
