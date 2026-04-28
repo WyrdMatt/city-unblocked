@@ -11,8 +11,8 @@
      * Weather variants override specific tokens via [data-weather] on body.
      * ─────────────────────────────────────────────────────────────────── */
     :root {
-      /* Geometry */
-      --tile-size:  80px;
+      /* Geometry — tile-size scales so the 10-col grid always fits the viewport */
+      --tile-size:  clamp(30px, calc((100vw - 60px) / 10), 80px);
       --grid-gap:   4px;
       --grid-pad:   4px;
 
@@ -256,13 +256,10 @@
       padding: 0.7rem 0.875rem;
       background: var(--c-btn-bg);
       border: 1px solid var(--c-border);
-      border-radius: 12px; cursor: pointer; color: var(--c-text-btn); font-family: inherit;
-      text-align: left;
+      border-radius: 12px; cursor: default; color: var(--c-text-btn); font-family: inherit;
+      text-align: left; pointer-events: none;
       transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
     }
-    .action-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); }
-    .action-btn:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
-    .action-btn:active { transform: scale(0.97); }
     .action-btn--active {
       background: var(--c-btn-active);
       border-color: var(--action-color, var(--c-focus));
@@ -634,6 +631,28 @@
     }
     .tile--bounce { animation: tile-bounce 0.32s cubic-bezier(0.34,1.56,0.64,1); }
 
+    /* Grid entrance — tiles scale+fade in from near-zero, staggered by (row+col) delay */
+    @keyframes tile-entrance {
+      from { opacity: 0; transform: scale(0.55); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .tile { animation: tile-entrance 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+
+    /* Tile tap ripple — ring expands out when radial menu opens */
+    @keyframes tile-tap-ripple {
+      0%   { box-shadow: 0 0 0 0   rgba(255,255,255,0.50); }
+      100% { box-shadow: 0 0 0 10px rgba(255,255,255,0.00); }
+    }
+    .tile--radial-open { animation: tile-tap-ripple 0.4s ease-out; }
+
+    /* Turn pulse — HUD meters bounce when new values come in */
+    @keyframes meter-turn-pulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .hud-meter--pulsing { animation: meter-turn-pulse 0.45s cubic-bezier(0.34,1.4,0.64,1); }
+
     /* ── Tile placement popup ─────────────────────────────────────── */
     .tile-popup {
       position: fixed; pointer-events: none; z-index: 1000;
@@ -715,17 +734,7 @@
     /* ── Small-screen overlay ────────────────────────────────────── */
     .small-screen-overlay { display: none; }
 
-    @media (max-width: 1099px) {
-      .small-screen-overlay {
-        display: flex;
-        position: fixed; inset: 0; z-index: 9999;
-        align-items: center; justify-content: center;
-        background: var(--c-bg);
-        background-image: radial-gradient(ellipse at 50% -10%, var(--c-bg-glow) 0%, transparent 65%);
-        padding: 2rem;
-      }
-      .hud, #game-area { visibility: hidden; }
-    }
+    /* Small-screen overlay removed — game now supports all screen sizes. */
 
     .small-screen-overlay__card {
       display: flex; flex-direction: column; align-items: center; gap: 1rem;
@@ -751,6 +760,124 @@
     @keyframes rotate-hint {
       0%, 100% { transform: rotate(0deg); }
       50%       { transform: rotate(90deg); }
+    }
+
+    /* ── Radial fan menu ──────────────────────────────────────────────────── */
+    #action-radial {
+      position: fixed; inset: 0; z-index: 800;
+      pointer-events: none;
+    }
+    #action-radial[hidden] { display: none; }
+
+    .radial-backdrop {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .radial-btn {
+      position: fixed;
+      width: 68px;
+      padding: 8px 4px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      border: none; border-radius: 14px; cursor: pointer;
+      background: rgba(30, 30, 40, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 0 1.5px rgba(255,255,255,0.12);
+      pointer-events: auto;
+      touch-action: manipulation;
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+      transition:
+        transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity   160ms ease;
+      will-change: transform, opacity;
+    }
+    .radial-btn.radial-btn--open {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    .radial-btn:not([disabled]):hover {
+      filter: brightness(1.18);
+    }
+    .radial-btn:not([disabled]):active {
+      transform: translate(-50%, -50%) scale(0.92);
+      transition-duration: 80ms;
+    }
+
+    .radial-btn__emoji { font-size: 26px; line-height: 1; }
+    .radial-btn__name  { font-size: 10px; font-weight: 700; color: #fff; text-align: center; line-height: 1.2; }
+    .radial-btn__cost  {
+      font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 8px;
+      background: rgba(255,255,255,0.15); color: #fff;
+    }
+
+    .radial-btn--wrong-tile {
+      opacity: 0.32 !important;
+      pointer-events: none;
+      filter: grayscale(0.6);
+    }
+    .radial-btn--unaffordable .radial-btn__cost {
+      background: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+    .radial-btn--unaffordable {
+      opacity: 0.5 !important;
+      pointer-events: none;
+    }
+
+    /* ── Mobile layout (≤ 640px) ──────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      /* Game area: single column, minimal padding so grid fills the screen */
+      #game-area {
+        flex-direction: column;
+        align-items: center;
+        padding: 8px 4px 16px;
+        gap: 8px;
+      }
+
+      /* Action panel hidden on mobile — radial menu replaces it */
+      .actions-panel { display: none; }
+
+      /* HUD: two-row compact layout */
+      .hud {
+        flex-wrap: wrap;
+        gap: 0;
+        padding: 0.4rem 0.6rem;
+        row-gap: 0.3rem;
+      }
+
+      /* Row 1: icon | meters | budget+turns | music */
+      .hud__brand { flex: 0 0 auto; }
+      .hud__brand-name { display: none; }
+      .hud__brand-icon { font-size: 1.2rem; }
+
+      .hud__meters {
+        flex: 1 1 auto;
+        gap: 0.5rem;
+        min-width: 0;
+        align-items: center;
+      }
+      .hud-meter__label { display: none; }
+      .hud-meter__track { min-width: 40px; }
+      .hud-meter__value { font-size: 0.7rem; width: 2ch; }
+
+      .hud__budget { order: 3; margin-left: 0.5rem; }
+      .hud__budget-label { font-size: 0.5rem; }
+      .hud__budget-value { font-size: 0.95rem; }
+
+      .hud__turns { order: 4; margin-left: 0.5rem; }
+      .hud__turns-label { font-size: 0.5rem; }
+      .hud__turns-value { font-size: 0.85rem; }
+
+      .hud__weather { order: 5; }
+      .hud__weather-label { display: none; }
+      .hud__weather-icon { font-size: 1rem; }
+
+      /* Info bar below grid: smaller text */
+      #info-bar { font-size: 0.7rem; text-align: center; }
     }
   </style>
 </head>
@@ -881,6 +1008,36 @@
     </div>
   </div>
 
+  <!-- ── Radial action fan menu ───────────────────────────────────────── -->
+  <div id="action-radial" hidden aria-label="Action menu" role="dialog">
+    <div class="radial-backdrop" id="radialBackdrop"></div>
+    <button class="radial-btn" id="radialBtn-bus-stop" data-action="bus-stop" type="button" aria-label="Bus Stop £80" touch-action="manipulation">
+      <span class="radial-btn__emoji">🚌</span>
+      <span class="radial-btn__name">Bus Stop</span>
+      <span class="radial-btn__cost" style="background:rgba(245,158,11,0.3);color:#fcd34d;">£80</span>
+    </button>
+    <button class="radial-btn" id="radialBtn-bike-lane" data-action="bike-lane" type="button" aria-label="Bike Lane £40" touch-action="manipulation">
+      <span class="radial-btn__emoji">🚲</span>
+      <span class="radial-btn__name">Bike Lane</span>
+      <span class="radial-btn__cost" style="background:rgba(34,197,94,0.3);color:#86efac;">£40</span>
+    </button>
+    <button class="radial-btn" id="radialBtn-parking-garage" data-action="parking-garage" type="button" aria-label="Parking £120" touch-action="manipulation">
+      <span class="radial-btn__emoji">🅿️</span>
+      <span class="radial-btn__name">Parking</span>
+      <span class="radial-btn__cost" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">£120</span>
+    </button>
+    <button class="radial-btn" id="radialBtn-park" data-action="park" type="button" aria-label="Park £60" touch-action="manipulation">
+      <span class="radial-btn__emoji">🌳</span>
+      <span class="radial-btn__name">Park</span>
+      <span class="radial-btn__cost" style="background:rgba(134,239,172,0.3);color:#bbf7d0;">£60</span>
+    </button>
+    <button class="radial-btn" id="radialBtn-road-widening" data-action="road-widening" type="button" aria-label="Road Widening £90" touch-action="manipulation">
+      <span class="radial-btn__emoji">🚧</span>
+      <span class="radial-btn__name">Road Widening</span>
+      <span class="radial-btn__cost" style="background:rgba(249,115,22,0.3);color:#fed7aa;">£90</span>
+    </button>
+  </div>
+
   <!-- ── Game area ────────────────────────────────────────────────────── -->
   <div id="game-area">
 
@@ -900,7 +1057,7 @@
     <aside class="actions-panel" id="actionsPanel" aria-label="Action picker">
       <header class="actions-panel__header">
         <h2 class="actions-panel__title">Actions</h2>
-        <p class="actions-panel__sub">Pick an action, then click a tile.</p>
+        <p class="actions-panel__sub">Tap any tile to place an action.</p>
       </header>
       <ul class="actions-list" id="actionsList" role="list">
         <li>
@@ -1685,6 +1842,7 @@
             if (hotspot >= 1) el.dataset.hotspot = hotspot;
           }
 
+          el.style.animationDelay = ((r + c) * 15) + 'ms';
           const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, hotspot, element: el };
 
           el.addEventListener('click', () => {
@@ -1750,36 +1908,8 @@
       return;
     }
 
-    actionsList.addEventListener("click", (e) => {
-      const btn = e.target.closest(".action-btn");
-      if (!btn) return;
-      if (btn === activeButton) { deselect(); return; }
-      select(btn);
-    });
-
-    function select(btn) {
-      deselect();
-      selectedAction = {
-        action:     btn.dataset.action,
-        cost:       Number(btn.dataset.cost),
-        emoji:      btn.dataset.emoji,
-        color:      btn.dataset.color,
-        validTiles: (btn.dataset.validTiles || "").split(" ").filter(Boolean),
-      };
-      activeButton = btn;
-      btn.classList.add("action-btn--active");
-      btn.style.setProperty("--action-color", selectedAction.color);
-      hideBudgetError();
-    }
-
-    function deselect() {
-      if (activeButton) {
-        activeButton.classList.remove("action-btn--active");
-        activeButton.style.removeProperty("--action-color");
-        activeButton = null;
-      }
-      selectedAction = null;
-    }
+    // Action panel is reference-only — clicking buttons does nothing.
+    // Placement is triggered by tapping a tile (radial menu).
 
     // Bridge fix: use the DOM element directly (window.cityGrid is the tile array)
     function attachGridListener() {
@@ -1798,49 +1928,24 @@
 
     function onTileClick(e) {
       const tile = e.target.closest(".tile");
-      if (!tile || !selectedAction) return;
+      if (!tile) return;
 
-      const budget = window.gameState?.budget ?? Infinity;
-      if (budget < selectedAction.cost) { showBudgetError(); return; }
-
-      // Blocker tiles are always impassable
-      if (tile.classList.contains("blocker")) {
-        showTileError("This area is blocked");
+      // Same tile tapped while radial is open → toggle it off
+      if (!radialEl.hasAttribute('hidden') && radialTile === tile) {
+        closeRadial();
         return;
       }
 
-      // Placement rule: check tile type is valid for this action
-      const TILE_TYPES = ["road", "building", "park", "empty"];
-      const tileType = TILE_TYPES.find(t => tile.classList.contains(t));
-      const validTiles = selectedAction.validTiles;
-      if (validTiles.length && (!tileType || !validTiles.includes(tileType))) {
-        const typeLabels = { road: "road tiles", building: "building tiles", empty: "empty lots", park: "park tiles" };
-        const allowed = validTiles.map(t => typeLabels[t] || t).join(" or ");
-        showTileError("Place on " + allowed + " only");
-        return;
-      }
+      // Different tile tapped while radial is open → switch immediately (no fade wait)
+      if (!radialEl.hasAttribute('hidden')) closeRadialNow();
 
-      // Don't allow overwriting an already placed tile
+      if (window.gameState?.won) return;
+      if (tile.classList.contains("blocker")) return;
       if (tile.classList.contains("tile--placed")) {
         showTileError("Tile already upgraded");
         return;
       }
-
-      placeTile(tile, selectedAction);
-      tile.classList.remove("tile--bounce");
-      void tile.offsetWidth;
-      tile.classList.add("tile--bounce");
-      tile.addEventListener("animationend", () => tile.classList.remove("tile--bounce"), { once: true });
-      const cgTile = window.cityGrid?.find(t => t.element === tile);
-      showPlacementPopup(tile, selectedAction, cgTile);
-      window.gameState.budget -= selectedAction.cost;
-
-      if (typeof window.updateMeters === "function") window.updateMeters();
-      if (typeof window.checkWinLose === "function") window.checkWinLose();
-      window.updateActionAvailability();
-
-      hideBudgetError();
-      hideTileError();
+      openRadial(tile);
     }
 
     function placeTile(tile, action) {
@@ -1855,6 +1960,149 @@
       tile.appendChild(span);
       tile.setAttribute("aria-label", `${action.action} placed`);
     }
+
+    // ── Radial fan menu ────────────────────────────────────────────────────
+    const RADIAL_ACTIONS = [
+      { action: 'bus-stop',       cost: 80,  color: '#f59e0b', emoji: '🚌', validTiles: ['road'] },
+      { action: 'bike-lane',      cost: 40,  color: '#22c55e', emoji: '🚲', validTiles: ['road'] },
+      { action: 'parking-garage', cost: 120, color: '#6366f1', emoji: '🅿️', validTiles: ['building'] },
+      { action: 'park',           cost: 60,  color: '#86efac', emoji: '🌳', validTiles: ['empty'] },
+      { action: 'road-widening',  cost: 90,  color: '#f97316', emoji: '🚧', validTiles: ['road'] },
+    ];
+
+    const radialEl       = document.getElementById('action-radial');
+    const radialBackdrop = document.getElementById('radialBackdrop');
+    const radialBtns     = Array.from(radialEl.querySelectorAll('.radial-btn'));
+    let radialTile       = null;
+
+    function radialGetPos(tileRect, containerRect, fanRadius) {
+      const BUTTON_HALF = 38, EDGE_MARGIN = 10;
+      const originX   = tileRect.left + tileRect.width / 2;
+      const originY   = tileRect.top;
+      const spaceAbove = originY - containerRect.top;
+      const flipDown  = spaceAbove < fanRadius + BUTTON_HALF;
+      const sideReach = fanRadius * 0.87;
+      const flipRight = (originX - sideReach) < containerRect.left + EDGE_MARGIN;
+      const flipLeft  = (originX + sideReach) > containerRect.right - EDGE_MARGIN;
+      return { originX, originY, flipDown, flipLeft, flipRight };
+    }
+
+    function radialGetBtnPositions(originX, originY, fanRadius, count, flipDown) {
+      const startDeg = flipDown ? 20 : -160;
+      const endDeg   = flipDown ? 160 : -20;
+      return Array.from({ length: count }, (_, i) => {
+        const t   = count === 1 ? 0.5 : i / (count - 1);
+        const deg = startDeg + t * (endDeg - startDeg);
+        const rad = deg * Math.PI / 180;
+        return { x: originX + fanRadius * Math.cos(rad), y: originY + fanRadius * Math.sin(rad) };
+      });
+    }
+
+    function openRadial(tile) {
+      const TILE_TYPES = ['road', 'building', 'park', 'empty'];
+      const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
+      const budget     = window.gameState?.budget ?? 0;
+
+      radialTile = tile;
+      tile.classList.remove('tile--radial-open');
+      void tile.offsetWidth;
+      tile.classList.add('tile--radial-open');
+      tile.addEventListener('animationend', function () { tile.classList.remove('tile--radial-open'); }, { once: true });
+
+      const gridEl    = document.getElementById('city-grid');
+      const gridRect  = gridEl.getBoundingClientRect();
+      const tileRect  = tile.getBoundingClientRect();
+      const FAN_RADIUS = 85;
+
+      const pos      = radialGetPos(tileRect, gridRect, FAN_RADIUS);
+      const btnPositions = radialGetBtnPositions(pos.originX, pos.originY, FAN_RADIUS, radialBtns.length, pos.flipDown);
+
+      radialBtns.forEach(function (btn, i) {
+        const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
+        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+
+        if (!meta || !meta.validTiles.includes(tileType)) {
+          btn.classList.add('radial-btn--wrong-tile');
+        } else if (budget < meta.cost) {
+          btn.classList.add('radial-btn--unaffordable');
+        }
+
+        btn.style.left = btnPositions[i].x + 'px';
+        btn.style.top  = btnPositions[i].y + 'px';
+      });
+
+      radialEl.removeAttribute('hidden');
+      requestAnimationFrame(function () {
+        radialBtns.forEach(function (btn, i) {
+          setTimeout(function () { btn.classList.add('radial-btn--open'); }, i * 35);
+        });
+      });
+    }
+
+    function closeRadial() {
+      radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
+      setTimeout(function () {
+        radialEl.setAttribute('hidden', '');
+        radialTile = null;
+      }, 300);
+    }
+
+    function closeRadialNow() {
+      radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
+      radialEl.setAttribute('hidden', '');
+      radialTile = null;
+    }
+
+    function doPlace(tile, meta) {
+      const budget = window.gameState?.budget ?? 0;
+      if (budget < meta.cost) { showBudgetError(); return; }
+
+      placeTile(tile, meta);
+      tile.classList.remove("tile--bounce");
+      void tile.offsetWidth;
+      tile.classList.add("tile--bounce");
+      tile.addEventListener("animationend", function () { tile.classList.remove("tile--bounce"); }, { once: true });
+      const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
+      showPlacementPopup(tile, meta, cgTile);
+      window.gameState.budget -= meta.cost;
+      if (typeof window.updateMeters    === "function") window.updateMeters();
+      if (typeof window.checkWinLose    === "function") window.checkWinLose();
+      window.updateActionAvailability();
+      hideBudgetError();
+      hideTileError();
+      // Turn pulse on meters
+      document.querySelectorAll('.hud-meter').forEach(function (m) {
+        m.classList.remove('hud-meter--pulsing');
+        void m.offsetWidth;
+        m.classList.add('hud-meter--pulsing');
+        m.addEventListener('animationend', function () { m.classList.remove('hud-meter--pulsing'); }, { once: true });
+      });
+    }
+
+    // Outside-tap closes the radial; tile taps are handled by onTileClick
+    document.addEventListener('pointerdown', function (e) {
+      if (radialEl.hasAttribute('hidden')) return;
+      if (e.target.closest('.radial-btn')) return; // button — handleRadialAction fires
+      if (e.target.closest('.tile')) return;       // tile — onTileClick fires
+      closeRadial();
+    }, { capture: true });
+
+    radialBtns.forEach(function (btn) {
+      function handleRadialAction(e) {
+        e.stopPropagation();
+        if (!radialTile) return;
+        const tile = radialTile;
+        const meta = RADIAL_ACTIONS.find(function (a) { return a.action === btn.dataset.action; });
+        if (!meta) return;
+        closeRadial();
+        doPlace(tile, meta);
+      }
+      btn.addEventListener('click', handleRadialAction);
+      btn.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        handleRadialAction(e);
+      }, { passive: false });
+    });
 
     let errorTimeout = null;
     function showBudgetError() {
@@ -1976,13 +2224,17 @@
   (function () {
     'use strict';
 
-    /* ── Grid geometry — derived from CSS custom properties ─────── */
-    const _cs   = getComputedStyle(document.documentElement);
-    const TILE  = parseInt(_cs.getPropertyValue('--tile-size'), 10) || 80;
-    const GAP   = parseInt(_cs.getPropertyValue('--grid-gap'),  10) || 4;
-    const PAD   = parseInt(_cs.getPropertyValue('--grid-pad'),  10) || 4;
-    const CELL  = TILE + GAP;
-    const GRID_PX = PAD * 2 + 10 * CELL;
+    /* ── Grid geometry — re-reads CSS custom properties each rebuild ── */
+    let TILE = 80, GAP = 4, PAD = 4, CELL = 84, GRID_PX = 848;
+    function refreshGeometry() {
+      const cs = getComputedStyle(document.documentElement);
+      TILE    = parseInt(cs.getPropertyValue('--tile-size'), 10) || 80;
+      GAP     = parseInt(cs.getPropertyValue('--grid-gap'),  10) || 4;
+      PAD     = parseInt(cs.getPropertyValue('--grid-pad'),  10) || 4;
+      CELL    = TILE + GAP;
+      GRID_PX = PAD * 2 + 10 * CELL;
+    }
+    refreshGeometry();
     function tileEdge(i) { return PAD + i * CELL; }
 
     /* ── Animation layer ────────────────────────────────────────── */
@@ -2063,13 +2315,14 @@
     function addCar(dir, lane, going, minCong = 0) {
       const el = document.createElement('span');
       el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
+      const carSize = Math.max(9, Math.round(TILE * 0.19));
       Object.assign(el.style, {
-        position: 'absolute', fontSize: '15px',
+        position: 'absolute', fontSize: carSize + 'px',
         lineHeight: '1', userSelect: 'none', willChange: 'transform',
         transition: 'filter 0.25s',
       });
 
-      const laneOff = going > 0 ? 14 : 46;
+      const laneOff = going > 0 ? Math.round(TILE * 0.175) : Math.round(TILE * 0.575);
 
       if (dir === 'h') {
         el.style.top  = (tileEdge(lane) + laneOff) + 'px';
@@ -2105,11 +2358,13 @@
         for (let p = 0; p < 3; p++) {
           const el = document.createElement('span');
           el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
+          const pedOff = Math.round(TILE * 0.2);
+          const pedSize = Math.max(9, Math.round(TILE * 0.16));
           Object.assign(el.style, {
             position: 'absolute',
-            fontSize: '13px', lineHeight: '1', userSelect: 'none',
-            top:  (tileEdge(row) + 18 + p * 18) + 'px',
-            left: (tileEdge(col) + 12 + p * 18) + 'px',
+            fontSize: pedSize + 'px', lineHeight: '1', userSelect: 'none',
+            top:  (tileEdge(row) + Math.round(TILE * 0.15) + p * pedOff) + 'px',
+            left: (tileEdge(col) + Math.round(TILE * 0.10) + p * pedOff) + 'px',
             animation: `${WANDER_NAMES[(ti + p) % 4]} ${8 + p * 3}s ease-in-out infinite`,
             animationDelay: `${-p * 2.1}s`,
           });
@@ -2122,7 +2377,8 @@
     window.spawnParkPeds = spawnParkPedsInternal;
 
     /* ── Sidewalks & pavement pedestrians ──────────────────────── */
-    const SW_W = 8;
+    function getSWW() { return Math.max(3, Math.round(TILE * 0.1)); }
+    const SW_W = 8; // legacy alias — use getSWW() inside rebuildAnimations
     const SW_EMOJI = ['🚶','🚶‍♀️','🧑','👩','👨','🧓','🧕','👷'];
     const sidewalkPeople = [];
 
@@ -2191,11 +2447,13 @@
     // Called on initial load and every time a new map is generated.
     // Derives all animation elements from map.roadRows / map.roadCols.
     window.rebuildAnimations = function rebuildAnimations(map) {
+      refreshGeometry(); // re-read --tile-size (may have changed on viewport resize)
       // Clear every animation child; reset tracking arrays
       while (layer.firstChild) layer.removeChild(layer.firstChild);
       cars.length = 0;
       sidewalkPeople.length = 0;
       parkPedEls = [];
+      const SW_W = getSWW(); // scaled sidewalk width
 
       const { roadRows, roadCols, config: cfg } = map;
       const rowSet = new Set(roadRows);
@@ -2222,13 +2480,14 @@
           const ty = tileEdge(start);
           const th = tileEdge(end) + TILE - ty;
           const n  = end - start >= 1 ? 2 : 1;
+          const swPad = Math.max(3, Math.round(TILE * 0.06));
           if (hasLeft) {
             makeSWStrip(tx, ty, SW_W, th);
-            for (let i = 0; i < n; i++) addSWPerson('v', tx + 1, ty + 5, ty + th - 14);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + 1, ty + swPad, ty + th - swPad * 2);
           }
           if (hasRight) {
             makeSWStrip(tx + TILE - SW_W, ty, SW_W, th);
-            for (let i = 0; i < n; i++) addSWPerson('v', tx + TILE - SW_W + 1, ty + 5, ty + th - 14);
+            for (let i = 0; i < n; i++) addSWPerson('v', tx + TILE - SW_W + 1, ty + swPad, ty + th - swPad * 2);
           }
         });
       });
@@ -2242,81 +2501,89 @@
           const tx = tileEdge(start);
           const tw = tileEdge(end) + TILE - tx;
           const n  = end - start >= 1 ? 2 : 1;
+          const swPadH = Math.max(3, Math.round(TILE * 0.06));
           if (hasTop) {
             makeSWStrip(tx, ty, tw, SW_W);
-            for (let i = 0; i < n; i++) addSWPerson('h', ty + 1, tx + 5, tx + tw - 14);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + 1, tx + swPadH, tx + tw - swPadH * 2);
           }
           if (hasBottom) {
             makeSWStrip(tx, ty + TILE - SW_W, tw, SW_W);
-            for (let i = 0; i < n; i++) addSWPerson('h', ty + TILE - SW_W + 1, tx + 5, tx + tw - 14);
+            for (let i = 0; i < n; i++) addSWPerson('h', ty + TILE - SW_W + 1, tx + swPadH, tx + tw - swPadH * 2);
           }
         });
       });
 
-      // ── Traffic lights at every road intersection
-      let tlIdx = 0;
-      roadRows.forEach(r => roadCols.forEach(c => {
-        const tx = tileEdge(c), ty = tileEdge(r);
-        const phase = -((tlIdx++ * 1.9) % TL_CYCLE);
-        makeTL(tx + 3,  ty + 3,  phase);
-        makeTL(tx + 64, ty + 64, phase - TL_CYCLE * 0.5);
-      }));
-
-      // ── Speed limit signs: two per road line at non-intersection tiles
+      // ── Traffic lights and signs only render at tiles ≥ 40px
       const allCols = Array.from({ length: cfg.cols }, (_, i) => i);
       const allRows = Array.from({ length: cfg.rows }, (_, i) => i);
       const nonRoadCols = allCols.filter(c => !colSet.has(c));
       const nonRoadRows = allRows.filter(r => !rowSet.has(r));
 
-      roadRows.forEach(r => {
-        const picks = nonRoadCols.length >= 4
-          ? [nonRoadCols[Math.floor(nonRoadCols.length * 0.25)], nonRoadCols[Math.floor(nonRoadCols.length * 0.75)]]
-          : nonRoadCols.slice(0, 1);
-        picks.forEach(c => {
+      if (TILE >= 40) {
+        // ── Traffic lights at every road intersection
+        const tlCorner = Math.max(0, TILE - 16);
+        let tlIdx = 0;
+        roadRows.forEach(r => roadCols.forEach(c => {
+          const tx = tileEdge(c), ty = tileEdge(r);
+          const phase = -((tlIdx++ * 1.9) % TL_CYCLE);
+          makeTL(tx + 3,        ty + 3,        phase);
+          makeTL(tx + tlCorner, ty + tlCorner,  phase - TL_CYCLE * 0.5);
+        }));
+
+        // ── Speed limit signs: two per road line at non-intersection tiles
+        roadRows.forEach(r => {
+          const picks = nonRoadCols.length >= 4
+            ? [nonRoadCols[Math.floor(nonRoadCols.length * 0.25)], nonRoadCols[Math.floor(nonRoadCols.length * 0.75)]]
+            : nonRoadCols.slice(0, 1);
+          picks.forEach(c => {
+            const s = document.createElement('div');
+            s.className = 'sign-speed'; s.textContent = '30';
+            s.style.left = (tileEdge(c) + 4) + 'px';
+            s.style.top  = (tileEdge(r) + 4) + 'px';
+            layer.appendChild(s);
+          });
+        });
+        roadCols.forEach(c => {
+          const picks = nonRoadRows.length >= 4
+            ? [nonRoadRows[Math.floor(nonRoadRows.length * 0.25)], nonRoadRows[Math.floor(nonRoadRows.length * 0.75)]]
+            : nonRoadRows.slice(0, 1);
+          picks.forEach(r => {
+            const s = document.createElement('div');
+            s.className = 'sign-speed'; s.textContent = '30';
+            s.style.left = (tileEdge(c) + 4) + 'px';
+            s.style.top  = (tileEdge(r) + 4) + 'px';
+            layer.appendChild(s);
+          });
+        });
+
+        // ── Street name signs: one per road line at its midpoint
+        const H_NAMES = ['City Ave', 'Main St', 'Park Rd', 'High St'];
+        const V_NAMES = ['Oak Lane', 'Elm Drive', 'Pine Way', 'Church Rd'];
+        const signMidV  = Math.round(TILE * 0.40);
+        const signMidH  = Math.round(TILE * 0.30);
+        const signEdgeH = Math.round(TILE * 0.10);
+
+        roadRows.forEach((r, ri) => {
+          if (nonRoadCols.length === 0) return;
+          const c = nonRoadCols[Math.floor(nonRoadCols.length / 2)];
           const s = document.createElement('div');
-          s.className = 'sign-speed'; s.textContent = '30';
-          s.style.left = (tileEdge(c) + 4) + 'px';
-          s.style.top  = (tileEdge(r) + 4) + 'px';
+          s.className = 'sign-street';
+          s.textContent = H_NAMES[ri % H_NAMES.length];
+          s.style.left = (tileEdge(c) + signMidH) + 'px';
+          s.style.top  = (tileEdge(r) + signMidV) + 'px';
           layer.appendChild(s);
         });
-      });
-      roadCols.forEach(c => {
-        const picks = nonRoadRows.length >= 4
-          ? [nonRoadRows[Math.floor(nonRoadRows.length * 0.25)], nonRoadRows[Math.floor(nonRoadRows.length * 0.75)]]
-          : nonRoadRows.slice(0, 1);
-        picks.forEach(r => {
+        roadCols.forEach((c, ci) => {
+          if (nonRoadRows.length === 0) return;
+          const r = nonRoadRows[Math.floor(nonRoadRows.length / 2)];
           const s = document.createElement('div');
-          s.className = 'sign-speed'; s.textContent = '30';
-          s.style.left = (tileEdge(c) + 4) + 'px';
-          s.style.top  = (tileEdge(r) + 4) + 'px';
+          s.className = 'sign-street';
+          s.textContent = V_NAMES[ci % V_NAMES.length];
+          s.style.left = (tileEdge(c) + signMidV) + 'px';
+          s.style.top  = (tileEdge(r) + signEdgeH) + 'px';
           layer.appendChild(s);
         });
-      });
-
-      // ── Street name signs: one per road line at its midpoint
-      const H_NAMES = ['City Ave', 'Main St', 'Park Rd', 'High St'];
-      const V_NAMES = ['Oak Lane', 'Elm Drive', 'Pine Way', 'Church Rd'];
-
-      roadRows.forEach((r, ri) => {
-        if (nonRoadCols.length === 0) return;
-        const c = nonRoadCols[Math.floor(nonRoadCols.length / 2)];
-        const s = document.createElement('div');
-        s.className = 'sign-street';
-        s.textContent = H_NAMES[ri % H_NAMES.length];
-        s.style.left = (tileEdge(c) + 8) + 'px';
-        s.style.top  = (tileEdge(r) + 32) + 'px';
-        layer.appendChild(s);
-      });
-      roadCols.forEach((c, ci) => {
-        if (nonRoadRows.length === 0) return;
-        const r = nonRoadRows[Math.floor(nonRoadRows.length / 2)];
-        const s = document.createElement('div');
-        s.className = 'sign-street';
-        s.textContent = V_NAMES[ci % V_NAMES.length];
-        s.style.left = (tileEdge(c) + 24) + 'px';
-        s.style.top  = (tileEdge(r) + 10) + 'px';
-        layer.appendChild(s);
-      });
+      }
 
       // ── Park pedestrians
       const parkTiles = [];
@@ -2535,6 +2802,15 @@
       masterGain.gain.linearRampToValueAtTime(musicOn ? 0.28 : 0, t + 1.5);
       musicBtn.textContent = musicOn ? '🔊' : '🔇';
       musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
+    });
+
+    // Rebuild animations on resize (e.g. phone rotation changes --tile-size)
+    let resizeTimer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (window.currentMap) window.rebuildAnimations(window.currentMap);
+      }, 200);
     });
 
   })();
