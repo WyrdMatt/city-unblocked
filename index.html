@@ -12,7 +12,7 @@
      * ─────────────────────────────────────────────────────────────────── */
     :root {
       /* Geometry — tile-size scales so the 10-col grid always fits the viewport */
-      --tile-size:  clamp(30px, calc((100vw - 60px) / 10), 80px);
+      --tile-size:  clamp(30px, calc((100vw - 52px) / 10), 80px);
       --grid-gap:   4px;
       --grid-pad:   4px;
 
@@ -397,7 +397,7 @@
     .tile.building::before {
       content: ''; position: absolute;
       top: var(--rh, 26%); right: 0;
-      width: 14px; bottom: 0;
+      width: calc(var(--tile-size) * 0.17); bottom: 0;
       background: linear-gradient(90deg,
         rgba(0,0,0,.20) 0%,
         rgba(0,0,0,.55) 100%
@@ -408,10 +408,10 @@
     .tile.building::after {
       content: ''; position: absolute;
       top: calc(var(--rh, 26%) + 5px);
-      left: 4px; right: 18px; bottom: 5px;
-      background-image: radial-gradient(circle, rgba(255,240,140,.85) 2.5px, transparent 2.5px);
-      background-size: 14px 14px;
-      background-position: 4px 4px;
+      left: 3px; right: calc(var(--tile-size) * 0.22); bottom: 3px;
+      background-image: radial-gradient(circle, rgba(255,240,140,.85) 2px, transparent 2px);
+      background-size: calc(var(--tile-size) * 0.175) calc(var(--tile-size) * 0.175);
+      background-position: 3px 3px;
     }
 
     /* ── Parks ───────────────────────────────────────────────────────── */
@@ -425,7 +425,7 @@
     .tile.park::after {
       content: '🌳'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 38px; line-height: 1;
+      font-size: clamp(18px, calc(var(--tile-size) * 0.72), 38px); line-height: 1;
       filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
     }
 
@@ -437,7 +437,7 @@
     .tile.empty::after {
       content: '🚧'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 26px; opacity: 0.6;
+      font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.6;
     }
 
     .tile.blocker {
@@ -452,13 +452,13 @@
     .tile.blocker::after {
       content: '⛔'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; opacity: 0.75;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 24px); opacity: 0.75;
     }
 
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
-      font-size: 2.4rem;
+      font-size: clamp(16px, calc(var(--tile-size) * 0.58), 2.4rem);
       background-color: var(--tile-placed-color) !important;
       box-shadow:
         4px 5px 0 rgba(0,0,0,.6),
@@ -568,30 +568,30 @@
       letter-spacing: 0.04em;
     }
 
-    /* ── Pedestrian wander keyframes ─────────────────────────────────── */
+    /* ── Pedestrian wander keyframes — translate values scale with tile size ── */
     @keyframes wander-0 {
       0%   { transform: translate(0,0) }
-      25%  { transform: translate(12px,6px) }
-      55%  { transform: translate(4px,16px) }
-      80%  { transform: translate(-9px,7px) }
+      25%  { transform: translate(calc(var(--tile-size)*0.15), calc(var(--tile-size)*0.075)) }
+      55%  { transform: translate(calc(var(--tile-size)*0.05), calc(var(--tile-size)*0.20)) }
+      80%  { transform: translate(calc(var(--tile-size)*-0.11), calc(var(--tile-size)*0.09)) }
       100% { transform: translate(0,0) }
     }
     @keyframes wander-1 {
       0%   { transform: translate(0,0) }
-      30%  { transform: translate(-10px,9px) }
-      65%  { transform: translate(8px,14px) }
+      30%  { transform: translate(calc(var(--tile-size)*-0.125), calc(var(--tile-size)*0.11)) }
+      65%  { transform: translate(calc(var(--tile-size)*0.10), calc(var(--tile-size)*0.175)) }
       100% { transform: translate(0,0) }
     }
     @keyframes wander-2 {
       0%   { transform: translate(0,0) }
-      40%  { transform: translate(13px,-6px) }
-      72%  { transform: translate(-5px,10px) }
+      40%  { transform: translate(calc(var(--tile-size)*0.16), calc(var(--tile-size)*-0.075)) }
+      72%  { transform: translate(calc(var(--tile-size)*-0.06), calc(var(--tile-size)*0.125)) }
       100% { transform: translate(0,0) }
     }
     @keyframes wander-3 {
       0%   { transform: translate(0,0) }
-      35%  { transform: translate(-8px,-9px) }
-      68%  { transform: translate(10px,5px) }
+      35%  { transform: translate(calc(var(--tile-size)*-0.10), calc(var(--tile-size)*-0.11)) }
+      68%  { transform: translate(calc(var(--tile-size)*0.125), calc(var(--tile-size)*0.06)) }
       100% { transform: translate(0,0) }
     }
 
@@ -828,18 +828,43 @@
       pointer-events: none;
     }
 
+    /* ── Mobile reset button (hidden on desktop) ─────────────────────── */
+    .hud__reset-mobile {
+      display: none;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px;
+      color: var(--c-text-faint);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__reset-mobile:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text-muted); }
+
     /* ── Mobile layout (≤ 640px) ──────────────────────────────────────────── */
     @media (max-width: 640px) {
       /* Game area: single column, minimal padding so grid fills the screen */
       #game-area {
         flex-direction: column;
         align-items: center;
-        padding: 8px 4px 16px;
-        gap: 8px;
+        padding: 6px 2px 12px;
+        gap: 6px;
       }
+
+      /* Grid: full rounded corners when action panel is hidden */
+      #city-grid { border-radius: 12px; }
+
+      /* Hide info bar and legend on mobile — not useful at small sizes */
+      #info-bar, #legend { display: none; }
 
       /* Action panel hidden on mobile — radial menu replaces it */
       .actions-panel { display: none; }
+
+      /* Mobile reset button visible */
+      .hud__reset-mobile { display: flex; align-items: center; }
 
       /* HUD: two-row compact layout */
       .hud {
@@ -971,6 +996,7 @@
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
+    <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
   </header>
 
   <!-- ── Win overlay ──────────────────────────────────────────────────── -->
@@ -1324,6 +1350,7 @@
     }
     document.getElementById("winRestart")?.addEventListener("click", onRestart);
     document.getElementById("gameOverRestart")?.addEventListener("click", onRestart);
+    document.getElementById("hudReset")?.addEventListener("click", onRestart);
 
     setInterval(window.refreshHUD, 500);
     if (document.readyState === "loading") {
@@ -1903,10 +1930,7 @@
     const actionsList = document.getElementById("actionsList");
     const budgetError = document.getElementById("budgetError");
 
-    if (!panel || !actionsList || !budgetError) {
-      console.warn("[actions-panel] Required DOM elements not found.");
-      return;
-    }
+    if (!panel || !actionsList || !budgetError) return;
 
     // Action panel is reference-only — clicking buttons does nothing.
     // Placement is triggered by tapping a tile (radial menu).
@@ -1914,7 +1938,7 @@
     // Bridge fix: use the DOM element directly (window.cityGrid is the tile array)
     function attachGridListener() {
       const grid = document.getElementById("city-grid");
-      if (!grid) { console.warn("[actions-panel] #city-grid not found."); return; }
+      if (!grid) return;
       grid.addEventListener("click", onTileClick);
       // On touch devices, fire immediately on touchend to avoid the 300ms click delay.
       // preventDefault stops the subsequent synthetic click from firing twice.
@@ -1974,34 +1998,58 @@
     const radialBackdrop = document.getElementById('radialBackdrop');
     const radialBtns     = Array.from(radialEl.querySelectorAll('.radial-btn'));
     let radialTile       = null;
-
-    function radialGetPos(tileRect, containerRect, fanRadius) {
-      const BUTTON_HALF = 30, EDGE_MARGIN = 10;
-      const originX   = tileRect.left + tileRect.width / 2;
-      const originY   = tileRect.top;
-      const spaceAbove = originY - containerRect.top;
-      const flipDown  = spaceAbove < fanRadius + BUTTON_HALF;
-      const sideReach = fanRadius * 0.985;
-      const flipRight = (originX - sideReach) < containerRect.left + EDGE_MARGIN;
-      const flipLeft  = (originX + sideReach) > containerRect.right - EDGE_MARGIN;
-      return { originX, originY, flipDown, flipLeft, flipRight };
-    }
+    let radialCloseTimer = null;
 
     function radialGetBtnPositions(originX, originY, fanRadius, count, flipDown) {
       const startDeg = flipDown ? 10 : -170;
       const endDeg   = flipDown ? 170 : -10;
-      return Array.from({ length: count }, (_, i) => {
+      const positions = Array.from({ length: count }, (_, i) => {
         const t   = count === 1 ? 0.5 : i / (count - 1);
         const deg = startDeg + t * (endDeg - startDeg);
         const rad = deg * Math.PI / 180;
         return { x: originX + fanRadius * Math.cos(rad), y: originY + fanRadius * Math.sin(rad) };
       });
+
+      // Clamp horizontally so no button goes off the viewport edge
+      const HALF_W = 34, MARGIN = 8;
+      const vpW  = window.innerWidth;
+      const minX = positions.reduce((m, p) => Math.min(m, p.x), Infinity)  - HALF_W;
+      const maxX = positions.reduce((m, p) => Math.max(m, p.x), -Infinity) + HALF_W;
+      let shift = 0;
+      if (minX < MARGIN)           shift = MARGIN - minX;
+      else if (maxX > vpW - MARGIN) shift = (vpW - MARGIN) - maxX;
+
+      return positions.map(p => ({ x: p.x + shift, y: p.y }));
     }
 
     function openRadial(tile) {
+      clearTimeout(radialCloseTimer);
+      radialCloseTimer = null;
+
       const TILE_TYPES = ['road', 'building', 'park', 'empty'];
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
       const budget     = window.gameState?.budget ?? 0;
+
+      // Show only buttons valid for this tile type; hide the rest entirely
+      const visibleBtns = [];
+      radialBtns.forEach(function (btn) {
+        const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
+        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+
+        if (!meta || !meta.validTiles.includes(tileType)) {
+          btn.style.display = 'none';
+        } else {
+          btn.style.display = '';
+          if (budget < meta.cost) btn.classList.add('radial-btn--unaffordable');
+          visibleBtns.push(btn);
+        }
+      });
+
+      // Nothing to show for this tile type (e.g. a pre-placed park)
+      if (visibleBtns.length === 0) {
+        showTileError("No actions for this tile type");
+        return;
+      }
 
       radialTile = tile;
       tile.classList.remove('tile--radial-open');
@@ -2009,46 +2057,51 @@
       tile.classList.add('tile--radial-open');
       tile.addEventListener('animationend', function () { tile.classList.remove('tile--radial-open'); }, { once: true });
 
-      const gridEl    = document.getElementById('city-grid');
-      const gridRect  = gridEl.getBoundingClientRect();
       const tileRect  = tile.getBoundingClientRect();
       const FAN_RADIUS = 130;
+      const originX   = tileRect.left + tileRect.width / 2;
+      const originY   = tileRect.top;
 
-      const pos      = radialGetPos(tileRect, gridRect, FAN_RADIUS);
-      const btnPositions = radialGetBtnPositions(pos.originX, pos.originY, FAN_RADIUS, radialBtns.length, pos.flipDown);
+      // Flip fan downward if tile is too close to the top of the viewport
+      const BUTTON_H  = 38;
+      const flipDown  = originY < FAN_RADIUS + BUTTON_H;
 
-      radialBtns.forEach(function (btn, i) {
-        const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
-        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+      const positions = radialGetBtnPositions(originX, originY, FAN_RADIUS, visibleBtns.length, flipDown);
 
-        if (!meta || !meta.validTiles.includes(tileType)) {
-          btn.classList.add('radial-btn--wrong-tile');
-        } else if (budget < meta.cost) {
-          btn.classList.add('radial-btn--unaffordable');
-        }
-
-        btn.style.left = btnPositions[i].x + 'px';
-        btn.style.top  = btnPositions[i].y + 'px';
+      visibleBtns.forEach(function (btn, i) {
+        btn.style.left = positions[i].x + 'px';
+        btn.style.top  = positions[i].y + 'px';
       });
 
       radialEl.removeAttribute('hidden');
       requestAnimationFrame(function () {
-        radialBtns.forEach(function (btn, i) {
-          setTimeout(function () { btn.classList.add('radial-btn--open'); }, i * 35);
+        visibleBtns.forEach(function (btn, i) {
+          setTimeout(function () { btn.classList.add('radial-btn--open'); }, i * 40);
         });
+      });
+    }
+
+    function _resetBtns() {
+      radialBtns.forEach(function (btn) {
+        btn.classList.remove('radial-btn--open');
+        btn.style.display = '';
       });
     }
 
     function closeRadial() {
       radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
-      setTimeout(function () {
+      radialCloseTimer = setTimeout(function () {
         radialEl.setAttribute('hidden', '');
+        _resetBtns();
         radialTile = null;
+        radialCloseTimer = null;
       }, 300);
     }
 
     function closeRadialNow() {
-      radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
+      clearTimeout(radialCloseTimer);
+      radialCloseTimer = null;
+      _resetBtns();
       radialEl.setAttribute('hidden', '');
       radialTile = null;
     }
@@ -2319,7 +2372,7 @@
     function addCar(dir, lane, going, minCong = 0) {
       const el = document.createElement('span');
       el.textContent = CAR_EMOJI[Math.floor(Math.random() * CAR_EMOJI.length)];
-      const carSize = Math.max(9, Math.round(TILE * 0.19));
+      const carSize = Math.max(11, Math.round(TILE * 0.28));
       Object.assign(el.style, {
         position: 'absolute', fontSize: carSize + 'px',
         lineHeight: '1', userSelect: 'none', willChange: 'transform',
@@ -2363,7 +2416,7 @@
           const el = document.createElement('span');
           el.textContent = PERSON_EMOJI[(ti * 3 + p) % PERSON_EMOJI.length];
           const pedOff = Math.round(TILE * 0.2);
-          const pedSize = Math.max(9, Math.round(TILE * 0.16));
+          const pedSize = Math.max(10, Math.round(TILE * 0.22));
           Object.assign(el.style, {
             position: 'absolute',
             fontSize: pedSize + 'px', lineHeight: '1', userSelect: 'none',
@@ -2396,8 +2449,9 @@
     function addSWPerson(axis, fixed, min, max) {
       const el = document.createElement('span');
       el.textContent = SW_EMOJI[Math.floor(Math.random() * SW_EMOJI.length)];
+      const swPersonSize = Math.max(8, Math.round(TILE * 0.18)) + 'px';
       Object.assign(el.style, {
-        position:'absolute', fontSize:'10px', lineHeight:'1',
+        position:'absolute', fontSize: swPersonSize, lineHeight:'1',
         userSelect:'none', zIndex:'5',
       });
       const pos = min + Math.random() * (max - min);
