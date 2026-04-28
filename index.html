@@ -157,6 +157,15 @@
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
+    .reset-btn {
+      margin-top: auto; padding: 0.55rem 0; width: 100%;
+      background: transparent; border: 1px solid #334155;
+      border-radius: 8px; color: #64748b; font-family: inherit;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .reset-btn:hover { border-color: #94a3b8; color: #e2e8f0; }
+
     /* Placed tile overlay (applied by actions-panel.js) */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -169,49 +178,98 @@
     /* ── city-map styles ─────────────────────────────────────────────── */
     #city-grid {
       display: grid;
-      grid-template-columns: repeat(10, 56px);
-      grid-template-rows: repeat(10, 56px);
-      gap: 3px;
-      background: #111;
-      padding: 3px;
-      border: 2px solid #333;
+      grid-template-columns: repeat(10, 70px);
+      grid-template-rows: repeat(10, 70px);
+      gap: 2px;
+      background: #0a0a0c;
+      padding: 2px;
+      border: 2px solid #222;
       border-radius: 12px 0 0 12px;
     }
     .tile {
-      width: 56px; height: 56px; cursor: pointer;
+      width: 70px; height: 70px; cursor: pointer;
       border: 3px solid transparent;
       transition: border-color 0.1s, filter 0.1s;
       position: relative;
+      overflow: hidden;
     }
-    .tile:hover { filter: brightness(1.2); }
+    .tile:hover { filter: brightness(1.15); }
     .tile.selected { border-color: #f1c40f; z-index: 1; }
-    .tile.road     { background: #c0392b; }
-    .tile.building { background: #7f8c8d; }
-    .tile.park     { background: #27ae60; }
-    .tile.empty    { background: #d4b896; }
-    .tile.road::after {
-      content: ''; position: absolute; inset: 0;
-      background:
-        linear-gradient(transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%),
-        linear-gradient(90deg, transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%);
+
+    /* Roads — dark asphalt base; congestion colour applied via JS */
+    .tile.road { background: #252830; }
+
+    /* Horizontal road markings */
+    .tile.road[data-road-dir="h"]::after {
+      content: ''; position: absolute;
+      top: 50%; left: 4px; right: 4px; height: 2px;
+      transform: translateY(-50%);
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(255,220,60,0.7) 0px, rgba(255,220,60,0.7) 10px,
+        transparent 10px, transparent 20px
+      );
+    }
+    /* Vertical road markings */
+    .tile.road[data-road-dir="v"]::after {
+      content: ''; position: absolute;
+      left: 50%; top: 4px; bottom: 4px; width: 2px;
+      transform: translateX(-50%);
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255,220,60,0.7) 0px, rgba(255,220,60,0.7) 10px,
+        transparent 10px, transparent 20px
+      );
+    }
+    /* Intersection — crosshatch + centre dot */
+    .tile.road[data-road-dir="x"]::before {
+      content: ''; position: absolute;
+      top: 50%; left: 4px; right: 4px; height: 2px;
+      transform: translateY(-50%);
+      background: rgba(255,220,60,0.35);
+    }
+    .tile.road[data-road-dir="x"]::after {
+      content: ''; position: absolute;
+      left: 50%; top: 4px; bottom: 4px; width: 2px;
+      transform: translateX(-50%);
+      background: rgba(255,220,60,0.35);
+    }
+
+    /* Buildings — slate with tiled window dots */
+    .tile.building {
+      background: #4a5568;
+      background-image: linear-gradient(160deg, #596070 0%, #404a5a 100%);
     }
     .tile.building::after {
-      content: ''; position: absolute; inset: 8px;
-      background-image:
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
-        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px);
-      background-size: 14px 14px;
-      background-position: 2px 2px, 16px 2px, 2px 16px, 16px 16px;
-      background-repeat: no-repeat;
+      content: ''; position: absolute; inset: 6px;
+      background-image: radial-gradient(circle, rgba(255,255,200,0.55) 2.5px, transparent 2.5px);
+      background-size: 16px 16px;
+      background-position: 4px 4px;
+    }
+
+    /* Parks — rich green with tree */
+    .tile.park {
+      background: #166534;
+      background-image: radial-gradient(ellipse at 40% 35%, #22c55e 0%, #166534 70%);
     }
     .tile.park::after {
       content: '🌳'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; line-height: 1;
+      font-size: 30px; line-height: 1;
     }
+
+    /* Empty — sandy lot */
+    .tile.empty {
+      background: #c9a96e;
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent, transparent 6px,
+        rgba(0,0,0,0.06) 6px, rgba(0,0,0,0.06) 7px
+      );
+    }
+
     /* Suppress ::after on placed tiles so the emoji shows cleanly */
+    .tile--placed::before,
     .tile--placed::after { display: none; }
 
     #info-bar { font-size: 13px; color: #aaa; height: 20px; }
@@ -349,6 +407,7 @@
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
       </p>
+      <button class="reset-btn" id="resetBtn" type="button">↺ Reset</button>
     </aside>
 
   </div><!-- #game-area -->
@@ -576,12 +635,23 @@
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
 
+    // Detect road orientation so CSS can draw correct lane markings
+    function roadDir(r, c) {
+      const up    = r > 0 && LAYOUT[r-1][c] === 'R';
+      const down  = r < LAYOUT.length - 1 && LAYOUT[r+1][c] === 'R';
+      const left  = c > 0 && LAYOUT[r][c-1] === 'R';
+      const right = c < LAYOUT[r].length - 1 && LAYOUT[r][c+1] === 'R';
+      const h = left || right, v = up || down;
+      return (h && v) ? 'x' : v ? 'v' : 'h';
+    }
+
     LAYOUT.forEach((row, r) => {
       row.forEach((code, c) => {
         const type = TYPE_MAP[code];
         const el = document.createElement('div');
         el.className = `tile ${type}`;
         el.title = `(${r}, ${c})`;
+        if (type === 'road') el.dataset.roadDir = roadDir(r, c);
 
         const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
 
@@ -607,9 +677,21 @@
       const wasPlaced   = el.classList.contains('tile--placed');
       el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
       if (tile.type === 'road') {
-        const r = Math.round(40 + 152 * tile.congestion);
-        const g = Math.round(174 - 174 * tile.congestion);
-        el.style.background = `rgb(${r},${g},27)`;
+        // dark asphalt (0) → amber (0.5) → red (1.0)
+        const c = tile.congestion;
+        let r, g, b;
+        if (c < 0.5) {
+          const t = c * 2;
+          r = Math.round(37  + 200 * t);
+          g = Math.round(40  + 120 * t);
+          b = Math.round(48  -  20 * t);
+        } else {
+          const t = (c - 0.5) * 2;
+          r = Math.round(237 +  18 * t);
+          g = Math.round(160 - 160 * t);
+          b = Math.round(28  -  28 * t);
+        }
+        el.style.background = `rgb(${r},${g},${b})`;
       } else {
         el.style.background = '';
       }
@@ -727,6 +809,10 @@
     }
 
     attachGridListener();
+
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      if (typeof window.restartGame === "function") window.restartGame();
+    });
   })();
   </script>
 
