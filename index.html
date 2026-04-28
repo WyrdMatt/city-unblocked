@@ -661,6 +661,16 @@
     /* ── Win screen star rating ───────────────────────────────────── */
     .overlay__stars { font-size: 2.2rem; line-height: 1; letter-spacing: 0.1em; user-select: none; }
     .overlay__rating-label { margin: 0; font-size: 0.72rem; color: var(--c-text-label); text-transform: uppercase; letter-spacing: 0.1em; }
+    .overlay__context { display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; }
+    .ctx-badge {
+      padding: 0.18rem 0.6rem; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      background: rgba(255,255,255,0.06); color: var(--c-text-muted);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ctx-badge--easy   { color: #4ade80; border-color: rgba(74,222,128,0.3);  }
+    .ctx-badge--normal { color: #60a5fa; border-color: rgba(96,165,250,0.3);  }
+    .ctx-badge--hard   { color: #f87171; border-color: rgba(248,113,113,0.3); }
 
     /* ── Weather badge ───────────────────────────────────────────── */
     .hud__weather {
@@ -850,6 +860,7 @@
         <span>🚗 Congestion: <strong id="winCongestion">—</strong></span>
         <span>💰 Budget left: <strong id="winBudget">—</strong></span>
       </p>
+      <div class="overlay__context" id="winContext" aria-label="Game context"></div>
       <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
     </div>
   </div>
@@ -861,6 +872,7 @@
       <div class="overlay__icon" aria-hidden="true" id="gameOverIcon">💸</div>
       <h2 class="overlay__title" id="gameOverTitle">Budget Depleted</h2>
       <p class="overlay__body" id="gameOverBody">The city ran out of funds.</p>
+      <div class="overlay__context" id="gameOverContext" aria-label="Game context"></div>
       <div class="overlay__built">
         <p class="overlay__built-heading">What you built:</p>
         <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
@@ -1056,6 +1068,16 @@
     // Stub — game-state.js overrides this with the full recalculation version
     window.updateMeters = window.refreshHUD;
 
+    function buildContextBadges() {
+      const diff    = window.currentDifficulty || 'normal';
+      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard' };
+      const weather = window.currentWeather || 'sunny';
+      const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const wMeta   = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      return `<span class="ctx-badge ctx-badge--${diff}">${diffLabels[diff] || diff}</span>` +
+             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>`;
+    }
+
     window.showWinScreen = function showWinScreen() {
       const gs = window.gameState ?? {};
       if (winTurns)      winTurns.textContent      = gs.turn ?? "—";
@@ -1070,6 +1092,9 @@
       const labelEl = document.getElementById("winRatingLabel");
       if (starsEl) starsEl.textContent = "⭐".repeat(stars) + "☆".repeat(3 - stars);
       if (labelEl) labelEl.textContent = starLabels[stars - 1];
+
+      const winContext = document.getElementById("winContext");
+      if (winContext) winContext.innerHTML = buildContextBadges();
 
       winOverlay.removeAttribute("hidden");
       document.getElementById("winRestart")?.focus();
@@ -1116,6 +1141,9 @@
           });
         }
       }
+      const gameOverContext = document.getElementById("gameOverContext");
+      if (gameOverContext) gameOverContext.innerHTML = buildContextBadges();
+
       gameOverOverlay.removeAttribute("hidden");
       document.getElementById("gameOverRestart")?.focus();
     };
