@@ -1998,34 +1998,58 @@
     const radialBackdrop = document.getElementById('radialBackdrop');
     const radialBtns     = Array.from(radialEl.querySelectorAll('.radial-btn'));
     let radialTile       = null;
-
-    function radialGetPos(tileRect, containerRect, fanRadius) {
-      const BUTTON_HALF = 30, EDGE_MARGIN = 10;
-      const originX   = tileRect.left + tileRect.width / 2;
-      const originY   = tileRect.top;
-      const spaceAbove = originY - containerRect.top;
-      const flipDown  = spaceAbove < fanRadius + BUTTON_HALF;
-      const sideReach = fanRadius * 0.985;
-      const flipRight = (originX - sideReach) < containerRect.left + EDGE_MARGIN;
-      const flipLeft  = (originX + sideReach) > containerRect.right - EDGE_MARGIN;
-      return { originX, originY, flipDown, flipLeft, flipRight };
-    }
+    let radialCloseTimer = null;
 
     function radialGetBtnPositions(originX, originY, fanRadius, count, flipDown) {
       const startDeg = flipDown ? 10 : -170;
       const endDeg   = flipDown ? 170 : -10;
-      return Array.from({ length: count }, (_, i) => {
+      const positions = Array.from({ length: count }, (_, i) => {
         const t   = count === 1 ? 0.5 : i / (count - 1);
         const deg = startDeg + t * (endDeg - startDeg);
         const rad = deg * Math.PI / 180;
         return { x: originX + fanRadius * Math.cos(rad), y: originY + fanRadius * Math.sin(rad) };
       });
+
+      // Clamp horizontally so no button goes off the viewport edge
+      const HALF_W = 34, MARGIN = 8;
+      const vpW  = window.innerWidth;
+      const minX = positions.reduce((m, p) => Math.min(m, p.x), Infinity)  - HALF_W;
+      const maxX = positions.reduce((m, p) => Math.max(m, p.x), -Infinity) + HALF_W;
+      let shift = 0;
+      if (minX < MARGIN)           shift = MARGIN - minX;
+      else if (maxX > vpW - MARGIN) shift = (vpW - MARGIN) - maxX;
+
+      return positions.map(p => ({ x: p.x + shift, y: p.y }));
     }
 
     function openRadial(tile) {
+      clearTimeout(radialCloseTimer);
+      radialCloseTimer = null;
+
       const TILE_TYPES = ['road', 'building', 'park', 'empty'];
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
       const budget     = window.gameState?.budget ?? 0;
+
+      // Show only buttons valid for this tile type; hide the rest entirely
+      const visibleBtns = [];
+      radialBtns.forEach(function (btn) {
+        const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
+        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+
+        if (!meta || !meta.validTiles.includes(tileType)) {
+          btn.style.display = 'none';
+        } else {
+          btn.style.display = '';
+          if (budget < meta.cost) btn.classList.add('radial-btn--unaffordable');
+          visibleBtns.push(btn);
+        }
+      });
+
+      // Nothing to show for this tile type (e.g. a pre-placed park)
+      if (visibleBtns.length === 0) {
+        showTileError("No actions for this tile type");
+        return;
+      }
 
       radialTile = tile;
       tile.classList.remove('tile--radial-open');
@@ -2033,46 +2057,51 @@
       tile.classList.add('tile--radial-open');
       tile.addEventListener('animationend', function () { tile.classList.remove('tile--radial-open'); }, { once: true });
 
-      const gridEl    = document.getElementById('city-grid');
-      const gridRect  = gridEl.getBoundingClientRect();
       const tileRect  = tile.getBoundingClientRect();
       const FAN_RADIUS = 130;
+      const originX   = tileRect.left + tileRect.width / 2;
+      const originY   = tileRect.top;
 
-      const pos      = radialGetPos(tileRect, gridRect, FAN_RADIUS);
-      const btnPositions = radialGetBtnPositions(pos.originX, pos.originY, FAN_RADIUS, radialBtns.length, pos.flipDown);
+      // Flip fan downward if tile is too close to the top of the viewport
+      const BUTTON_H  = 38;
+      const flipDown  = originY < FAN_RADIUS + BUTTON_H;
 
-      radialBtns.forEach(function (btn, i) {
-        const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
-        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+      const positions = radialGetBtnPositions(originX, originY, FAN_RADIUS, visibleBtns.length, flipDown);
 
-        if (!meta || !meta.validTiles.includes(tileType)) {
-          btn.classList.add('radial-btn--wrong-tile');
-        } else if (budget < meta.cost) {
-          btn.classList.add('radial-btn--unaffordable');
-        }
-
-        btn.style.left = btnPositions[i].x + 'px';
-        btn.style.top  = btnPositions[i].y + 'px';
+      visibleBtns.forEach(function (btn, i) {
+        btn.style.left = positions[i].x + 'px';
+        btn.style.top  = positions[i].y + 'px';
       });
 
       radialEl.removeAttribute('hidden');
       requestAnimationFrame(function () {
-        radialBtns.forEach(function (btn, i) {
-          setTimeout(function () { btn.classList.add('radial-btn--open'); }, i * 35);
+        visibleBtns.forEach(function (btn, i) {
+          setTimeout(function () { btn.classList.add('radial-btn--open'); }, i * 40);
         });
+      });
+    }
+
+    function _resetBtns() {
+      radialBtns.forEach(function (btn) {
+        btn.classList.remove('radial-btn--open');
+        btn.style.display = '';
       });
     }
 
     function closeRadial() {
       radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
-      setTimeout(function () {
+      radialCloseTimer = setTimeout(function () {
         radialEl.setAttribute('hidden', '');
+        _resetBtns();
         radialTile = null;
+        radialCloseTimer = null;
       }, 300);
     }
 
     function closeRadialNow() {
-      radialBtns.forEach(function (btn) { btn.classList.remove('radial-btn--open'); });
+      clearTimeout(radialCloseTimer);
+      radialCloseTimer = null;
+      _resetBtns();
       radialEl.setAttribute('hidden', '');
       radialTile = null;
     }
