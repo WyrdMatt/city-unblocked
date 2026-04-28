@@ -4,21 +4,30 @@ Context for AI sessions working on this project.
 
 ## Project overview
 
-Single-file browser game. All code lives in `index.html` — no build step, no bundler, no npm. Separate source files (`hud.js`, `game-state.js`, `actions-panel.js`, etc.) exist for historical reference but are **not used at runtime**; the canonical source is `index.html`.
+Browser game — city planning puzzle. Works on both desktop and mobile. The canonical source is `index.html` (CSS + HTML + JS). Pure logic extracted into `src/` is tested via Vitest.
 
-Run locally with `npx serve .` — open http://localhost:8080.
+Run locally: `npm run dev` → http://localhost:5173
 
 ## File structure
 
 ```
-index.html          ← entire game (CSS + HTML + 6 JS blocks)
-game-state.js       ← legacy reference copy (not loaded at runtime)
-hud.js / hud.css    ← legacy reference copies
-actions-panel.js / .css / .html  ← legacy reference copies
-city-map.html       ← legacy reference copy
-README.md           ← player-facing documentation
-CLAUDE.md           ← this file
+index.html              ← entire game (CSS + HTML + 6 JS blocks)
+src/
+  game-logic.js         ← pure game logic (ES module, tested)
+  radial-logic.js       ← radial menu pure logic (ES module, tested)
+tests/
+  effects.test.js       ← calculateEffects, checkWinCondition
+  balance.test.js       ← balance simulations
+  mapgen.test.js        ← map generation fuzzing (5000 seeds)
+  radial.test.js        ← ACTIONS, getValidActions, getRadialPosition, getButtonPositions
+.claude/commands/
+  sync-check.md         ← /sync-check skill: flags value drift between index.html and src/
+  mobile-audit.md       ← /mobile-audit skill: checks mobile-readiness of index.html
+README.md               ← player-facing docs
+CLAUDE.md               ← this file
 ```
+
+Legacy reference copies (`game-state.js`, `hud.js`, `actions-panel.js`, etc.) are not used at runtime.
 
 ## Script block load order (inside index.html)
 
@@ -26,7 +35,7 @@ CLAUDE.md           ← this file
 2. **game-state** — `window.gameState`, `updateMeters()`, `checkWinLose()`, `restartGame()`
 3. **mapgen** — `generateMap()`, `validateMap()`, `window.MAP_CONFIG`; exposes seeded PRNG
 4. **city-map** — `buildCityGrid(layout)`, tile click listener, road-direction helper
-5. **actions-panel** — button selection, tile placement, popup floaters, `updateActionAvailability()`
+5. **actions-panel** — radial fan menu, tile placement, popup floaters, `updateActionAvailability()`
 6. **animations** — `requestAnimationFrame` loop for cars/pedestrians, `spawnParkPeds(parkTiles)`
 
 Each block depends on the ones above it. Do not reorder.
@@ -37,14 +46,15 @@ Each block depends on the ones above it. Do not reorder.
 |---|---|---|
 | `window.gameState` | game-state | `{ congestion, happiness, budget, turn, won }` |
 | `window.cityGrid` | city-map | `Array<{ row, col, type, congestion, element }>` |
-| `window.currentMap` | city-map | `{ seed: number, grid: string[][] }` |
-| `window.MAP_CONFIG` | mapgen | `{ rows, cols, roadSpacing, emptyRate, parkCount }` |
+| `window.currentMap` | city-map | `{ seed, grid, roadRows, roadCols, config }` |
+| `window.MAP_CONFIG` | mapgen | `{ rows, cols, minRoads, maxRoads, emptyRate, parkCount }` |
 | `window.refreshHUD` | hud | updates all meter DOM elements |
 | `window.refreshTile` | city-map | redraws one road tile's congestion colour |
 | `window.buildCityGrid` | city-map | tears down tiles, rebuilds from a layout grid |
-| `window.generateMap` | mapgen | returns `{ seed, grid }` |
+| `window.generateMap` | mapgen | returns `{ seed, grid, roadRows, roadCols, config }` |
 | `window.spawnParkPeds` | animations | spawns wandering pedestrians at park tile coords |
-| `window.updateActionAvailability` | actions-panel | updates button disabled state and live effect values |
+| `window.rebuildAnimations` | animations | clears + rebuilds all animation elements from a map |
+| `window.updateActionAvailability` | actions-panel | refreshes live effect values in reference panel |
 
 ## Game constants (game-state block)
 
@@ -57,8 +67,32 @@ EFFECTS = {
   "bike-lane":      { congestion:  -6, happiness: +8  },
   "parking-garage": { congestion:  -8, happiness: +4  },
   "park":           { congestion:  -4, happiness: +12 },
+  "road-widening":  { congestion: -12, happiness: +3  },
 }
 ```
+
+## Interaction model (desktop + mobile)
+
+**Radial fan menu** — the only way to place actions:
+1. Tap/click any unplaced tile → a fan of 5 action buttons springs open above the finger
+2. Tap a button → action placed, radial closes
+3. Tap the same tile again → radial closes (toggle)
+4. Tap a different tile → radial switches immediately to new tile
+5. Tap anywhere else (empty space) → radial closes
+
+Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unaffordable (greyed, 50%). Invalid buttons cannot be tapped.
+
+**Actions panel** (desktop sidebar) is **read-only reference** — shows costs and live effect values but has no click handlers. Hidden on mobile (≤640px).
+
+## Actions
+
+| Key | Emoji | Label | Cost | Valid tile |
+|---|---|---|---|---|
+| `bus-stop` | 🚌 | Bus Stop | £80 | road |
+| `bike-lane` | 🚲 | Bike Lane | £40 | road |
+| `parking-garage` | 🅿️ | Parking | £120 | building |
+| `park` | 🌳 | Park | £60 | empty |
+| `road-widening` | 🚧 | Road Widening | £90 | road |
 
 ## Mechanics
 
@@ -68,31 +102,36 @@ EFFECTS = {
 - Park next to building tile: +3 happiness per neighbour
 - Bus stop next to building tile: –2 congestion per neighbour
 
-**Placement rules (data attributes on buttons):**
-- `data-valid-tiles="road"` → bus stop, parking garage
-- `data-valid-tiles="empty"` → bike lane, park
-
 **Goal markers** sit at `left: 70%` (happiness bar) and `left: 30%` (congestion bar) — these match WIN_HAPPINESS / WIN_CONGESTION exactly.
+
+## Mobile support
+
+- `--tile-size: clamp(30px, calc((100vw - 60px) / 10), 80px)` — grid fills any viewport width
+- At ≤640px: action panel hidden, HUD compressed to 2 rows, `#game-area` padding reduced
+- No minimum screen-size blocker; game works on all devices
+- Animation geometry re-reads `--tile-size` on every `rebuildAnimations()` call and on window resize
 
 ## Map generation
 
-`generateMap(userConfig?)` merges `userConfig` into `MAP_CONFIG`, seeds mulberry32 with `Date.now()`, then:
-1. Lays a road skeleton on every `roadSpacing`-th row and column
-2. Fills non-road cells with buildings
-3. Randomly converts `emptyRate` fraction of building cells to empty lots
-4. Places `parkCount` parks on empty cells
+`generateMap(userConfig?)` merges `userConfig` into `MAP_CONFIG`, seeds mulberry32, then:
+1. Picks 2–3 road rows and 2–3 road columns with minimum block gaps
+2. Fills non-road cells with buildings (B)
+3. Randomly converts `emptyRate` fraction of building cells adjacent to buildings to empty lots (E)
+4. Places `parkCount` parks (P) on high-adjacency building cells
 
 `validateMap(grid, cfg)` can be called from the browser console to assert counts.
 
-The seed is shown in `#info-bar` below the map for reproduction. `restartGame()` calls `generateMap()` to produce a new map on every reset.
+The seed is shown in `#info-bar` below the map. `restartGame()` generates a new map.
 
 ## Animation layer
 
-`#city-grid` contains `.tile` elements AND an absolutely-positioned animation layer. When rebuilding the grid, always use:
+`#city-grid` contains `.tile` elements AND absolutely-positioned animation + weather layers. When rebuilding the grid, always use:
 ```js
 gridEl.querySelectorAll('.tile').forEach(el => el.remove())
 ```
-**Never** use `innerHTML = ''` — it destroys the animation layer.
+**Never** use `innerHTML = ''` — it destroys the animation layers.
+
+Tiles animate in with a diagonal stagger (`animation-delay: (row+col)*15ms`) on each `buildCityGrid` call.
 
 ## HUD star rating (win screen)
 
@@ -105,12 +144,26 @@ Calculated in `showWinScreen()` from budget remaining:
 
 **Always run tests before committing:**
 ```
-node run-tests.js
+npm test
 ```
-All three suites must pass (0 failures) before any commit goes in.
+All **126 tests** across 4 suites must pass before any commit.
 
-**Commit convention:** Conventional Commits on branch `feature/big-update`.  
-Format: `type: short description` where type is `feat`, `refactor`, `fix`, or `test`.  
+**Toolchain:** Vite (dev server) + Vitest (test runner). Run `npm install` once after checkout.
+
+```
+npm run dev      # start Vite dev server → http://localhost:5173
+npm test         # run all 126 Vitest tests
+npm run build    # production build to dist/
+```
+
+**Test files:**
+- `tests/effects.test.js` — calculateEffects, checkWinCondition
+- `tests/balance.test.js` — balance simulations
+- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds
+- `tests/radial.test.js`  — ACTIONS, getValidActions, getRadialPosition, getButtonPositions (40 tests)
+
+**Commit convention:** Conventional Commits.
+Format: `type: short description` where type is `feat`, `refactor`, `fix`, `test`, or `chore`.
 Always append the Co-Authored-By trailer:
 ```
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
@@ -120,12 +173,18 @@ Never commit directly to `main`. Never use `--no-verify`.
 
 ## GitHub
 
-Repo: https://github.com/WyrdMatt/city-unblocked  
-Branch: `feature/big-update` (merge to `main` when complete)
+Repo: https://github.com/WyrdMatt/city-unblocked
+Active branch: `feat/mobile-layout` (merge to `feature/big-update`, then to `main`)
+Live: https://idyllic-cannoli-358897.netlify.app/ (auto-deploys from `main`)
+
+## Skills
+
+- `/sync-check` — greps `src/game-logic.js` and `index.html` for key constants and flags any value mismatches
+- `/mobile-audit` — checks hardcoded px in animations, touch-action on interactive elements, media query breakpoint, dynamic --tile-size, tap target sizes
 
 ## Future scaling hooks
 
-`MAP_CONFIG` is designed to be extended. Planned additions noted in comments:
+`MAP_CONFIG` is designed to be extended:
 - `blockerRate` — impassable tiles that force route choices
 - `weatherZones` — areas where action effects are reduced
 - Larger grid sizes by changing `rows`/`cols`
