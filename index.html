@@ -181,8 +181,34 @@
     }
     .overlay[hidden] { display: none; }
     @keyframes overlay-fade-in { from{opacity:0} to{opacity:1} }
-    .overlay--win     { background: var(--c-overlay-win); backdrop-filter: blur(6px); }
+    .overlay--win     { background: var(--c-overlay-win);  backdrop-filter: blur(6px); }
     .overlay--gameover { background: var(--c-overlay-lose); backdrop-filter: blur(6px); }
+    .overlay--landing  { background: rgba(7,8,13,0.97);    backdrop-filter: blur(8px); z-index: 600; }
+
+    /* ── Landing card ────────────────────────────────────────────── */
+    .overlay__card--landing { max-width: 520px; gap: 1.1rem; }
+    .landing__icon  { font-size: 3rem; line-height: 1; user-select: none; }
+    .landing__title { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; color: var(--c-text-hi); }
+    .landing__tagline { margin: 0; font-size: 0.88rem; color: var(--c-text-muted); }
+
+    /* ── Difficulty picker ───────────────────────────────────────── */
+    .landing__difficulty { display: flex; gap: 0.65rem; width: 100%; }
+    .diff-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+      padding: 0.85rem 0.4rem; border-radius: 14px;
+      border: 2px solid var(--c-border); background: var(--c-btn-bg);
+      color: var(--c-text); cursor: pointer; font-family: inherit;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .diff-btn:hover  { background: var(--c-btn-hover); border-color: var(--c-border-hover); }
+    .diff-btn:active { transform: scale(0.96); }
+    .diff-btn__emoji  { font-size: 1.5rem; line-height: 1; }
+    .diff-btn__label  { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.03em; }
+    .diff-btn__detail { font-size: 0.68rem; color: var(--c-text-muted); line-height: 1.35; text-align: center; }
+    .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
+    .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
+    .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+    .overlay__btn--play { background: #16a34a; color: #fff; font-size: 1rem; padding: 0.75rem 2.5rem; }
     .overlay__card {
       display: flex; flex-direction: column; align-items: center; gap: 1rem;
       padding: 2rem 2.5rem; border-radius: 20px; max-width: 440px; width: 100%;
@@ -735,6 +761,38 @@
     </div>
   </div>
 
+  <!-- ── Landing page overlay ─────────────────────────────────────────── -->
+  <div class="overlay overlay--landing" id="landingOverlay"
+       role="dialog" aria-modal="true" aria-labelledby="landingTitle">
+    <div class="overlay__card overlay__card--landing">
+      <div class="landing__icon" aria-hidden="true">🏙️</div>
+      <h1 class="landing__title" id="landingTitle">City Unblocked</h1>
+      <p class="landing__tagline">Reduce congestion. Boost happiness. Save the city.</p>
+
+      <div class="landing__difficulty" role="group" aria-label="Select difficulty">
+        <button class="diff-btn" data-difficulty="easy" type="button" aria-pressed="false">
+          <span class="diff-btn__emoji" aria-hidden="true">🌱</span>
+          <span class="diff-btn__label">Easy</span>
+          <span class="diff-btn__detail">£700 · 20 turns<br>open city</span>
+        </button>
+        <button class="diff-btn diff-btn--selected" data-difficulty="normal" type="button" aria-pressed="true">
+          <span class="diff-btn__emoji" aria-hidden="true">🏙️</span>
+          <span class="diff-btn__label">Normal</span>
+          <span class="diff-btn__detail">£500 · 15 turns<br>open city</span>
+        </button>
+        <button class="diff-btn" data-difficulty="hard" type="button" aria-pressed="false">
+          <span class="diff-btn__emoji" aria-hidden="true">🔥</span>
+          <span class="diff-btn__label">Hard</span>
+          <span class="diff-btn__detail">£350 · 12 turns<br>blocked routes</span>
+        </button>
+      </div>
+
+      <p class="landing__hint" id="landingHint">Balance transport, green space and infrastructure.</p>
+
+      <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
+    </div>
+  </div>
+
   <!-- ── HUD ──────────────────────────────────────────────────────────── -->
   <header class="hud" id="hud" role="banner">
     <div class="hud__brand">
@@ -1282,6 +1340,8 @@
       var gs = window.gameState;
       if (!gs) return "playing";
       if (gs.won) return "win";
+      var landing = document.getElementById("landingOverlay");
+      if (landing && !landing.hidden) return "playing";
 
       var costs = Array.from(document.querySelectorAll(".action-btn[data-cost]"))
                        .map(function (b) { return Number(b.dataset.cost); })
@@ -2396,6 +2456,60 @@
       musicBtn.textContent = musicOn ? '🔊' : '🔇';
       musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
     });
+
+  })();
+  </script>
+
+  <!-- ── Landing page logic ────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    const overlay  = document.getElementById('landingOverlay');
+    const playBtn  = document.getElementById('landingPlay');
+    const hintEl   = document.getElementById('landingHint');
+    const diffBtns = Array.from(document.querySelectorAll('.diff-btn[data-difficulty]'));
+
+    if (!overlay || !playBtn) return;
+
+    const HINTS = {
+      easy:   'Plenty of budget and time — great for learning the mechanics.',
+      normal: 'The balanced challenge. Plan your placements carefully.',
+      hard:   'Tight budget, fewer turns, and some routes are impassable.',
+    };
+
+    let selected = 'normal';
+
+    function selectDifficulty(level) {
+      selected = level;
+      diffBtns.forEach(btn => {
+        const active = btn.dataset.difficulty === level;
+        btn.classList.toggle('diff-btn--selected', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+      if (hintEl) hintEl.textContent = HINTS[level] || '';
+    }
+
+    diffBtns.forEach(btn => {
+      btn.addEventListener('click', () => selectDifficulty(btn.dataset.difficulty));
+      btn.addEventListener('mouseenter', () => { if (hintEl) hintEl.textContent = HINTS[btn.dataset.difficulty] || ''; });
+      btn.addEventListener('mouseleave', () => { if (hintEl) hintEl.textContent = HINTS[selected] || ''; });
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (typeof window.setDifficulty  === 'function') window.setDifficulty(selected);
+      if (typeof window.restartGame    === 'function') window.restartGame();
+      overlay.setAttribute('hidden', '');
+      if (typeof window.refreshHUD === 'function') window.refreshHUD();
+    });
+
+    // Keyboard: Enter/Space on overlay triggers Play
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playBtn.click(); }
+    });
+
+    // Set initial hint text
+    selectDifficulty('normal');
 
   })();
   </script>
