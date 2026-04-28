@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>City Unblocked — City Map</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: #eee;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 1.6rem;
+      letter-spacing: 0.05em;
+      color: #f0c040;
+    }
+
+    #city-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 56px);
+      grid-template-rows: repeat(10, 56px);
+      gap: 3px;
+      background: #111;
+      padding: 3px;
+      border: 2px solid #333;
+    }
+
+    .tile {
+      width: 56px;
+      height: 56px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: border-color 0.1s, filter 0.1s;
+      position: relative;
+    }
+
+    .tile:hover { filter: brightness(1.2); }
+
+    .tile.selected {
+      border-color: #f1c40f;
+      z-index: 1;
+    }
+
+    /* Tile types */
+    .tile.road     { background: #c0392b; }
+    .tile.building { background: #7f8c8d; }
+    .tile.park     { background: #27ae60; }
+    .tile.empty    { background: #d4b896; }
+
+    /* Road marking — faint centre line */
+    .tile.road::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%),
+        linear-gradient(90deg, transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%);
+    }
+
+    /* Building window dots */
+    .tile.building::after {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      background-image:
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px);
+      background-size: 14px 14px;
+      background-position: 2px 2px, 16px 2px, 2px 16px, 16px 16px;
+      background-repeat: no-repeat;
+    }
+
+    /* Park tree dots */
+    .tile.park::after {
+      content: '🌳';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    #info-bar {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #aaa;
+      height: 20px;
+    }
+
+    #legend {
+      display: flex;
+      gap: 18px;
+      margin-top: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>City Unblocked</h1>
+<div id="city-grid"></div>
+<div id="info-bar">Click a tile to select it.</div>
+<div id="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#c0392b"></div> Road</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#7f8c8d"></div> Building</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#27ae60"></div> Park</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#d4b896"></div> Empty</div>
+</div>
+
+<script>
+  // R = road, B = building, P = park, E = empty
+  // Roads run horizontally on rows 0, 4, 8 and vertically on cols 0, 4, 8
+  const LAYOUT = [
+    ['R','R','R','R','R','R','R','R','R','R'], // row 0 — main horizontal road
+    ['R','B','B','B','R','B','B','B','R','B'],
+    ['R','B','B','B','R','B','P','B','R','B'],
+    ['R','B','B','B','R','B','B','B','R','B'],
+    ['R','R','R','R','R','R','R','R','R','R'], // row 4 — mid horizontal road
+    ['R','B','B','B','R','B','B','B','R','B'],
+    ['R','B','P','B','R','B','B','B','R','B'],
+    ['R','B','B','B','R','B','B','B','R','B'],
+    ['R','R','R','R','R','R','R','R','R','R'], // row 8 — lower horizontal road
+    ['R','E','E','E','R','E','P','E','R','E'], // row 9 — undeveloped edge
+  ];
+
+  const TYPE_MAP = { R: 'road', B: 'building', P: 'park', E: 'empty' };
+
+  /**
+   * window.cityGrid — array of tile objects, row-major order
+   * Each object: { row, col, type, congestion, element }
+   *
+   * congestion: 0.0–1.0, only meaningful for 'road' tiles.
+   * Initial road congestion is 0.5 (moderate).
+   *
+   * To update a tile from outside: set tile.congestion / tile.type,
+   * then call window.refreshTile(tile) to sync the DOM.
+   */
+  window.cityGrid = [];
+
+  let selectedTile = null;
+  const gridEl = document.getElementById('city-grid');
+  const infoBar = document.getElementById('info-bar');
+
+  LAYOUT.forEach((row, r) => {
+    row.forEach((code, c) => {
+      const type = TYPE_MAP[code];
+
+      const el = document.createElement('div');
+      el.className = `tile ${type}`;
+      el.title = `(${r}, ${c})`;
+
+      const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+
+      el.addEventListener('click', () => {
+        if (selectedTile) selectedTile.element.classList.remove('selected');
+        selectedTile = tile;
+        el.classList.add('selected');
+        infoBar.textContent =
+          `(${r}, ${c})  type: ${tile.type}` +
+          (tile.type === 'road' ? `  |  congestion: ${tile.congestion.toFixed(2)}` : '');
+      });
+
+      gridEl.appendChild(el);
+      window.cityGrid.push(tile);
+    });
+  });
+
+  // ── Public API for other team members ────────────────────────────────────
+
+  /** Get a single tile by grid coordinates. */
+  window.getCityTile = (row, col) =>
+    window.cityGrid.find(t => t.row === row && t.col === col) ?? null;
+
+  /**
+   * Sync a tile's DOM element after you've mutated tile.type or tile.congestion.
+   * Example:
+   *   const t = getCityTile(2, 3);
+   *   t.congestion = 0.9;
+   *   refreshTile(t);
+   */
+  window.refreshTile = (tile) => {
+    const el = tile.element;
+    const wasSelected = el.classList.contains('selected');
+    el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}`;
+
+    // Shade road colour by congestion: green (0) → yellow → red (1)
+    if (tile.type === 'road') {
+      const r = Math.round(40 + 152 * tile.congestion);
+      const g = Math.round(174 - 174 * tile.congestion);
+      const b = 27;
+      el.style.background = `rgb(${r},${g},${b})`;
+    } else {
+      el.style.background = '';
+    }
+  };
+
+  /**
+   * Change a tile's type and refresh it.
+   * setCityTileType(2, 3, 'park')
+   */
+  window.setCityTileType = (row, col, newType) => {
+    const tile = window.getCityTile(row, col);
+    if (!tile) return;
+    tile.type = newType;
+    tile.congestion = newType === 'road' ? 0.5 : 0;
+    window.refreshTile(tile);
+  };
+
+  // Apply initial congestion shading so roads start colour-coded
+  window.cityGrid.filter(t => t.type === 'road').forEach(window.refreshTile);
+</script>
+</body>
+</html>
