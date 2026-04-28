@@ -208,6 +208,26 @@
     .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
     .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
     .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+    /* ── How to play ─────────────────────────────────────────────── */
+    .how-to-play { width: 100%; text-align: left; }
+    .how-to-play__toggle {
+      font-size: 0.78rem; color: var(--c-text-muted); cursor: pointer; user-select: none;
+      list-style: none; display: flex; align-items: center; justify-content: center;
+      gap: 0.3rem; padding: 0.15rem 0;
+    }
+    .how-to-play__toggle::-webkit-details-marker { display: none; }
+    .how-to-play__toggle::after { content: '▾'; display: inline-block; transition: transform 0.2s; }
+    details[open] .how-to-play__toggle::after { transform: rotate(-180deg); }
+    .how-to-play__steps {
+      margin: 0.6rem 0 0; padding: 0.75rem 1rem; list-style: none;
+      background: rgba(255,255,255,0.04); border-radius: 10px;
+      display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .how-to-play__steps li {
+      font-size: 0.77rem; color: var(--c-text-muted);
+      display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.45;
+    }
+    .how-to-play__steps li .htp-icon { flex-shrink: 0; font-size: 1rem; }
     .overlay__btn--play { background: #16a34a; color: #fff; font-size: 1rem; padding: 0.75rem 2.5rem; }
     .overlay__card {
       display: flex; flex-direction: column; align-items: center; gap: 1rem;
@@ -846,10 +866,11 @@
 
     /* ── Mobile layout (≤ 640px) ──────────────────────────────────────────── */
     @media (max-width: 640px) {
-      /* Game area: single column, minimal padding so grid fills the screen */
+      /* Game area: single column, content stacks from top — no empty space below */
       #game-area {
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         padding: 6px 2px 12px;
         gap: 6px;
       }
@@ -866,43 +887,48 @@
       /* Mobile reset button visible */
       .hud__reset-mobile { display: flex; align-items: center; }
 
-      /* HUD: two-row compact layout */
+      /* HUD: single compact row, explicit order so budget is never cut off */
       .hud {
-        flex-wrap: wrap;
-        gap: 0;
-        padding: 0.4rem 0.6rem;
-        row-gap: 0.3rem;
+        flex-wrap: nowrap;
+        gap: 0.35rem;
+        padding: 0.35rem 0.5rem;
       }
 
-      /* Row 1: icon | meters | budget+turns | music */
-      .hud__brand { flex: 0 0 auto; }
+      .hud__brand { flex: 0 0 auto; order: 1; }
       .hud__brand-name { display: none; }
-      .hud__brand-icon { font-size: 1.2rem; }
+      .hud__brand-icon { font-size: 1.1rem; }
 
+      /* Meters take remaining space between brand and stats */
       .hud__meters {
-        flex: 1 1 auto;
-        gap: 0.5rem;
+        flex: 1 1 0;
         min-width: 0;
-        align-items: center;
+        gap: 0.3rem;
+        order: 2;
       }
       .hud-meter__label { display: none; }
-      .hud-meter__track { min-width: 40px; }
-      .hud-meter__value { font-size: 0.7rem; width: 2ch; }
+      /* Hide delta (need +50 / need −50) — saves significant space */
+      .hud-meter__delta { display: none; }
+      .hud-meter__track { min-width: 36px; height: 6px; }
+      .hud-meter__value { font-size: 0.68rem; width: 2ch; }
 
-      .hud__budget { order: 3; margin-left: 0.5rem; }
-      .hud__budget-label { font-size: 0.5rem; }
-      .hud__budget-value { font-size: 0.95rem; }
+      /* Budget always visible, right of meters */
+      .hud__budget { order: 3; flex-shrink: 0; }
+      .hud__budget-label { font-size: 0.48rem; }
+      .hud__budget-value { font-size: 0.88rem; }
 
-      .hud__turns { order: 4; margin-left: 0.5rem; }
-      .hud__turns-label { font-size: 0.5rem; }
-      .hud__turns-value { font-size: 0.85rem; }
+      /* Turns */
+      .hud__turns { order: 4; flex-shrink: 0; }
+      .hud__turns-label { font-size: 0.48rem; }
+      .hud__turns-value { font-size: 0.78rem; }
 
-      .hud__weather { order: 5; }
+      /* Weather icon only */
+      .hud__weather { order: 5; flex-shrink: 0; }
       .hud__weather-label { display: none; }
-      .hud__weather-icon { font-size: 1rem; }
+      .hud__weather-icon { font-size: 0.95rem; }
 
-      /* Info bar below grid: smaller text */
-      #info-bar { font-size: 0.7rem; text-align: center; }
+      /* Music + reset at far right */
+      .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 7; }
     }
   </style>
 </head>
@@ -950,6 +976,16 @@
       </div>
 
       <p class="landing__hint" id="landingHint">Balance transport, green space and infrastructure.</p>
+
+      <details class="how-to-play">
+        <summary class="how-to-play__toggle">How to play</summary>
+        <ol class="how-to-play__steps">
+          <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — road, building, or empty lot</li>
+          <li><span class="htp-icon" aria-hidden="true">🚌</span>Place an action: buses &amp; bike lanes on roads, parking on buildings, parks on empty lots</li>
+          <li><span class="htp-icon" aria-hidden="true">📉</span>Each action cuts congestion and boosts happiness — but repeating the same type gives diminishing returns</li>
+          <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by getting congestion ≤30 and happiness ≥70 before your budget and turns run out</li>
+        </ol>
+      </details>
 
       <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
     </div>
@@ -2001,8 +2037,11 @@
     let radialCloseTimer = null;
 
     function radialGetBtnPositions(originX, originY, fanRadius, count, flipDown) {
-      const startDeg = flipDown ? 10 : -170;
-      const endDeg   = flipDown ? 170 : -10;
+      // Arc scales with number of visible buttons so they stay close together
+      const arcDeg   = count === 1 ? 0 : (count - 1) * 55;
+      const center   = flipDown ? 90 : -90;
+      const startDeg = center - arcDeg / 2;
+      const endDeg   = center + arcDeg / 2;
       const positions = Array.from({ length: count }, (_, i) => {
         const t   = count === 1 ? 0.5 : i / (count - 1);
         const deg = startDeg + t * (endDeg - startDeg);
@@ -2058,7 +2097,7 @@
       tile.addEventListener('animationend', function () { tile.classList.remove('tile--radial-open'); }, { once: true });
 
       const tileRect  = tile.getBoundingClientRect();
-      const FAN_RADIUS = 130;
+      const FAN_RADIUS = 110;
       const originX   = tileRect.left + tileRect.width / 2;
       const originY   = tileRect.top;
 
@@ -2280,12 +2319,17 @@
     /* ── Grid geometry — re-reads CSS custom properties each rebuild ── */
     let TILE = 80, GAP = 4, PAD = 4, CELL = 84, GRID_PX = 848;
     function refreshGeometry() {
-      const cs = getComputedStyle(document.documentElement);
-      // Read actual rendered tile width — getPropertyValue returns the raw CSS string
-      // (e.g. "clamp(...)") which parseInt can't parse, so measure a real tile instead.
-      const tileEl = document.querySelector('#city-grid .tile');
-      TILE    = tileEl ? Math.round(tileEl.getBoundingClientRect().width)
-                       : (parseInt(cs.getPropertyValue('--tile-size'), 10) || 80);
+      const cs     = getComputedStyle(document.documentElement);
+      const gridEl = document.querySelector('#city-grid');
+      if (gridEl) {
+        // gridTemplateColumns returns resolved px values (e.g. "59px 59px …") and is
+        // unaffected by CSS transforms on child elements, so tile entrance animations
+        // (scale(0.55) fill-mode:both) cannot skew this reading.
+        const colStr = getComputedStyle(gridEl).gridTemplateColumns;
+        TILE = colStr ? Math.round(parseFloat(colStr)) : 80;
+      } else {
+        TILE = 80;
+      }
       GAP     = parseInt(cs.getPropertyValue('--grid-gap'),  10) || 4;
       PAD     = parseInt(cs.getPropertyValue('--grid-pad'),  10) || 4;
       CELL    = TILE + GAP;
