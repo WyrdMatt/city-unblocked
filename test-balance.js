@@ -71,11 +71,12 @@ function simulate(actions, grid) {
   const result = checkWinCondition({
     happiness, congestion, budget,
     minActionCost: Math.min(...Object.values(ACTION_COSTS)),
+    turnsLeft: 15 - actions.length, // assume one turn per action
   });
   return { congestion, happiness, budget, result, delta };
 }
 
-const ACTION_COSTS = { 'bus-stop': 80, 'bike-lane': 40, 'parking-garage': 120, 'park': 60 };
+const ACTION_COSTS = { 'bus-stop': 80, 'bike-lane': 40, 'parking-garage': 120, 'park': 60, 'road-widening': 90 };
 function actionCost(a) { return ACTION_COSTS[a] || 0; }
 
 // Place n of an action type at consecutive positions on grid
@@ -204,14 +205,52 @@ console.log('\nCity Unblocked — balance simulation tests\n');
 {
   const wc = checkWinCondition;
   const MIN = Math.min(...Object.values(ACTION_COSTS)); // £40
-  assert(wc({ happiness: WIN_HAPPINESS, congestion: WIN_CONGESTION, budget: 0, minActionCost: MIN }) === 'win',
+  assert(wc({ happiness: WIN_HAPPINESS, congestion: WIN_CONGESTION, budget: 0, minActionCost: MIN, turnsLeft: 5 }) === 'win',
     'Test7a: win condition beats budget=0 check (win takes priority)');
-  assert(wc({ happiness: 0, congestion: 100, budget: 0, minActionCost: 0 }) === 'lose',
+  assert(wc({ happiness: 0, congestion: 100, budget: 0, minActionCost: 0, turnsLeft: 5 }) === 'lose',
     'Test7b: budget=0 and minActionCost=0 → lose');
-  assert(wc({ happiness: 0, congestion: 100, budget: MIN - 1, minActionCost: MIN }) === 'lose',
+  assert(wc({ happiness: 0, congestion: 100, budget: MIN - 1, minActionCost: MIN, turnsLeft: 5 }) === 'lose',
     'Test7c: budget just below min cost → lose');
-  assert(wc({ happiness: 0, congestion: 100, budget: MIN, minActionCost: MIN }) === 'playing',
+  assert(wc({ happiness: 0, congestion: 100, budget: MIN, minActionCost: MIN, turnsLeft: 5 }) === 'playing',
     'Test7d: budget exactly min cost → playing');
+  assert(wc({ happiness: 0, congestion: 100, budget: 500, minActionCost: MIN, turnsLeft: 0 }) === 'lose',
+    'Test7e: turnsLeft=0 → lose even with budget');
+  assert(wc({ happiness: WIN_HAPPINESS, congestion: WIN_CONGESTION, budget: 500, minActionCost: MIN, turnsLeft: 0 }) === 'win',
+    'Test7f: win conditions met when turnsLeft=0 → win takes priority');
+}
+
+// ── Test 8: road-widening trade-off is genuinely useful ───────────────────
+{
+  const maxGrid = buildMaxAdjGrid();
+  // 2 road-widenings (£180) + 1 bus-stop (£80) + 3 parks (£180) = £440
+  // Road-widens slash congestion fast; parks + bus-stop restore happiness
+  const acts = [
+    { action: 'road-widening', row: 0, col: 0 },
+    { action: 'road-widening', row: 1, col: 0 },
+    { action: 'bus-stop',      row: 0, col: 2 },
+    { action: 'park', row: 0, col: 1 },
+    { action: 'park', row: 1, col: 1 },
+    { action: 'park', row: 2, col: 1 },
+  ];
+  const totalCost = acts.reduce((s, a) => s + actionCost(a.action), 0);
+  const sim = simulate(acts, maxGrid);
+  if (VERBOSE) console.log(`  [Test8] road-widening mix £${totalCost}:`, JSON.stringify(sim));
+  assert(totalCost <= INITIAL_STATE.budget, 'Test8: road-widening mix fits budget',
+    `cost=£${totalCost}`);
+  assert(sim.result === 'win', 'Test8: road-widening + bus-stop + parks combo wins',
+    `congestion=${sim.congestion.toFixed(1)} happiness=${sim.happiness.toFixed(1)}`);
+}
+
+// ── Test 9: road-widening spammed alone does NOT win (happiness penalty) ───
+{
+  const maxGrid = buildMaxAdjGrid();
+  // 5 road-widenings = £450
+  const acts = placements('road-widening', 5);
+  const totalCost = 5 * 90;
+  const sim = simulate(acts, maxGrid);
+  if (VERBOSE) console.log(`  [Test9] 5× road-widening (£${totalCost}):`, JSON.stringify(sim));
+  assert(sim.result !== 'win', 'Test9: spamming road-widening alone cannot win (happiness drops too low)',
+    `happiness=${sim.happiness.toFixed(1)}`);
 }
 
 // ── Summary ────────────────────────────────────────────────────────────────

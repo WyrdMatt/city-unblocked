@@ -20,12 +20,14 @@ var EFFECTS = {
   'bike-lane':      { congestion:  -6, happiness:  +8 },
   'parking-garage': { congestion:  -8, happiness:  +4 },
   'park':           { congestion:  -4, happiness: +12 },
+  'road-widening':  { congestion: -15, happiness:  -5 }, // trade-off: fast congestion drop but hurts happiness
 };
 
 var WIN_HAPPINESS  = 70;
 var WIN_CONGESTION = 30;
+var DEFAULT_TURN_LIMIT = 15;
 
-var INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
+var INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
 // ── Helper: grid neighbours ────────────────────────────────────────────────
 
@@ -106,6 +108,7 @@ function calculateEffects(placements, grid) {
  *   congestion:    number   (current value, 0–100)
  *   budget:        number   (remaining £)
  *   minActionCost: number   (cheapest available action, 0 if unknown)
+ *   turnsLeft:     number   (turns remaining; Infinity if no limit)
  * }
  */
 function checkWinCondition(state) {
@@ -113,9 +116,11 @@ function checkWinCondition(state) {
   var congestion    = state.congestion    || 0;
   var budget        = state.budget        || 0;
   var minActionCost = state.minActionCost || 0;
+  var turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
 
   if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
   if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return 'lose';
+  if (turnsLeft <= 0) return 'lose';
   return 'playing';
 }
 
@@ -125,6 +130,7 @@ module.exports = {
   EFFECTS,
   WIN_HAPPINESS,
   WIN_CONGESTION,
+  DEFAULT_TURN_LIMIT,
   INITIAL_STATE,
   getGridNeighbours,
   calculateEffects,

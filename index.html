@@ -261,6 +261,7 @@
     }
     .effect--happy { background: rgba(16,185,129,.15); color: var(--c-happy-2); }
     .effect--cong  { background: rgba(239,68,68,.15);  color: var(--c-cong-2); }
+    .effect--sad   { background: rgba(251,146,60,.15); color: #fb923c; }
 
     .reset-btn {
       margin-top: auto; padding: 0.6rem 0; width: 100%;
@@ -602,6 +603,21 @@
     .overlay__stars { font-size: 2.2rem; line-height: 1; letter-spacing: 0.1em; user-select: none; }
     .overlay__rating-label { margin: 0; font-size: 0.72rem; color: var(--c-text-label); text-transform: uppercase; letter-spacing: 0.1em; }
 
+    /* ── Distance-to-win delta label ────────────────────────────── */
+    .hud-meter__delta {
+      font-size: 0.62rem; font-weight: 700; color: var(--c-text-dim);
+      white-space: nowrap; flex-shrink: 0; min-width: 3.8ch; text-align: right;
+      font-variant-numeric: tabular-nums; transition: color 0.3s;
+    }
+    .hud-meter__delta--done  { color: var(--c-win); }
+    .hud-meter__delta--close { color: var(--c-cong-2); }
+
+    /* ── Turn counter ────────────────────────────────────────────── */
+    .hud__turns { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__turns-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
+    .hud__turns-value { font-size: 1rem; font-weight: 900; color: var(--c-text-muted); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
+    .hud__turns-value--urgent { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
+
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
     .tile, .action-btn, .reset-btn, .hud__music-btn,
     .overlay__btn, .hud-meter__track { touch-action: manipulation; }
@@ -680,6 +696,7 @@
           <div class="hud-meter__goal" style="left:70%" title="Goal: reach 70"></div>
         </div>
         <span class="hud-meter__value" id="happinessValue">0</span>
+        <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
       </div>
       <div class="hud-meter hud-meter--congestion">
         <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
@@ -689,7 +706,12 @@
           <div class="hud-meter__goal" style="left:30%" title="Goal: get below 30"></div>
         </div>
         <span class="hud-meter__value" id="congestionValue">0</span>
+        <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
       </div>
+    </div>
+    <div class="hud__turns" aria-label="Turns remaining">
+      <span class="hud__turns-label">Turns</span>
+      <span class="hud__turns-value" id="turnsValue">0 / 15</span>
     </div>
     <div class="hud__budget" aria-label="Remaining budget">
       <span class="hud__budget-label">Budget</span>
@@ -720,9 +742,9 @@
   <div class="overlay overlay--gameover" id="gameOverOverlay" hidden
        role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
     <div class="overlay__card">
-      <div class="overlay__icon" aria-hidden="true">💸</div>
+      <div class="overlay__icon" aria-hidden="true" id="gameOverIcon">💸</div>
       <h2 class="overlay__title" id="gameOverTitle">Budget Depleted</h2>
-      <p class="overlay__body">The city ran out of funds.</p>
+      <p class="overlay__body" id="gameOverBody">The city ran out of funds.</p>
       <div class="overlay__built">
         <p class="overlay__built-heading">What you built:</p>
         <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
@@ -813,6 +835,21 @@
             </span>
           </button>
         </li>
+        <li>
+          <button class="action-btn" data-action="road-widening" data-cost="90"
+                  data-emoji="🚧" data-color="#f97316" data-valid-tiles="road"
+                  data-base-cong="-15" data-base-happy="-5" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🚧</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Road Widening</span>
+              <span class="action-btn__cost">£90</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −15</span>
+                <span class="effect effect--sad">😞 −5</span>
+              </span>
+            </span>
+          </button>
+        </li>
       </ul>
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
@@ -832,9 +869,12 @@
     const happinessFill  = document.getElementById("happinessFill");
     const happinessBar   = document.getElementById("happinessBar");
     const happinessValue = document.getElementById("happinessValue");
+    const happinessDelta = document.getElementById("happinessDelta");
     const congestionFill  = document.getElementById("congestionFill");
     const congestionBar   = document.getElementById("congestionBar");
     const congestionValue = document.getElementById("congestionValue");
+    const congestionDelta = document.getElementById("congestionDelta");
+    const turnsValueEl    = document.getElementById("turnsValue");
     const budgetValueEl   = document.getElementById("budgetValue");
     const winOverlay      = document.getElementById("winOverlay");
     const gameOverOverlay = document.getElementById("gameOverOverlay");
@@ -847,22 +887,40 @@
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function formatBudget(n) { return "£" + Math.round(n).toLocaleString("en-GB"); }
 
+    function updateDelta(el, value, target, isLower) {
+      // isLower = true means we want value ≤ target (congestion); false = value ≥ target (happiness)
+      const done = isLower ? value <= target : value >= target;
+      const gap  = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
+      const close = !done && gap <= 10;
+      el.textContent = done ? "✓" : (isLower ? "−" + gap : "+" + gap);
+      el.classList.toggle("hud-meter__delta--done",  done);
+      el.classList.toggle("hud-meter__delta--close", !done && close);
+    }
+
     window.refreshHUD = function refreshHUD() {
       const gs = window.gameState;
       if (!gs) return;
       const happiness  = clamp(gs.happiness  ?? 0, 0, 100);
       const congestion = clamp(gs.congestion ?? 0, 0, 100);
       const budget     = gs.budget ?? 0;
+      const turn       = gs.turn   ?? 0;
+      const turnLimit  = gs.turnLimit ?? 15;
 
       happinessFill.style.width = happiness + "%";
       happinessValue.textContent = Math.round(happiness);
       happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
       happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
+      updateDelta(happinessDelta, happiness, 70, false);
 
       congestionFill.style.width = congestion + "%";
       congestionValue.textContent = Math.round(congestion);
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
       congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
+      updateDelta(congestionDelta, congestion, 30, true);
+
+      const turnsLeft = turnLimit - turn;
+      turnsValueEl.textContent = turn + " / " + turnLimit;
+      turnsValueEl.classList.toggle("hud__turns-value--urgent", turnsLeft <= 3 && turnsLeft > 0);
 
       budgetValueEl.textContent = formatBudget(budget);
       budgetValueEl.classList.toggle("hud__budget-value--low", budget < 80);
@@ -891,7 +949,21 @@
       document.getElementById("winRestart")?.focus();
     };
 
-    window.showGameOverScreen = function showGameOverScreen() {
+    window.showGameOverScreen = function showGameOverScreen(reason) {
+      // reason: "budget" | "turns" (optional, defaults to "budget")
+      const gs = window.gameState ?? {};
+      const turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
+      const isTurnLimit = reason === "turns" || (turnsLeft <= 0 && (gs.budget ?? 0) > 40);
+
+      const iconEl  = document.getElementById("gameOverIcon");
+      const titleEl = document.getElementById("gameOverTitle");
+      const bodyEl  = document.getElementById("gameOverBody");
+      if (iconEl)  iconEl.textContent  = isTurnLimit ? "⏰" : "💸";
+      if (titleEl) titleEl.textContent = isTurnLimit ? "Time's Up!" : "Budget Depleted";
+      if (bodyEl)  bodyEl.textContent  = isTurnLimit
+        ? "You ran out of turns before the city could recover."
+        : "The city ran out of funds.";
+
       const placed = document.querySelectorAll(".tile--placed[data-placed-action]");
       const counts = {};
       placed.forEach(function (tile) {
@@ -901,6 +973,7 @@
       const labels = {
         "bus-stop": "🚌 Bus Stops", "bike-lane": "🚲 Bike Lanes",
         "parking-garage": "🅿️ Parking Garages", "park": "🌳 Parks",
+        "road-widening": "🚧 Road Widenings",
       };
       if (gameOverBuiltList) {
         gameOverBuiltList.innerHTML = "";
@@ -964,6 +1037,7 @@
       "bike-lane":      { congestion:  -6, happiness:  +8 },
       "parking-garage": { congestion:  -8, happiness:  +4 },
       "park":           { congestion:  -4, happiness: +12 },
+      "road-widening":  { congestion: -15, happiness:  -5 },
     };
 
     var WIN_HAPPINESS  = 70;
@@ -1014,7 +1088,7 @@
     window.GAME_LOGIC = { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, calculateEffects, checkWinCondition, getGridNeighbours };
 
     // ── Game state ────────────────────────────────────────────────────────
-    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
+    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
 
     window.gameState = Object.assign({}, INITIAL);
 
@@ -1053,18 +1127,21 @@
                        .filter(function (c) { return c > 0; });
       var minCost = costs.length ? Math.min.apply(null, costs) : 0;
 
+      var turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
       var result = checkWinCondition({
         happiness: gs.happiness  || 0,
         congestion: gs.congestion || 0,
         budget: gs.budget        || 0,
         minActionCost: minCost,
+        turnsLeft: turnsLeft,
       });
 
       if (result === "win") {
         gs.won = true;
         if (typeof window.showWinScreen === "function") window.showWinScreen();
       } else if (result === "lose") {
-        if (typeof window.showGameOverScreen === "function") window.showGameOverScreen();
+        const loseReason = turnsLeft <= 0 ? "turns" : "budget";
+        if (typeof window.showGameOverScreen === "function") window.showGameOverScreen(loseReason);
       }
       return result;
     };

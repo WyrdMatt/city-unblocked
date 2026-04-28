@@ -8,7 +8,7 @@
 
 'use strict';
 
-const { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, INITIAL_STATE,
+const { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
         getGridNeighbours, calculateEffects, checkWinCondition } = require('./game-logic');
 
 let passed = 0, failed = 0;
@@ -50,13 +50,17 @@ assert(EFFECTS['parking-garage'].congestion === -8, 'parking-garage congestion b
 assert(EFFECTS['parking-garage'].happiness  === 4,  'parking-garage happiness base = +4');
 assert(EFFECTS['park'].congestion === -4,  'park congestion base = -4');
 assert(EFFECTS['park'].happiness  === 12,  'park happiness base = +12');
+assert(EFFECTS['road-widening'].congestion === -15, 'road-widening congestion base = -15');
+assert(EFFECTS['road-widening'].happiness  === -5,  'road-widening happiness base = -5 (trade-off)');
 
 // ── WIN / INITIAL constants ────────────────────────────────────────────────
 assert(WIN_HAPPINESS  === 70, 'WIN_HAPPINESS = 70');
 assert(WIN_CONGESTION === 30, 'WIN_CONGESTION = 30');
-assert(INITIAL_STATE.congestion === 80, 'INITIAL congestion = 80');
-assert(INITIAL_STATE.happiness  === 20, 'INITIAL happiness = 20');
-assert(INITIAL_STATE.budget     === 500,'INITIAL budget = 500');
+assert(DEFAULT_TURN_LIMIT === 15, 'DEFAULT_TURN_LIMIT = 15');
+assert(INITIAL_STATE.congestion === 80,  'INITIAL congestion = 80');
+assert(INITIAL_STATE.happiness  === 20,  'INITIAL happiness = 20');
+assert(INITIAL_STATE.budget     === 500, 'INITIAL budget = 500');
+assert(INITIAL_STATE.turnLimit  === 15,  'INITIAL turnLimit = 15');
 
 // ── getGridNeighbours ──────────────────────────────────────────────────────
 {
@@ -140,6 +144,14 @@ assert(INITIAL_STATE.budget     === 500,'INITIAL budget = 500');
   assert(approx(d.happinessDelta,  expected_happ, 0.01), 'bike-lane x3 diminishing returns: happiness');
 }
 
+// ── calculateEffects: road-widening trade-off ─────────────────────────────
+{
+  const grid = buildGrid([{ row: 5, col: 5, type: 'road' }]);
+  const d = calculateEffects([{ action: 'road-widening', row: 5, col: 5 }], grid);
+  assert(approx(d.congestionDelta, -15), 'road-widening: congestion -15');
+  assert(approx(d.happinessDelta,  -5),  'road-widening: happiness -5 (penalty)');
+}
+
 // ── calculateEffects: zero placements ─────────────────────────────────────
 {
   const grid = buildGrid();
@@ -156,24 +168,37 @@ assert(INITIAL_STATE.budget     === 500,'INITIAL budget = 500');
 }
 
 // ── checkWinCondition ─────────────────────────────────────────────────────
-assert(checkWinCondition({ happiness: 70, congestion: 30, budget: 200, minActionCost: 40 }) === 'win',
+assert(checkWinCondition({ happiness: 70, congestion: 30, budget: 200, minActionCost: 40, turnsLeft: 5 }) === 'win',
   'checkWinCondition: exact win threshold → win');
-assert(checkWinCondition({ happiness: 71, congestion: 29, budget: 100, minActionCost: 40 }) === 'win',
+assert(checkWinCondition({ happiness: 71, congestion: 29, budget: 100, minActionCost: 40, turnsLeft: 5 }) === 'win',
   'checkWinCondition: over threshold → win');
-assert(checkWinCondition({ happiness: 69, congestion: 30, budget: 200, minActionCost: 40 }) === 'playing',
+assert(checkWinCondition({ happiness: 69, congestion: 30, budget: 200, minActionCost: 40, turnsLeft: 5 }) === 'playing',
   'checkWinCondition: happiness just below win → playing');
-assert(checkWinCondition({ happiness: 70, congestion: 31, budget: 200, minActionCost: 40 }) === 'playing',
+assert(checkWinCondition({ happiness: 70, congestion: 31, budget: 200, minActionCost: 40, turnsLeft: 5 }) === 'playing',
   'checkWinCondition: congestion just above win → playing');
-assert(checkWinCondition({ happiness: 20, congestion: 80, budget:   0, minActionCost: 40 }) === 'lose',
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget:   0, minActionCost: 40, turnsLeft: 5 }) === 'lose',
   'checkWinCondition: budget = 0 → lose');
-assert(checkWinCondition({ happiness: 20, congestion: 80, budget:  39, minActionCost: 40 }) === 'lose',
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget:  39, minActionCost: 40, turnsLeft: 5 }) === 'lose',
   'checkWinCondition: budget < minActionCost → lose');
-assert(checkWinCondition({ happiness: 20, congestion: 80, budget:  40, minActionCost: 40 }) === 'playing',
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget:  40, minActionCost: 40, turnsLeft: 5 }) === 'playing',
   'checkWinCondition: budget = minActionCost → playing');
-assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 100, minActionCost:  0 }) === 'playing',
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 100, minActionCost:  0, turnsLeft: 5 }) === 'playing',
   'checkWinCondition: minActionCost = 0, positive budget → playing');
-assert(checkWinCondition({ happiness: 20, congestion: 80, budget:   0, minActionCost:  0 }) === 'lose',
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget:   0, minActionCost:  0, turnsLeft: 5 }) === 'lose',
   'checkWinCondition: budget = 0, minActionCost = 0 → lose');
+// Turn limit checks
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 500, minActionCost: 40, turnsLeft:  0 }) === 'lose',
+  'checkWinCondition: turnsLeft = 0 → lose');
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 500, minActionCost: 40, turnsLeft: -1 }) === 'lose',
+  'checkWinCondition: turnsLeft negative → lose');
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 500, minActionCost: 40, turnsLeft:  1 }) === 'playing',
+  'checkWinCondition: turnsLeft = 1, not won → playing');
+// Win takes priority over turn limit
+assert(checkWinCondition({ happiness: 70, congestion: 30, budget: 200, minActionCost: 40, turnsLeft:  0 }) === 'win',
+  'checkWinCondition: win conditions met even at turnsLeft=0 → win');
+// turnsLeft omitted = no turn limit
+assert(checkWinCondition({ happiness: 20, congestion: 80, budget: 500, minActionCost: 40 }) === 'playing',
+  'checkWinCondition: no turnsLeft key = no turn limit → playing');
 
 // ── Summary ───────────────────────────────────────────────────────────────
 console.log(`Results:  ${passed} passed  /  ${failed} failed  /  ${passed + failed} total\n`);
