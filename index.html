@@ -955,97 +955,118 @@
   (function () {
     "use strict";
 
-    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
+    // ── Pure calculation functions (keep in sync with game-logic.js) ──────
+    // Duplicated here so index.html stays self-contained (no external deps).
+    // For Node testing use game-logic.js directly.
 
-    const EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness: +6  },
-      "bike-lane":      { congestion:  -6, happiness: +8  },
-      "parking-garage": { congestion:  -8, happiness: +4  },
+    var EFFECTS = {
+      "bus-stop":       { congestion: -10, happiness:  +6 },
+      "bike-lane":      { congestion:  -6, happiness:  +8 },
+      "parking-garage": { congestion:  -8, happiness:  +4 },
       "park":           { congestion:  -4, happiness: +12 },
     };
 
-    const WIN_HAPPINESS  = 70;
-    const WIN_CONGESTION = 30;
+    var WIN_HAPPINESS  = 70;
+    var WIN_CONGESTION = 30;
+
+    function getGridNeighbours(row, col, grid) {
+      var offsets = [[-1,0],[1,0],[0,-1],[0,1]];
+      return offsets.map(function (o) {
+        return grid.find(function (t) { return t.row === row + o[0] && t.col === col + o[1]; });
+      }).filter(Boolean);
+    }
+
+    function calculateEffects(placements, grid) {
+      var placedCount = {};
+      placements.forEach(function (p) {
+        placedCount[p.action] = (placedCount[p.action] || 0) + 1;
+      });
+      var remaining = Object.assign({}, placedCount);
+      var congestionDelta = 0, happinessDelta = 0;
+      placements.forEach(function (p) {
+        var effect = EFFECTS[p.action];
+        if (!effect) return;
+        var nth = remaining[p.action];
+        remaining[p.action]--;
+        var diminish = Math.pow(0.85, nth - 1);
+        var cDelta = effect.congestion * diminish;
+        var hDelta = effect.happiness  * diminish;
+        var neighbours = getGridNeighbours(p.row, p.col, grid);
+        if (p.action === "park") {
+          hDelta += neighbours.filter(function (n) { return n.type === "building"; }).length * 3;
+        }
+        if (p.action === "bus-stop") {
+          cDelta -= neighbours.filter(function (n) { return n.type === "building"; }).length * 2;
+        }
+        congestionDelta += cDelta;
+        happinessDelta  += hDelta;
+      });
+      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta };
+    }
+
+    function checkWinCondition(state) {
+      if (state.happiness >= WIN_HAPPINESS && state.congestion <= WIN_CONGESTION) return "win";
+      if (state.budget <= 0 || (state.minActionCost > 0 && state.budget < state.minActionCost)) return "lose";
+      return "playing";
+    }
+
+    // Expose for test harness (test-effects.js loads this via jsdom or similar)
+    window.GAME_LOGIC = { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, calculateEffects, checkWinCondition, getGridNeighbours };
+
+    // ── Game state ────────────────────────────────────────────────────────
+    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
 
     window.gameState = Object.assign({}, INITIAL);
 
     window.updateMeters = function updateMeters() {
       if (!Array.isArray(window.cityGrid)) return;
-      var congestionDelta = 0, happinessDelta = 0;
 
-      // Count placements per action type for diminishing returns
-      var placedCount = {};
+      // Extract placement data from DOM tiles
+      var placements = [];
       window.cityGrid.forEach(function (tile) {
         var action = tile.element && tile.element.dataset.placedAction;
-        if (action) placedCount[action] = (placedCount[action] || 0) + 1;
+        if (action) placements.push({ action: action, row: tile.row, col: tile.col });
       });
 
-      window.cityGrid.forEach(function (tile) {
-        var action = tile.element && tile.element.dataset.placedAction;
-        if (!action) return;
-        var effect = EFFECTS[action];
-        if (!effect) return;
-
-        // Diminishing returns: each successive same-type placement is 15% weaker
-        var nth = placedCount[action];
-        placedCount[action]--;
-        var diminish = Math.pow(0.85, nth - 1);
-
-        var cDelta = effect.congestion * diminish;
-        var hDelta = effect.happiness  * diminish;
-
-        // Adjacency bonus: park next to a building tile gives +3 happiness per neighbour
-        // Bus stop next to a building tile gives -2 congestion per neighbour
-        var neighbours = getNeighbours(tile.row, tile.col);
-        if (action === "park") {
-          var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
-          hDelta += adjBuildings * 3;
-        }
-        if (action === "bus-stop") {
-          var adjBuildings2 = neighbours.filter(function (n) { return n.type === "building"; }).length;
-          cDelta -= adjBuildings2 * 2;
-        }
-
-        congestionDelta += cDelta;
-        happinessDelta  += hDelta;
+      // Flatten grid to plain objects for the pure function
+      var gridData = window.cityGrid.map(function (t) {
+        return { row: t.row, col: t.col, type: t.type };
       });
+
+      var delta = calculateEffects(placements, gridData);
 
       var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + congestionDelta));
-      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + happinessDelta));
+      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta));
+      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
       if (typeof window.refreshHUD === "function") window.refreshHUD();
     };
 
-    function getNeighbours(row, col) {
-      var offsets = [[-1,0],[1,0],[0,-1],[0,1]];
-      return offsets.map(function (o) {
-        return window.cityGrid.find(function (t) { return t.row === row + o[0] && t.col === col + o[1]; });
-      }).filter(Boolean);
-    }
-
     window.checkWinLose = function checkWinLose() {
       var gs = window.gameState;
       if (!gs) return "playing";
       if (gs.won) return "win";
-      var happiness  = gs.happiness  ?? 0;
-      var congestion = gs.congestion ?? 0;
-      var budget     = gs.budget     ?? 0;
-      if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) {
-        gs.won = true;
-        if (typeof window.showWinScreen === "function") window.showWinScreen();
-        return "win";
-      }
+
       var costs = Array.from(document.querySelectorAll(".action-btn[data-cost]"))
                        .map(function (b) { return Number(b.dataset.cost); })
                        .filter(function (c) { return c > 0; });
       var minCost = costs.length ? Math.min.apply(null, costs) : 0;
-      if (budget <= 0 || (minCost > 0 && budget < minCost)) {
+
+      var result = checkWinCondition({
+        happiness: gs.happiness  || 0,
+        congestion: gs.congestion || 0,
+        budget: gs.budget        || 0,
+        minActionCost: minCost,
+      });
+
+      if (result === "win") {
+        gs.won = true;
+        if (typeof window.showWinScreen === "function") window.showWinScreen();
+      } else if (result === "lose") {
         if (typeof window.showGameOverScreen === "function") window.showGameOverScreen();
-        return "lose";
       }
-      return "playing";
+      return result;
     };
 
     window.restartGame = function restartGame() {
