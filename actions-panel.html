@@ -1,0 +1,64 @@
+<!--
+  Actions Panel — drop this <aside> wherever your layout renders the sidebar.
+  Include actions-panel.css in <head> and actions-panel.js before </body>.
+-->
+<aside class="actions-panel" id="actionsPanel" aria-label="Action picker">
+
+  <header class="actions-panel__header">
+    <h2 class="actions-panel__title">Actions</h2>
+    <p class="actions-panel__sub">Pick an action, then click a tile.</p>
+  </header>
+
+  <ul class="actions-list" id="actionsList" role="list">
+
+    <li>
+      <button class="action-btn" data-action="bus-stop" data-cost="80"
+              data-emoji="🚌" data-color="#f59e0b" type="button">
+        <span class="action-btn__emoji" aria-hidden="true">🚌</span>
+        <span class="action-btn__body">
+          <span class="action-btn__name">Bus Stop</span>
+          <span class="action-btn__cost">£80</span>
+        </span>
+      </button>
+    </li>
+
+    <li>
+      <button class="action-btn" data-action="bike-lane" data-cost="40"
+              data-emoji="🚲" data-color="#22c55e" type="button">
+        <span class="action-btn__emoji" aria-hidden="true">🚲</span>
+        <span class="action-btn__body">
+          <span class="action-btn__name">Bike Lane</span>
+          <span class="action-btn__cost">£40</span>
+        </span>
+      </button>
+    </li>
+
+    <li>
+      <button class="action-btn" data-action="parking-garage" data-cost="120"
+              data-emoji="🅿️" data-color="#6366f1" type="button">
+        <span class="action-btn__emoji" aria-hidden="true">🅿️</span>
+        <span class="action-btn__body">
+          <span class="action-btn__name">Parking Garage</span>
+          <span class="action-btn__cost">£120</span>
+        </span>
+      </button>
+    </li>
+
+    <li>
+      <button class="action-btn" data-action="park" data-cost="60"
+              data-emoji="🌳" data-color="#86efac" type="button">
+        <span class="action-btn__emoji" aria-hidden="true">🌳</span>
+        <span class="action-btn__body">
+          <span class="action-btn__name">Park</span>
+          <span class="action-btn__cost">£60</span>
+        </span>
+      </button>
+    </li>
+
+  </ul>
+
+  <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
+    <span aria-hidden="true">⚠️</span> Not enough budget!
+  </p>
+
+</aside>

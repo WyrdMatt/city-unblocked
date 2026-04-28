@@ -1,0 +1,195 @@
+/* ============================================================
+   Actions Panel
+   Sits to the right of the city grid.
+   Assumes the parent layout uses flexbox/grid to position it.
+   ============================================================ */
+
+/* ----- Panel shell ----- */
+.actions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 1.25rem 1rem;
+  background: #1e2433;
+  border-left: 2px solid #2d3348;
+  border-radius: 0 12px 12px 0;
+  font-family: inherit;
+  color: #e2e8f0;
+}
+
+/* ----- Header ----- */
+.actions-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.actions-panel__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.actions-panel__sub {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* ----- Button list ----- */
+.actions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+/* ----- Individual action button ----- */
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #2d3348;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-family: inherit;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+  /* Prevent tile-click from leaking through while still focusable */
+  position: relative;
+}
+
+.action-btn:hover {
+  background: #374162;
+  border-color: #4b5680;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.action-btn:active {
+  transform: scale(0.97);
+}
+
+/* Active / selected state — JS adds .action-btn--active */
+.action-btn--active {
+  background: #374162;
+  border-color: var(--action-color, #60a5fa);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color, #60a5fa) 30%, transparent);
+}
+
+.action-btn--active .action-btn__cost {
+  background: var(--action-color, #60a5fa);
+  color: #0f172a;
+}
+
+/* Disabled (can't afford) state */
+.action-btn--unaffordable {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ----- Button internals ----- */
+.action-btn__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  /* Prevent emoji from triggering button :active quirks in some browsers */
+  pointer-events: none;
+  user-select: none;
+}
+
+.action-btn__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.action-btn__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-btn__cost {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1em 0.45em;
+  border-radius: 4px;
+  background: #1e2433;
+  color: #94a3b8;
+  align-self: flex-start;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* ----- Budget error message ----- */
+.actions-panel__error {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #450a0a;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fca5a5;
+  animation: shake 0.35s ease;
+}
+
+.actions-panel__error[hidden] {
+  display: none;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+/* ============================================================
+   Tile placed-action styles
+   Applied to grid tiles by actions-panel.js.
+   Tiles are expected to have class .tile.
+   ============================================================ */
+
+/* Base placed state */
+.tile--placed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;         /* emoji size — override in your tile CSS if needed */
+  transition: background-color 0.2s ease;
+  cursor: default;
+}
+
+/* Colour variants set via inline --action-color on the tile element */
+.tile--placed {
+  background-color: var(--tile-placed-color, #374162) !important;
+  outline: 2px solid color-mix(in srgb, var(--tile-placed-color, #374162) 60%, #000);
+  outline-offset: -2px;
+}
