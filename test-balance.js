@@ -19,7 +19,7 @@
 
 'use strict';
 
-const { EFFECTS, WIN_HAPPINESS, WIN_CONGESTION, INITIAL_STATE,
+const { EFFECTS, DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION, INITIAL_STATE,
         calculateEffects, checkWinCondition } = require('./game-logic');
 
 const VERBOSE = process.argv.includes('--verbose');
@@ -251,6 +251,63 @@ console.log('\nCity Unblocked — balance simulation tests\n');
   if (VERBOSE) console.log(`  [Test9] 5× road-widening (£${totalCost}):`, JSON.stringify(sim));
   assert(sim.result !== 'win', 'Test9: spamming road-widening alone cannot win (happiness drops too low)',
     `happiness=${sim.happiness.toFixed(1)}`);
+}
+
+// ── Test 10: DIFFICULTY_PRESETS shape and ordering ─────────────────────────
+{
+  const levels = ['easy', 'normal', 'hard'];
+  assert(levels.every(l => DIFFICULTY_PRESETS[l] !== undefined),
+    'Test10a: all three difficulty levels defined');
+  assert(DIFFICULTY_PRESETS.easy.budget   > DIFFICULTY_PRESETS.normal.budget,
+    'Test10b: easy budget > normal budget');
+  assert(DIFFICULTY_PRESETS.normal.budget > DIFFICULTY_PRESETS.hard.budget,
+    'Test10c: normal budget > hard budget');
+  assert(DIFFICULTY_PRESETS.easy.turnLimit   > DIFFICULTY_PRESETS.normal.turnLimit,
+    'Test10d: easy has more turns than normal');
+  assert(DIFFICULTY_PRESETS.normal.turnLimit > DIFFICULTY_PRESETS.hard.turnLimit,
+    'Test10e: normal has more turns than hard');
+  assert(DIFFICULTY_PRESETS.easy.blockerRate === 0,
+    'Test10f: easy has no blockers');
+  assert(DIFFICULTY_PRESETS.hard.blockerRate > 0,
+    'Test10g: hard has blockers');
+}
+
+// ── Test 11: Hard difficulty — winning still achievable ───────────────────
+{
+  const maxGrid = buildMaxAdjGrid();
+  // Hard: £350 budget — 2 bus-stops (£160) + 2 parks (£120) + 1 bike-lane (£40) = £320
+  // Use interior rows so all tiles have 3–4 adj building neighbours (max hotspot)
+  // and place combos adjacent: bus-stop→park (Transit Hub), park→bike-lane (Green Corridor)
+  const acts = [
+    { action: 'bus-stop',  row: 5, col: 0 },
+    { action: 'bus-stop',  row: 6, col: 0 },
+    { action: 'park',      row: 5, col: 1 },
+    { action: 'park',      row: 6, col: 1 },
+    { action: 'bike-lane', row: 5, col: 2 },
+  ];
+  const cost = acts.reduce((s, a) => s + actionCost(a.action), 0);
+  const sim  = simulate(acts, maxGrid);
+  assert(cost <= DIFFICULTY_PRESETS.hard.budget, 'Test11a: hard-mode winning combo fits hard budget',
+    `cost=£${cost}`);
+  assert(sim.result === 'win', 'Test11b: hard-mode combo still wins the game',
+    `congestion=${sim.congestion.toFixed(1)} happiness=${sim.happiness.toFixed(1)}`);
+}
+
+// ── Test 12: Easy difficulty — all-greedy combos trivially win ────────────
+{
+  const maxGrid = buildMaxAdjGrid();
+  // Easy: £700 budget — 3 bus-stops + 3 parks + 2 bike-lanes = £480; well under cap
+  const acts = [
+    ...placements('bus-stop', 3),
+    { action: 'park', row: 0, col: 1 }, { action: 'park', row: 1, col: 1 },
+    { action: 'park', row: 2, col: 1 },
+    ...placements('bike-lane', 2),
+  ];
+  const cost = acts.reduce((s, a) => s + actionCost(a.action), 0);
+  const sim  = simulate(acts, maxGrid);
+  assert(cost <= DIFFICULTY_PRESETS.easy.budget, 'Test12a: easy-mode combos fit easy budget',
+    `cost=£${cost}`);
+  assert(sim.result === 'win', 'Test12b: easy-mode combo wins', '');
 }
 
 // ── Summary ────────────────────────────────────────────────────────────────

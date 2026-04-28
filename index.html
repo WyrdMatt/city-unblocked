@@ -417,6 +417,21 @@
       font-size: 26px; opacity: 0.6;
     }
 
+    .tile.blocker {
+      background: repeating-linear-gradient(
+        -45deg,
+        #18191f 0px, #18191f 7px,
+        #0d0e14 7px, #0d0e14 14px
+      );
+      box-shadow: inset 0 0 0 1px rgba(255,60,60,.18);
+      cursor: not-allowed;
+    }
+    .tile.blocker::after {
+      content: '⛔'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; opacity: 0.75;
+    }
+
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -1207,12 +1222,33 @@
     }
 
     // Expose for test harness (test-effects.js loads this via jsdom or similar)
-    window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS, WIN_HAPPINESS, WIN_CONGESTION, calculateEffects, checkWinCondition, getGridNeighbours };
+    // ── Difficulty presets ────────────────────────────────────────────────
+    var DIFFICULTY_PRESETS = {
+      easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
+      normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
+      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+    };
+    window.currentDifficulty   = window.currentDifficulty   || 'normal';
+    window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
+
+    function makeInitialState() {
+      var p = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
+      return { congestion: 80, happiness: 20, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
+    }
+
+    window.setDifficulty = function setDifficulty(level) {
+      if (!DIFFICULTY_PRESETS[level]) return;
+      window.currentDifficulty = level;
+    };
+
+    window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
+                          DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
+                          calculateEffects, checkWinCondition, getGridNeighbours };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
 
-    window.gameState = Object.assign({}, INITIAL);
+    window.gameState = Object.assign({}, makeInitialState());
 
     window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
     document.body.dataset.weather = window.currentWeather;
@@ -1272,13 +1308,16 @@
     };
 
     window.restartGame = function restartGame() {
-      Object.assign(window.gameState, INITIAL);
+      Object.assign(window.gameState, makeInitialState());
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
       // Generate a fresh random map and rebuild the grid
-      var newMap = (typeof window.generateMap === "function") ? window.generateMap() : null;
+      var preset  = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
+      var newMap = (typeof window.generateMap === "function")
+        ? window.generateMap({ blockerRate: preset.blockerRate })
+        : null;
       if (newMap && typeof window.buildCityGrid === "function") {
         window.currentMap = newMap;
         window.buildCityGrid(newMap.grid);
@@ -1333,8 +1372,8 @@
       minBlockSize: 2,    // min non-road tiles between parallel roads
       emptyRate:    0.20, // fraction of eligible building tiles → empty lots
       parkCount:    2,    // decorative (pre-existing) park tiles per map
+      blockerRate:  0,    // fraction of building tiles → impassable blocker (0 = none)
       // Future hooks (not yet used):
-      //   blockerRate: 0,     // fraction of building tiles → impassable blocker
       //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
     };
 
@@ -1466,6 +1505,23 @@
         parksPlaced++;
       }
 
+      // Step 4 — Blocker tiles: convert a fraction of remaining building tiles to impassable
+      if (cfg.blockerRate > 0) {
+        var blockerPool = [];
+        for (var r = 0; r < cfg.rows; r++)
+          for (var c = 0; c < cfg.cols; c++)
+            if (grid[r][c] === 'B') blockerPool.push([r, c]);
+        // Shuffle with seeded RNG so blockers are deterministic per seed
+        for (var i = blockerPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = blockerPool[i]; blockerPool[i] = blockerPool[j]; blockerPool[j] = tmp;
+        }
+        var blockerCount = Math.floor(blockerPool.length * cfg.blockerRate);
+        for (var i = 0; i < blockerCount; i++) {
+          grid[blockerPool[i][0]][blockerPool[i][1]] = 'X';
+        }
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -1501,7 +1557,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty' };
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -1580,8 +1636,9 @@
       window.refreshTile(tile);
     };
 
-    // Generate initial map and build grid
-    window.currentMap = window.generateMap();
+    // Generate initial map and build grid (respects current difficulty's blockerRate)
+    var _initPreset = (window.DIFFICULTY_PRESETS || {})[window.currentDifficulty || 'normal'] || {};
+    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0 });
     window.buildCityGrid(window.currentMap.grid);
     infoBar.textContent = 'Seed: ' + window.currentMap.seed + '  |  ' + window.currentMap.roadRows.length + '×' + window.currentMap.roadCols.length + ' road grid';
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
@@ -1657,6 +1714,12 @@
 
       const budget = window.gameState?.budget ?? Infinity;
       if (budget < selectedAction.cost) { showBudgetError(); return; }
+
+      // Blocker tiles are always impassable
+      if (tile.classList.contains("blocker")) {
+        showTileError("This area is blocked");
+        return;
+      }
 
       // Placement rule: check tile type is valid for this action
       const TILE_TYPES = ["road", "building", "park", "empty"];

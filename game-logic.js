@@ -29,6 +29,52 @@ var DEFAULT_TURN_LIMIT = 15;
 
 var INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
+var DIFFICULTY_PRESETS = {
+  easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
+  normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
+  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+};
+
+// ── Weather system ─────────────────────────────────────────────────────────
+
+var WEATHER_TYPES = ['sunny', 'rainy', 'overcast', 'snowy', 'stormy'];
+
+var WEATHER_META = {
+  sunny:    { label: 'Sunny',    emoji: '☀️',  hint: 'Perfect conditions. All actions at full effect.' },
+  rainy:    { label: 'Rainy',    emoji: '🌧️',  hint: 'Wet roads — bike lanes and parks less effective; bus stops busier.' },
+  overcast: { label: 'Overcast', emoji: '☁️',  hint: 'Grey skies — slight reduction in happiness gains.' },
+  snowy:    { label: 'Snowy',    emoji: '❄️',  hint: 'Icy conditions — bus stops critical; bikes impractical.' },
+  stormy:   { label: 'Stormy',   emoji: '⛈️',  hint: 'Severe weather — only infrastructure actions are effective.' },
+};
+
+// Per-action multipliers for each weather type.
+// Keys are action names; values are { cong, hap } multipliers (default 1.0 if absent).
+var WEATHER_MULTIPLIERS = {
+  sunny: {},
+  rainy: {
+    'bike-lane':  { cong: 0.75, hap: 0.60 },
+    'park':       { cong: 1.00, hap: 0.70 },
+    'bus-stop':   { cong: 1.30, hap: 1.00 },
+  },
+  overcast: {
+    'bike-lane': { hap: 0.85 },
+    'park':      { hap: 0.90 },
+  },
+  snowy: {
+    'bike-lane':     { cong: 0.40, hap: 0.35 },
+    'park':          { cong: 0.70, hap: 0.50 },
+    'bus-stop':      { cong: 1.40, hap: 1.20 },
+    'road-widening': { cong: 1.30 },
+  },
+  stormy: {
+    'bike-lane':      { cong: 0.30, hap: 0.25 },
+    'park':           { cong: 0.50, hap: 0.30 },
+    'bus-stop':       { cong: 1.50, hap: 1.00 },
+    'road-widening':  { cong: 1.25 },
+    'parking-garage': { cong: 1.20 },
+  },
+};
+
 // ── Combo bonuses ──────────────────────────────────────────────────────────
 // Pairs of orthogonally adjacent placed actions that unlock a bonus.
 // Order-independent: {a,b} matches (a→b) or (b→a).
@@ -68,10 +114,11 @@ function hotspotScore(placement, grid) {
 }
 
 /**
- * calculateEffects(placements, grid) → { congestionDelta, happinessDelta }
+ * calculateEffects(placements, grid, weather) → { congestionDelta, happinessDelta }
  *
  * placements: [{ action, row, col }]  — only tiles that have been placed
  * grid:       [{ row, col, type }]    — full 10×10 grid (for adjacency)
+ * weather:    string|null             — key from WEATHER_TYPES (optional)
  *
  * Applies:
  *   - Base effect per action type (from EFFECTS)
@@ -79,9 +126,10 @@ function hotspotScore(placement, grid) {
  *   - Adjacency bonus: park next to building → +3 happiness per neighbour
  *   - Adjacency bonus: bus-stop next to building → −2 congestion per neighbour
  *   - Hotspot multiplier: bus-stop / bike-lane on a tile with ≥3 adj buildings → ×1.25
+ *   - Weather multipliers: per-action cong/hap scale factors (WEATHER_MULTIPLIERS)
  *   - Combo bonuses: adjacent complementary pair (see COMBOS)
  */
-function calculateEffects(placements, grid) {
+function calculateEffects(placements, grid, weather) {
   // Count placements per type (for diminishing-returns order)
   var placedCount = {};
   placements.forEach(function (p) {
@@ -114,6 +162,13 @@ function calculateEffects(placements, grid) {
     if (adjBuildings >= 3 && (p.action === 'bus-stop' || p.action === 'bike-lane')) {
       cDelta *= 1.25;
       hDelta *= 1.25;
+    }
+
+    // Weather multipliers
+    if (weather && WEATHER_MULTIPLIERS[weather]) {
+      var wm = WEATHER_MULTIPLIERS[weather][p.action] || {};
+      if (wm.cong != null) cDelta *= wm.cong;
+      if (wm.hap  != null) hDelta *= wm.hap;
     }
 
     congestionDelta += cDelta;
@@ -171,6 +226,10 @@ function checkWinCondition(state) {
 module.exports = {
   EFFECTS,
   COMBOS,
+  WEATHER_TYPES,
+  WEATHER_META,
+  WEATHER_MULTIPLIERS,
+  DIFFICULTY_PRESETS,
   WIN_HAPPINESS,
   WIN_CONGESTION,
   DEFAULT_TURN_LIMIT,
