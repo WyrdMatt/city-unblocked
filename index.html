@@ -2331,13 +2331,63 @@
 
     window.rebuildAnimations(window.currentMap);
 
+    /* ── FPS monitor ────────────────────────────────────────────── */
+    const fpsEl = document.createElement('div');
+    Object.assign(fpsEl.style, {
+      position: 'fixed', bottom: '6px', right: '8px', zIndex: '9999',
+      fontSize: '10px', fontFamily: 'monospace', color: 'rgba(255,255,255,0.28)',
+      pointerEvents: 'none', userSelect: 'none',
+    });
+    document.body.appendChild(fpsEl);
+
+    let fpsSamples = [], fpsLast = 0;
+    function updateFPS(ts) {
+      if (fpsLast) fpsSamples.push(1000 / (ts - fpsLast));
+      fpsLast = ts;
+      if (fpsSamples.length > 60) fpsSamples.shift();
+      if (fpsSamples.length >= 10) {
+        const avg = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
+        const color = avg >= 55 ? 'rgba(74,222,128,0.4)' : avg >= 30 ? 'rgba(251,191,36,0.5)' : 'rgba(248,113,113,0.6)';
+        fpsEl.style.color = color;
+        fpsEl.textContent = avg.toFixed(0) + ' fps';
+      }
+    }
+
     /* ── Main animation loop ────────────────────────────────────── */
-    function tick() {
+
+    // Per-weather pedestrian speed multipliers (bad weather → slower, more cautious peds)
+    const WEATHER_PED_SCALE = { sunny:1.0, rainy:0.70, overcast:0.88, snowy:0.42, stormy:0.32 };
+
+    let lastParkMoodUpdate = 0; // timestamp for throttling park-ped animation updates
+
+    function tick(ts) {
+      updateFPS(ts || 0);
       const cong = window.gameState?.congestion ?? 80;
+      const happ = Math.max(0, Math.min(100, window.gameState?.happiness ?? 20));
+
       // Speed factor: near-zero (~0.08) at max congestion, full at zero congestion
       const factor = 1 - (cong / 100) * 0.92;
       // Stop-and-go probability per frame; only kicks in above congestion 25
       const stopChance = Math.max(0, (cong - 25) / 75) * 0.007;
+
+      // Pedestrian energy: slow+gloomy at low happiness, brisk at high happiness
+      const happPedScale = 0.35 + (happ / 100) * 0.9;
+      const wPedScale    = WEATHER_PED_SCALE[window.currentWeather || 'sunny'] || 1.0;
+      const pedScale     = happPedScale * wPedScale;
+
+      // Pedestrian mood filter: greyscale when happiness is low
+      const pedFilter = happ < 35 ? `grayscale(${(0.65 - happ / 100).toFixed(2)})` : '';
+
+      // Throttled: update park ped wander speed based on happiness
+      const now = Date.now();
+      if (now - lastParkMoodUpdate > 800) {
+        lastParkMoodUpdate = now;
+        // Duration range: 4.2 s (miserable) → 1.8 s (thriving)
+        const parkDur = (4.2 - happ * 0.024).toFixed(2);
+        parkPedEls.forEach(el => { el.style.animationDuration = parkDur + 's'; });
+        // Filter park peds too
+        parkPedEls.forEach(el => { el.style.filter = pedFilter; });
+      }
 
       cars.forEach(car => {
         // Hide cars that only appear above a certain congestion threshold
@@ -2346,9 +2396,10 @@
         if (!active) return;
 
         if (car.stopTimer > 0) {
-          // Car is stopped — show brake-light dimming, don't move
+          // Pulsing brake-light effect — more intense at higher congestion
           car.stopTimer--;
-          car.el.style.filter = 'brightness(0.55) sepia(0.4)';
+          const pulse = 0.42 + 0.14 * Math.sin(Date.now() / 175);
+          car.el.style.filter = `brightness(${pulse.toFixed(2)}) sepia(${(0.4 + cong / 400).toFixed(2)})`;
           return;
         }
 
@@ -2381,13 +2432,14 @@
         }
       });
 
-      // Animate sidewalk pedestrians
+      // Animate sidewalk pedestrians — speed and mood react to happiness + weather
       sidewalkPeople.forEach(p => {
-        p.pos += p.speed;
+        p.pos += p.speed * pedScale;
         if (p.pos > p.max) { p.pos = p.max; p.speed = -Math.abs(p.speed); }
         if (p.pos < p.min) { p.pos = p.min; p.speed =  Math.abs(p.speed); }
         p.el.style.transform = p.speed < 0 ? 'scaleX(-1)' : '';
         p.el.style[p.axis === 'v' ? 'top' : 'left'] = p.pos + 'px';
+        if (p.el.style.filter !== pedFilter) p.el.style.filter = pedFilter;
       });
 
       requestAnimationFrame(tick);
