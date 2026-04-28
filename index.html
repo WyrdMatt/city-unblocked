@@ -258,6 +258,32 @@
     .overlay__btn--win      { background: var(--c-win-btn); color: #fff; }
     .overlay__btn--gameover { background: var(--c-card-lose-border); color: var(--c-text); }
 
+    /* ── Left info panel (weather + combos) ─────────────────────────── */
+    .info-panel--left {
+      display: flex; flex-direction: column; gap: 0.85rem; width: 220px;
+      flex-shrink: 0; padding: 1.25rem;
+      background: var(--c-surface);
+      border-right: 1px solid var(--c-border);
+      border-radius: 16px 0 0 16px;
+      color: var(--c-text);
+    }
+    @media (max-width: 640px) { .info-panel--left { display: none; } }
+    .info-panel__title {
+      margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--c-text-dim);
+    }
+    .weather-summary { display: flex; align-items: flex-start; gap: 0.55rem; }
+    .weather-summary__icon  { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .weather-summary__label { font-size: 0.88rem; font-weight: 700; color: var(--c-text); display: block; }
+    .weather-summary__hint  { margin: 0.25rem 0 0; font-size: 0.66rem; color: var(--c-text-muted); line-height: 1.4; }
+    .weather-modifiers { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.3rem; }
+    .weather-mod-row {
+      display: grid; grid-template-columns: 1.5rem 1fr auto; align-items: center; gap: 0.3rem;
+      font-size: 0.63rem; color: var(--c-text-muted); padding: 0.2rem 0.3rem; border-radius: 5px;
+      background: rgba(255,255,255,.03);
+    }
+    .weather-mod-row__badges { display: flex; gap: 0.2rem; }
+
     /* ── actions-panel.css ───────────────────────────────────────────── */
     .actions-panel {
       display: flex; flex-direction: column; gap: 1rem; width: 220px;
@@ -760,9 +786,10 @@
 
     /* ── Combos section — desktop panel ─────────────────────────── */
     .combos-section {
-      border-top: 1px solid var(--c-border-sub); padding-top: 0.6rem;
+      border-top: 1px solid var(--c-border-sub); padding-top: 0.55rem;
       display: flex; flex-direction: column; gap: 0.3rem;
     }
+    .info-panel--left .combos-section { border-top: none; padding-top: 0; }
     .combos-section__title {
       margin: 0; font-size: 0.66rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.12em; color: var(--c-text-dim);
@@ -1199,6 +1226,23 @@
   <!-- ── Game area ────────────────────────────────────────────────────── -->
   <div id="game-area">
 
+    <!-- Left panel: weather info + combos — desktop only -->
+    <aside class="info-panel--left" id="leftPanel" aria-label="Weather and combos">
+      <h2 class="info-panel__title">Weather</h2>
+      <div class="weather-summary">
+        <span class="weather-summary__icon" id="weatherInfoIcon">☀️</span>
+        <div>
+          <span class="weather-summary__label" id="weatherInfoLabel">Sunny</span>
+          <p class="weather-summary__hint" id="weatherInfoHint">Perfect conditions. All actions at full effect.</p>
+        </div>
+      </div>
+      <div class="weather-modifiers" id="weatherModifiers"></div>
+      <div class="combos-section" id="combosSection">
+        <h3 class="combos-section__title">Combos</h3>
+        <ul class="combos-list" id="combosList" aria-label="Available action combos"></ul>
+      </div>
+    </aside>
+
     <!-- City grid -->
     <div id="map-area">
       <div id="city-grid"></div>
@@ -1352,11 +1396,6 @@
           </button>
         </li>
       </ul>
-      <!-- Combos reference — desktop only -->
-      <div class="combos-section" id="combosSection">
-        <h3 class="combos-section__title">Combos</h3>
-        <ul class="combos-list" id="combosList" aria-label="Available action combos"></ul>
-      </div>
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
       </p>
@@ -1383,10 +1422,14 @@
     const congestionDelta = document.getElementById("congestionDelta");
     const congestionGoal  = document.getElementById("congestionGoal");
     const turnsValueEl    = document.getElementById("turnsValue");
-    const weatherBadgeEl  = document.getElementById("weatherBadge");
-    const weatherIconEl   = document.getElementById("weatherIcon");
-    const weatherLabelEl  = document.getElementById("weatherLabel");
-    const budgetValueEl   = document.getElementById("budgetValue");
+    const weatherBadgeEl   = document.getElementById("weatherBadge");
+    const weatherIconEl    = document.getElementById("weatherIcon");
+    const weatherLabelEl   = document.getElementById("weatherLabel");
+    const weatherInfoIcon  = document.getElementById("weatherInfoIcon");
+    const weatherInfoLabel = document.getElementById("weatherInfoLabel");
+    const weatherInfoHint  = document.getElementById("weatherInfoHint");
+    const weatherModifiers = document.getElementById("weatherModifiers");
+    const budgetValueEl    = document.getElementById("budgetValue");
     const winOverlay      = document.getElementById("winOverlay");
     const gameOverOverlay = document.getElementById("gameOverOverlay");
     const winTurns        = document.getElementById("winTurns");
@@ -1445,10 +1488,34 @@
 
       const weather = window.currentWeather || "sunny";
       const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const WMULTS  = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_MULTIPLIERS) || {};
       const wMeta   = WMETA[weather] || { label: weather, emoji: "🌤️", hint: "" };
       if (weatherIconEl)  weatherIconEl.textContent  = wMeta.emoji;
       if (weatherLabelEl) weatherLabelEl.textContent = wMeta.label;
       if (weatherBadgeEl) weatherBadgeEl.title        = wMeta.hint;
+      // Left panel weather detail
+      if (weatherInfoIcon)  weatherInfoIcon.textContent  = wMeta.emoji;
+      if (weatherInfoLabel) weatherInfoLabel.textContent = wMeta.label;
+      if (weatherInfoHint)  weatherInfoHint.textContent  = wMeta.hint || "";
+      if (weatherModifiers) {
+        const mults = WMULTS[weather] || {};
+        const EMOJI = { 'bus-stop':'🚌','bike-lane':'🚲','parking-garage':'🅿️','park':'🌳','road-widening':'🚧' };
+        const rows  = Object.entries(mults).map(function([action, wm]) {
+          const badges = [];
+          if (wm.cong != null && wm.cong !== 1) {
+            const p = Math.round((wm.cong-1)*100);
+            badges.push('<span class="weather-mod-'+(wm.cong>1?'up':'down')+'">🚗 '+(p>0?'+':'')+p+'%</span>');
+          }
+          if (wm.hap != null && wm.hap !== 1) {
+            const p = Math.round((wm.hap-1)*100);
+            badges.push('<span class="weather-mod-'+(wm.hap>1?'up':'down')+'">😊 '+(p>0?'+':'')+p+'%</span>');
+          }
+          return '<div class="weather-mod-row"><span>'+(EMOJI[action]||'')+'</span>'
+               + '<span class="weather-mod-row__name">'+action.replace('-',' ')+'</span>'
+               + '<span class="weather-mod-row__badges">'+badges.join('')+'</span></div>';
+        });
+        weatherModifiers.innerHTML = rows.join('');
+      }
 
       budgetValueEl.textContent = formatBudget(budget);
       budgetValueEl.classList.toggle("hud__budget-value--low", budget < 80);
