@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>City Unblocked</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #0f1117;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Page layout ─────────────────────────────────────────────────── */
+    #game-area {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0;
+      padding: 1.5rem;
+      flex: 1;
+    }
+
+    #map-area {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    /* ── hud.css ─────────────────────────────────────────────────────── */
+    .hud {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+      padding: 0.625rem 1.25rem;
+      background: #1e2433;
+      border-bottom: 2px solid #2d3348;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .hud__brand { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    .hud__brand-icon { font-size: 1.25rem; line-height: 1; }
+    .hud__brand-name {
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #94a3b8; white-space: nowrap;
+    }
+    .hud__meters { display: flex; align-items: center; gap: 1.25rem; flex: 1; min-width: 0; }
+    .hud-meter { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+    .hud-meter__label {
+      display: flex; align-items: center; gap: 0.25rem; font-size: 0.72rem;
+      font-weight: 600; color: #94a3b8; text-transform: uppercase;
+      letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0;
+    }
+    .hud-meter__track {
+      position: relative; flex: 1; height: 10px; background: #2d3348;
+      border-radius: 999px; overflow: hidden; min-width: 60px;
+    }
+    .hud-meter__fill {
+      position: absolute; inset: 0 auto 0 0; width: 0%;
+      border-radius: 999px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#16a34a,#4ade80); }
+    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#b91c1c,#f87171); }
+    .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
+    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    .hud-meter__value {
+      font-size: 0.72rem; font-weight: 700; color: #cbd5e1;
+      width: 2.2ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
+    }
+    .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0.1rem; }
+    .hud__budget-label { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
+    .hud__budget-value { font-size: 1.1rem; font-weight: 800; color: #e2e8f0; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
+    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1.2s ease-in-out infinite; }
+    @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+    /* ── Overlays ────────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; display: flex; align-items: center;
+      justify-content: center; z-index: 500; padding: 1rem;
+      animation: overlay-fade-in 0.35s ease;
+    }
+    .overlay[hidden] { display: none; }
+    @keyframes overlay-fade-in { from{opacity:0} to{opacity:1} }
+    .overlay--win     { background: rgba(0,20,10,0.88); backdrop-filter: blur(6px); }
+    .overlay--gameover { background: rgba(10,12,20,0.90); backdrop-filter: blur(6px); }
+    .overlay__card {
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      padding: 2rem 2.5rem; border-radius: 20px; max-width: 440px; width: 100%;
+      text-align: center; animation: card-pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes card-pop { from{transform:scale(0.75);opacity:0} to{transform:scale(1);opacity:1} }
+    .overlay--win      .overlay__card { background: #052e16; border: 2px solid #16a34a; }
+    .overlay--gameover .overlay__card { background: #0f172a; border: 2px solid #334155; }
+    .overlay__confetti, .overlay__icon { font-size: 2.5rem; line-height: 1; user-select: none; }
+    .overlay__title { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+    .overlay--win      .overlay__title { color: #4ade80; }
+    .overlay--gameover .overlay__title { color: #94a3b8; }
+    .overlay__body { margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+    .overlay__body strong { color: #e2e8f0; font-size: 1rem; }
+    .overlay__stats {
+      display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: center;
+      margin: 0; font-size: 0.78rem; color: #94a3b8;
+    }
+    .overlay__stats strong { color: #e2e8f0; }
+    .overlay__built { width: 100%; text-align: left; background: #1e2433; border-radius: 10px; padding: 0.75rem 1rem; }
+    .overlay__built-heading { margin: 0 0 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; }
+    .overlay__built-list { margin: 0; padding: 0 0 0 1rem; font-size: 0.82rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.2rem; }
+    .overlay__built-list strong { color: #e2e8f0; }
+    .overlay__btn { margin-top: 0.5rem; padding: 0.6rem 1.75rem; border: none; border-radius: 10px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: transform 0.1s ease, filter 0.15s ease; }
+    .overlay__btn:hover  { filter: brightness(1.12); }
+    .overlay__btn:active { transform: scale(0.96); }
+    .overlay__btn--win      { background: #16a34a; color: #fff; }
+    .overlay__btn--gameover { background: #334155; color: #e2e8f0; }
+
+    /* ── actions-panel.css ───────────────────────────────────────────── */
+    .actions-panel {
+      display: flex; flex-direction: column; gap: 1.25rem; width: 200px;
+      flex-shrink: 0; padding: 1.25rem 1rem; background: #1e2433;
+      border-left: 2px solid #2d3348; border-radius: 0 12px 12px 0;
+      color: #e2e8f0;
+    }
+    .actions-panel__header { display: flex; flex-direction: column; gap: 0.25rem; }
+    .actions-panel__title { margin: 0; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #64748b; line-height: 1.4; }
+    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.625rem; }
+    .action-btn {
+      display: flex; align-items: center; gap: 0.625rem; width: 100%;
+      padding: 0.625rem 0.75rem; background: #2d3348; border: 2px solid transparent;
+      border-radius: 10px; cursor: pointer; color: #e2e8f0; font-family: inherit;
+      text-align: left;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .action-btn:hover { background: #374162; border-color: #4b5680; }
+    .action-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    .action-btn:active { transform: scale(0.97); }
+    .action-btn--active {
+      background: #374162;
+      border-color: var(--action-color, #60a5fa);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color, #60a5fa) 30%, transparent);
+    }
+    .action-btn--active .action-btn__cost { background: var(--action-color, #60a5fa); color: #0f172a; }
+    .action-btn__emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
+    .action-btn__body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
+    .action-btn__name { font-size: 0.82rem; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .action-btn__cost { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.1em 0.45em; border-radius: 4px; background: #1e2433; color: #94a3b8; align-self: flex-start; transition: background 0.15s ease, color 0.15s ease; }
+    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; font-size: 0.78rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
+    .actions-panel__error[hidden] { display: none; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+    /* Placed tile overlay (applied by actions-panel.js) */
+    .tile--placed {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; transition: background-color 0.2s ease; cursor: default;
+      background-color: var(--tile-placed-color, #374162) !important;
+      outline: 2px solid color-mix(in srgb, var(--tile-placed-color, #374162) 60%, #000);
+      outline-offset: -2px;
+    }
+
+    /* ── city-map styles ─────────────────────────────────────────────── */
+    #city-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 56px);
+      grid-template-rows: repeat(10, 56px);
+      gap: 3px;
+      background: #111;
+      padding: 3px;
+      border: 2px solid #333;
+      border-radius: 12px 0 0 12px;
+    }
+    .tile {
+      width: 56px; height: 56px; cursor: pointer;
+      border: 3px solid transparent;
+      transition: border-color 0.1s, filter 0.1s;
+      position: relative;
+    }
+    .tile:hover { filter: brightness(1.2); }
+    .tile.selected { border-color: #f1c40f; z-index: 1; }
+    .tile.road     { background: #c0392b; }
+    .tile.building { background: #7f8c8d; }
+    .tile.park     { background: #27ae60; }
+    .tile.empty    { background: #d4b896; }
+    .tile.road::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        linear-gradient(transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%),
+        linear-gradient(90deg, transparent 46%, rgba(255,255,100,0.25) 46%, rgba(255,255,100,0.25) 54%, transparent 54%);
+    }
+    .tile.building::after {
+      content: ''; position: absolute; inset: 8px;
+      background-image:
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px),
+        radial-gradient(circle, rgba(255,255,200,0.45) 2px, transparent 2px);
+      background-size: 14px 14px;
+      background-position: 2px 2px, 16px 2px, 2px 16px, 16px 16px;
+      background-repeat: no-repeat;
+    }
+    .tile.park::after {
+      content: '🌳'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; line-height: 1;
+    }
+    /* Suppress ::after on placed tiles so the emoji shows cleanly */
+    .tile--placed::after { display: none; }
+
+    #info-bar { font-size: 13px; color: #aaa; height: 20px; }
+    #legend { display: flex; gap: 18px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #bbb; }
+    .legend-swatch { width: 16px; height: 16px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── HUD ──────────────────────────────────────────────────────────── -->
+  <header class="hud" id="hud" role="banner">
+    <div class="hud__brand">
+      <span class="hud__brand-icon" aria-hidden="true">🏙️</span>
+      <span class="hud__brand-name">City Unblocked</span>
+    </div>
+    <div class="hud__meters" role="group" aria-label="City meters">
+      <div class="hud-meter hud-meter--happiness">
+        <span class="hud-meter__label"><span aria-hidden="true">😊</span> Happiness</span>
+        <div class="hud-meter__track" role="progressbar" aria-label="Happiness"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="happinessBar">
+          <div class="hud-meter__fill" id="happinessFill"></div>
+        </div>
+        <span class="hud-meter__value" id="happinessValue">0</span>
+      </div>
+      <div class="hud-meter hud-meter--congestion">
+        <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
+        <div class="hud-meter__track" role="progressbar" aria-label="Congestion"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="congestionBar">
+          <div class="hud-meter__fill" id="congestionFill"></div>
+        </div>
+        <span class="hud-meter__value" id="congestionValue">0</span>
+      </div>
+    </div>
+    <div class="hud__budget" aria-label="Remaining budget">
+      <span class="hud__budget-label">Budget</span>
+      <span class="hud__budget-value" id="budgetValue">£0</span>
+    </div>
+  </header>
+
+  <!-- ── Win overlay ──────────────────────────────────────────────────── -->
+  <div class="overlay overlay--win" id="winOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <div class="overlay__card">
+      <div class="overlay__confetti" aria-hidden="true">🎉🏆🎊</div>
+      <h2 class="overlay__title" id="winTitle">City Unblocked!</h2>
+      <p class="overlay__body">You made this city more livable in <strong id="winTurns">—</strong> turns.</p>
+      <p class="overlay__stats">
+        <span>😊 Happiness: <strong id="winHappiness">—</strong></span>
+        <span>🚗 Congestion: <strong id="winCongestion">—</strong></span>
+        <span>💰 Budget left: <strong id="winBudget">—</strong></span>
+      </p>
+      <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
+    </div>
+  </div>
+
+  <!-- ── Game-over overlay ─────────────────────────────────────────────── -->
+  <div class="overlay overlay--gameover" id="gameOverOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+    <div class="overlay__card">
+      <div class="overlay__icon" aria-hidden="true">💸</div>
+      <h2 class="overlay__title" id="gameOverTitle">Budget Depleted</h2>
+      <p class="overlay__body">The city ran out of funds.</p>
+      <div class="overlay__built">
+        <p class="overlay__built-heading">What you built:</p>
+        <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
+      </div>
+      <button class="overlay__btn overlay__btn--gameover" id="gameOverRestart" type="button">Try Again</button>
+    </div>
+  </div>
+
+  <!-- ── Game area ────────────────────────────────────────────────────── -->
+  <div id="game-area">
+
+    <!-- City grid -->
+    <div id="map-area">
+      <div id="city-grid"></div>
+      <div id="info-bar">Click a tile to select it.</div>
+      <div id="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#c0392b"></div> Road</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#7f8c8d"></div> Building</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#27ae60"></div> Park</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#d4b896"></div> Empty</div>
+      </div>
+    </div>
+
+    <!-- Actions panel -->
+    <aside class="actions-panel" id="actionsPanel" aria-label="Action picker">
+      <header class="actions-panel__header">
+        <h2 class="actions-panel__title">Actions</h2>
+        <p class="actions-panel__sub">Pick an action, then click a tile.</p>
+      </header>
+      <ul class="actions-list" id="actionsList" role="list">
+        <li>
+          <button class="action-btn" data-action="bus-stop" data-cost="80"
+                  data-emoji="🚌" data-color="#f59e0b" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🚌</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Bus Stop</span>
+              <span class="action-btn__cost">£80</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="action-btn" data-action="bike-lane" data-cost="40"
+                  data-emoji="🚲" data-color="#22c55e" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🚲</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Bike Lane</span>
+              <span class="action-btn__cost">£40</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="action-btn" data-action="parking-garage" data-cost="120"
+                  data-emoji="🅿️" data-color="#6366f1" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🅿️</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Parking Garage</span>
+              <span class="action-btn__cost">£120</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="action-btn" data-action="park" data-cost="60"
+                  data-emoji="🌳" data-color="#86efac" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🌳</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Park</span>
+              <span class="action-btn__cost">£60</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+      <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
+        <span aria-hidden="true">⚠️</span> Not enough budget!
+      </p>
+    </aside>
+
+  </div><!-- #game-area -->
+
+  <!-- ── hud.js ────────────────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    "use strict";
+    const happinessFill  = document.getElementById("happinessFill");
+    const happinessBar   = document.getElementById("happinessBar");
+    const happinessValue = document.getElementById("happinessValue");
+    const congestionFill  = document.getElementById("congestionFill");
+    const congestionBar   = document.getElementById("congestionBar");
+    const congestionValue = document.getElementById("congestionValue");
+    const budgetValueEl   = document.getElementById("budgetValue");
+    const winOverlay      = document.getElementById("winOverlay");
+    const gameOverOverlay = document.getElementById("gameOverOverlay");
+    const winTurns        = document.getElementById("winTurns");
+    const winHappiness    = document.getElementById("winHappiness");
+    const winCongestion   = document.getElementById("winCongestion");
+    const winBudget       = document.getElementById("winBudget");
+    const gameOverBuiltList = document.getElementById("gameOverBuiltList");
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function formatBudget(n) { return "£" + Math.round(n).toLocaleString("en-GB"); }
+
+    window.refreshHUD = function refreshHUD() {
+      const gs = window.gameState;
+      if (!gs) return;
+      const happiness  = clamp(gs.happiness  ?? 0, 0, 100);
+      const congestion = clamp(gs.congestion ?? 0, 0, 100);
+      const budget     = gs.budget ?? 0;
+
+      happinessFill.style.width = happiness + "%";
+      happinessValue.textContent = Math.round(happiness);
+      happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
+      happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
+
+      congestionFill.style.width = congestion + "%";
+      congestionValue.textContent = Math.round(congestion);
+      congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
+      congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
+
+      budgetValueEl.textContent = formatBudget(budget);
+      budgetValueEl.classList.toggle("hud__budget-value--low", budget < 80);
+    };
+
+    // Stub — game-state.js overrides this with the full recalculation version
+    window.updateMeters = window.refreshHUD;
+
+    window.showWinScreen = function showWinScreen() {
+      const gs = window.gameState ?? {};
+      if (winTurns)      winTurns.textContent      = gs.turn ?? "—";
+      if (winHappiness)  winHappiness.textContent  = Math.round(clamp(gs.happiness  ?? 0, 0, 100));
+      if (winCongestion) winCongestion.textContent = Math.round(clamp(gs.congestion ?? 0, 0, 100));
+      if (winBudget)     winBudget.textContent     = formatBudget(gs.budget ?? 0);
+      winOverlay.removeAttribute("hidden");
+      document.getElementById("winRestart")?.focus();
+    };
+
+    window.showGameOverScreen = function showGameOverScreen() {
+      const placed = document.querySelectorAll(".tile--placed[data-placed-action]");
+      const counts = {};
+      placed.forEach(function (tile) {
+        const action = tile.dataset.placedAction;
+        if (action) counts[action] = (counts[action] ?? 0) + 1;
+      });
+      const labels = {
+        "bus-stop": "🚌 Bus Stops", "bike-lane": "🚲 Bike Lanes",
+        "parking-garage": "🅿️ Parking Garages", "park": "🌳 Parks",
+      };
+      if (gameOverBuiltList) {
+        gameOverBuiltList.innerHTML = "";
+        const entries = Object.entries(counts);
+        if (entries.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "Nothing was built.";
+          gameOverBuiltList.appendChild(li);
+        } else {
+          entries.forEach(function ([action, count]) {
+            const li = document.createElement("li");
+            li.innerHTML = (labels[action] ?? action) + ": <strong>" + count + "</strong>";
+            gameOverBuiltList.appendChild(li);
+          });
+        }
+      }
+      gameOverOverlay.removeAttribute("hidden");
+      document.getElementById("gameOverRestart")?.focus();
+    };
+
+    window.checkWinLose = function checkWinLose() {
+      const gs = window.gameState;
+      if (!gs) return "playing";
+      if (!winOverlay.hidden || !gameOverOverlay.hidden) return;
+      const happiness  = clamp(gs.happiness  ?? 0, 0, 100);
+      const congestion = clamp(gs.congestion ?? 0, 0, 100);
+      if (gs.won === true || (happiness >= 80 && congestion <= 20)) {
+        window.showWinScreen(); return;
+      }
+      if ((gs.budget ?? 0) <= 0) window.showGameOverScreen();
+    };
+
+    function onRestart() {
+      winOverlay.setAttribute("hidden", "");
+      gameOverOverlay.setAttribute("hidden", "");
+      if (typeof window.restartGame === "function") window.restartGame();
+    }
+    document.getElementById("winRestart")?.addEventListener("click", onRestart);
+    document.getElementById("gameOverRestart")?.addEventListener("click", onRestart);
+
+    setInterval(window.refreshHUD, 500);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", window.refreshHUD);
+    } else {
+      window.refreshHUD();
+    }
+  })();
+  </script>
+
+  <!-- ── game-state.js ─────────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    "use strict";
+
+    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
+
+    const EFFECTS = {
+      "bus-stop":       { congestion: -10, happiness: +6  },
+      "bike-lane":      { congestion:  -6, happiness: +8  },
+      "parking-garage": { congestion:  -8, happiness: +4  },
+      "park":           { congestion:  -4, happiness: +12 },
+    };
+
+    const WIN_HAPPINESS  = 70;
+    const WIN_CONGESTION = 30;
+
+    window.gameState = Object.assign({}, INITIAL);
+
+    window.updateMeters = function updateMeters() {
+      if (!Array.isArray(window.cityGrid)) return;
+      var congestionDelta = 0, happinessDelta = 0;
+      window.cityGrid.forEach(function (tile) {
+        var action = tile.element && tile.element.dataset.placedAction;
+        if (!action) return;
+        var effect = EFFECTS[action];
+        if (!effect) return;
+        congestionDelta += effect.congestion;
+        happinessDelta  += effect.happiness;
+      });
+      var gs = window.gameState;
+      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + congestionDelta));
+      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + happinessDelta));
+      gs.turn++;
+      syncRoadCongestion(gs.congestion);
+      if (typeof window.refreshHUD === "function") window.refreshHUD();
+    };
+
+    window.checkWinLose = function checkWinLose() {
+      var gs = window.gameState;
+      if (!gs) return "playing";
+      if (gs.won) return "win";
+      var happiness  = gs.happiness  ?? 0;
+      var congestion = gs.congestion ?? 0;
+      var budget     = gs.budget     ?? 0;
+      if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) {
+        gs.won = true;
+        if (typeof window.showWinScreen === "function") window.showWinScreen();
+        return "win";
+      }
+      if (budget <= 0) {
+        if (typeof window.showGameOverScreen === "function") window.showGameOverScreen();
+        return "lose";
+      }
+      return "playing";
+    };
+
+    window.restartGame = function restartGame() {
+      Object.assign(window.gameState, INITIAL);
+      if (Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (tile) {
+          var el = tile.element;
+          if (!el) return;
+          delete el.dataset.placedAction;
+          delete el.dataset.placedCost;
+          el.style.removeProperty("--tile-placed-color");
+          el.classList.remove("tile--placed");
+          el.textContent = "";
+          el.removeAttribute("aria-label");
+        });
+      }
+      syncRoadCongestion(INITIAL.congestion);
+      if (typeof window.refreshHUD === "function") window.refreshHUD();
+    };
+
+    function syncRoadCongestion(globalCongestion) {
+      if (!Array.isArray(window.cityGrid)) return;
+      if (typeof window.refreshTile !== "function") return;
+      var perTile = globalCongestion / 100;
+      window.cityGrid
+        .filter(function (t) { return t.type === "road"; })
+        .forEach(function (t) { t.congestion = perTile; window.refreshTile(t); });
+    }
+  })();
+  </script>
+
+  <!-- ── city-map (inline script from city-map.html) ───────────────────── -->
+  <script>
+  (function () {
+    const LAYOUT = [
+      ['R','R','R','R','R','R','R','R','R','R'],
+      ['R','B','B','B','R','B','B','B','R','B'],
+      ['R','B','B','B','R','B','P','B','R','B'],
+      ['R','B','B','B','R','B','B','B','R','B'],
+      ['R','R','R','R','R','R','R','R','R','R'],
+      ['R','B','B','B','R','B','B','B','R','B'],
+      ['R','B','P','B','R','B','B','B','R','B'],
+      ['R','B','B','B','R','B','B','B','R','B'],
+      ['R','R','R','R','R','R','R','R','R','R'],
+      ['R','E','E','E','R','E','P','E','R','E'],
+    ];
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty' };
+
+    window.cityGrid = [];
+    let selectedTile = null;
+    const gridEl  = document.getElementById('city-grid');
+    const infoBar = document.getElementById('info-bar');
+
+    LAYOUT.forEach((row, r) => {
+      row.forEach((code, c) => {
+        const type = TYPE_MAP[code];
+        const el = document.createElement('div');
+        el.className = `tile ${type}`;
+        el.title = `(${r}, ${c})`;
+
+        const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+
+        el.addEventListener('click', () => {
+          if (selectedTile) selectedTile.element.classList.remove('selected');
+          selectedTile = tile;
+          el.classList.add('selected');
+          infoBar.textContent =
+            `(${r}, ${c})  type: ${tile.type}` +
+            (tile.type === 'road' ? `  |  congestion: ${tile.congestion.toFixed(2)}` : '');
+        });
+
+        gridEl.appendChild(el);
+        window.cityGrid.push(tile);
+      });
+    });
+
+    window.getCityTile = (row, col) => window.cityGrid.find(t => t.row === row && t.col === col) ?? null;
+
+    window.refreshTile = (tile) => {
+      const el = tile.element;
+      const wasSelected = el.classList.contains('selected');
+      const wasPlaced   = el.classList.contains('tile--placed');
+      el.className = `tile ${tile.type}${wasSelected ? ' selected' : ''}${wasPlaced ? ' tile--placed' : ''}`;
+      if (tile.type === 'road') {
+        const r = Math.round(40 + 152 * tile.congestion);
+        const g = Math.round(174 - 174 * tile.congestion);
+        el.style.background = `rgb(${r},${g},27)`;
+      } else {
+        el.style.background = '';
+      }
+    };
+
+    window.setCityTileType = (row, col, newType) => {
+      const tile = window.getCityTile(row, col);
+      if (!tile) return;
+      tile.type = newType;
+      tile.congestion = newType === 'road' ? 0.5 : 0;
+      window.refreshTile(tile);
+    };
+
+    // Apply initial congestion shading + trigger HUD to show starting values
+    window.cityGrid.filter(t => t.type === 'road').forEach(window.refreshTile);
+    if (typeof window.refreshHUD === 'function') window.refreshHUD();
+  })();
+  </script>
+
+  <!-- ── actions-panel.js (with cityGrid bridge fix) ───────────────────── -->
+  <script>
+  (function () {
+    "use strict";
+
+    let selectedAction = null;
+    let activeButton   = null;
+
+    const panel       = document.getElementById("actionsPanel");
+    const actionsList = document.getElementById("actionsList");
+    const budgetError = document.getElementById("budgetError");
+
+    if (!panel || !actionsList || !budgetError) {
+      console.warn("[actions-panel] Required DOM elements not found.");
+      return;
+    }
+
+    actionsList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".action-btn");
+      if (!btn) return;
+      if (btn === activeButton) { deselect(); return; }
+      select(btn);
+    });
+
+    function select(btn) {
+      deselect();
+      selectedAction = {
+        action: btn.dataset.action,
+        cost:   Number(btn.dataset.cost),
+        emoji:  btn.dataset.emoji,
+        color:  btn.dataset.color,
+      };
+      activeButton = btn;
+      btn.classList.add("action-btn--active");
+      btn.style.setProperty("--action-color", selectedAction.color);
+      hideBudgetError();
+    }
+
+    function deselect() {
+      if (activeButton) {
+        activeButton.classList.remove("action-btn--active");
+        activeButton.style.removeProperty("--action-color");
+        activeButton = null;
+      }
+      selectedAction = null;
+    }
+
+    // Bridge fix: use the DOM element directly (window.cityGrid is the tile array)
+    function attachGridListener() {
+      const grid = document.getElementById("city-grid");
+      if (!grid) { console.warn("[actions-panel] #city-grid not found."); return; }
+      grid.addEventListener("click", onTileClick);
+    }
+
+    function onTileClick(e) {
+      const tile = e.target.closest(".tile");
+      if (!tile || !selectedAction) return;
+
+      const budget = window.gameState?.budget ?? Infinity;
+      if (budget < selectedAction.cost) { showBudgetError(); return; }
+
+      placeTile(tile, selectedAction);
+      window.gameState.budget -= selectedAction.cost;
+
+      if (typeof window.updateMeters === "function") window.updateMeters();
+      if (typeof window.checkWinLose === "function") window.checkWinLose();
+
+      hideBudgetError();
+    }
+
+    function placeTile(tile, action) {
+      tile.dataset.placedAction = action.action;
+      tile.dataset.placedCost   = action.cost;
+      tile.style.setProperty("--tile-placed-color", action.color);
+      tile.classList.add("tile--placed");
+      tile.textContent = "";
+      const span = document.createElement("span");
+      span.setAttribute("aria-hidden", "true");
+      span.textContent = action.emoji;
+      tile.appendChild(span);
+      tile.setAttribute("aria-label", `${action.action} placed`);
+    }
+
+    let errorTimeout = null;
+    function showBudgetError() {
+      clearTimeout(errorTimeout);
+      budgetError.removeAttribute("hidden");
+      void budgetError.offsetWidth;
+      budgetError.style.animation = "none";
+      requestAnimationFrame(() => { budgetError.style.animation = ""; });
+      errorTimeout = setTimeout(hideBudgetError, 3000);
+    }
+    function hideBudgetError() {
+      clearTimeout(errorTimeout);
+      budgetError.setAttribute("hidden", "");
+    }
+
+    attachGridListener();
+  })();
+  </script>
+
+</body>
+</html>
