@@ -101,10 +101,27 @@ Calculated in `showWinScreen()` from budget remaining:
 - ⭐⭐ — £100–199
 - ⭐ — any win
 
+## Development workflow
+
+**Always run tests before committing:**
+```
+node run-tests.js
+```
+All three suites must pass (0 failures) before any commit goes in.
+
+**Commit convention:** Conventional Commits on branch `feature/big-update`.  
+Format: `type: short description` where type is `feat`, `refactor`, `fix`, or `test`.  
+Always append the Co-Authored-By trailer:
+```
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+Never commit directly to `main`. Never use `--no-verify`.
+
 ## GitHub
 
 Repo: https://github.com/WyrdMatt/city-unblocked  
-Branch: `main`
+Branch: `feature/big-update` (merge to `main` when complete)
 
 ## Future scaling hooks
 

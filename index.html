@@ -5,17 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>City Unblocked</title>
   <style>
+    /* ── Design tokens ───────────────────────────────────────────────────
+     * All colours, shadows, and key measurements live here.
+     * To retheme the game: edit this block only.
+     * Weather variants override specific tokens via [data-weather] on body.
+     * ─────────────────────────────────────────────────────────────────── */
+    :root {
+      /* Geometry */
+      --tile-size:  80px;
+      --grid-gap:   4px;
+      --grid-pad:   4px;
+
+      /* Base palette */
+      --c-bg:           #07080d;
+      --c-bg-glow:      rgba(30,60,120,.25);
+      --c-surface:      rgba(14,16,24,.95);
+
+      /* Borders */
+      --c-border:       rgba(255,255,255,.07);
+      --c-border-sub:   rgba(255,255,255,.06);
+      --c-border-btn:   rgba(255,255,255,.08);
+      --c-border-hover: rgba(255,255,255,.18);
+
+      /* Text scale */
+      --c-text:         #e2e8f0;
+      --c-text-hi:      #f8fafc;
+      --c-text-muted:   #94a3b8;
+      --c-text-label:   #64748b;
+      --c-text-dim:     #475569;
+      --c-text-faint:   #334155;
+      --c-text-btn:     #cbd5e1;
+
+      /* Interactive */
+      --c-focus:        #60a5fa;
+      --c-selected:     #fbbf24;
+      --c-btn-bg:       rgba(255,255,255,.04);
+      --c-btn-hover:    rgba(255,255,255,.09);
+      --c-btn-active:   rgba(255,255,255,.10);
+
+      /* Meters */
+      --c-happy-1:      #059669;
+      --c-happy-2:      #34d399;
+      --c-cong-1:       #dc2626;
+      --c-cong-2:       #f87171;
+
+      /* Road */
+      --c-road:         #2e3240;
+      --c-road-line:    rgba(255,210,40,.8);
+      --c-road-cross:   rgba(255,210,40,.2);
+
+      /* Overlays */
+      --c-overlay-win:       rgba(0,20,10,0.88);
+      --c-overlay-lose:      rgba(10,12,20,0.90);
+      --c-card-win:          #052e16;
+      --c-card-lose:         #0f172a;
+      --c-card-win-border:   #16a34a;
+      --c-card-lose-border:  #334155;
+      --c-card-built-bg:     #1e2433;
+
+      /* Status */
+      --c-win:          #4ade80;
+      --c-win-btn:      #16a34a;
+      --c-danger:       #f87171;
+      --c-error-bg:     rgba(127,29,29,.5);
+      --c-error-border: rgba(248,113,113,.3);
+      --c-error-text:   #fca5a5;
+
+      /* Shadows */
+      --shadow-grid:     0 30px 80px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.05);
+      --shadow-building: 7px 9px 0 rgba(0,0,0,.78), inset 0 0 0 1px rgba(255,255,255,.08);
+      --shadow-small:    0 1px 4px rgba(0,0,0,.7);
+      --shadow-sign:     0 1px 4px rgba(0,0,0,.6);
+
+      /* Weather (overridden by [data-weather] below) */
+      --weather-filter: none;
+    }
+
+    /* ── Weather theme overrides ──────────────────────────────────────── */
+    [data-weather="sunny"]   { --c-road: #343749; --weather-filter: saturate(1.1) sepia(0.06) brightness(1.02); }
+    [data-weather="rainy"]   { --c-road: #252836; --weather-filter: saturate(0.78) brightness(0.93); }
+    [data-weather="overcast"]{ --weather-filter: saturate(0.88) brightness(0.97); }
+    [data-weather="snowy"]   { --c-road: #3a3f52; --weather-filter: saturate(0.65) brightness(1.04); }
+    [data-weather="stormy"]  { --c-road: #1e2130; --weather-filter: saturate(0.45) brightness(0.82); }
+
     *, *::before, *::after { box-sizing: border-box; }
 
     body {
       margin: 0;
-      background: #07080d;
-      background-image: radial-gradient(ellipse at 50% -10%, rgba(30,60,120,.25) 0%, transparent 65%);
+      background: var(--c-bg);
+      background-image: radial-gradient(ellipse at 50% -10%, var(--c-bg-glow) 0%, transparent 65%);
       font-family: 'Segoe UI', system-ui, sans-serif;
-      color: #e2e8f0;
+      color: var(--c-text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+
+    #game-area {
+      filter: var(--weather-filter);
+      transition: filter 1.2s ease;
     }
 
     /* ── Page layout ─────────────────────────────────────────────────── */
@@ -35,16 +123,16 @@
       gap: 12px;
     }
 
-    /* ── hud.css ─────────────────────────────────────────────────────── */
+    /* ── HUD ─────────────────────────────────────────────────────────── */
     .hud {
       display: flex;
       align-items: center;
       gap: 2rem;
       width: 100%;
       padding: 0.75rem 1.5rem;
-      background: rgba(14,16,24,.95);
+      background: var(--c-surface);
       backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255,255,255,.07);
+      border-bottom: 1px solid var(--c-border);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -53,36 +141,36 @@
     .hud__brand-icon { font-size: 1.5rem; line-height: 1; }
     .hud__brand-name {
       font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 0.1em; color: #e2e8f0; white-space: nowrap;
+      letter-spacing: 0.1em; color: var(--c-text); white-space: nowrap;
     }
     .hud__meters { display: flex; align-items: center; gap: 2rem; flex: 1; min-width: 0; }
     .hud-meter { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
     .hud-meter__label {
       display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem;
-      font-weight: 700; color: #64748b; text-transform: uppercase;
+      font-weight: 700; color: var(--c-text-label); text-transform: uppercase;
       letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
     }
     .hud-meter__track {
       position: relative; flex: 1; height: 8px;
-      background: rgba(255,255,255,.08);
+      background: var(--c-border-btn);
       border-radius: 999px; overflow: hidden; min-width: 80px;
     }
     .hud-meter__fill {
       position: absolute; inset: 0 auto 0 0; width: 0%;
       border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
     }
-    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg,#059669,#34d399); }
-    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg,#dc2626,#f87171); }
+    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
+    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg, var(--c-cong-1), var(--c-cong-2)); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
     @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
     .hud-meter__value {
-      font-size: 0.8rem; font-weight: 800; color: #e2e8f0;
+      font-size: 0.8rem; font-weight: 800; color: var(--c-text);
       width: 2.4ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
     }
     .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
-    .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; }
-    .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: #f8fafc; font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
-    .hud__budget-value--low { color: #f87171; animation: budget-pulse 1s ease-in-out infinite; }
+    .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
+    .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: var(--c-text-hi); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
+    .hud__budget-value--low { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
     @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ── Overlays ────────────────────────────────────────────────────── */
@@ -93,74 +181,100 @@
     }
     .overlay[hidden] { display: none; }
     @keyframes overlay-fade-in { from{opacity:0} to{opacity:1} }
-    .overlay--win     { background: rgba(0,20,10,0.88); backdrop-filter: blur(6px); }
-    .overlay--gameover { background: rgba(10,12,20,0.90); backdrop-filter: blur(6px); }
+    .overlay--win     { background: var(--c-overlay-win);  backdrop-filter: blur(6px); }
+    .overlay--gameover { background: var(--c-overlay-lose); backdrop-filter: blur(6px); }
+    .overlay--landing  { background: rgba(7,8,13,0.97);    backdrop-filter: blur(8px); z-index: 600; }
+
+    /* ── Landing card ────────────────────────────────────────────── */
+    .overlay__card--landing { max-width: 520px; gap: 1.1rem; }
+    .landing__icon  { font-size: 3rem; line-height: 1; user-select: none; }
+    .landing__title { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; color: var(--c-text-hi); }
+    .landing__tagline { margin: 0; font-size: 0.88rem; color: var(--c-text-muted); }
+
+    /* ── Difficulty picker ───────────────────────────────────────── */
+    .landing__difficulty { display: flex; gap: 0.65rem; width: 100%; }
+    .diff-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+      padding: 0.85rem 0.4rem; border-radius: 14px;
+      border: 2px solid var(--c-border); background: var(--c-btn-bg);
+      color: var(--c-text); cursor: pointer; font-family: inherit;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .diff-btn:hover  { background: var(--c-btn-hover); border-color: var(--c-border-hover); }
+    .diff-btn:active { transform: scale(0.96); }
+    .diff-btn__emoji  { font-size: 1.5rem; line-height: 1; }
+    .diff-btn__label  { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.03em; }
+    .diff-btn__detail { font-size: 0.68rem; color: var(--c-text-muted); line-height: 1.35; text-align: center; }
+    .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
+    .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
+    .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+    .overlay__btn--play { background: #16a34a; color: #fff; font-size: 1rem; padding: 0.75rem 2.5rem; }
     .overlay__card {
       display: flex; flex-direction: column; align-items: center; gap: 1rem;
       padding: 2rem 2.5rem; border-radius: 20px; max-width: 440px; width: 100%;
       text-align: center; animation: card-pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
     }
     @keyframes card-pop { from{transform:scale(0.75);opacity:0} to{transform:scale(1);opacity:1} }
-    .overlay--win      .overlay__card { background: #052e16; border: 2px solid #16a34a; }
-    .overlay--gameover .overlay__card { background: #0f172a; border: 2px solid #334155; }
+    .overlay--win      .overlay__card { background: var(--c-card-win); border: 2px solid var(--c-card-win-border); }
+    .overlay--gameover .overlay__card { background: var(--c-card-lose); border: 2px solid var(--c-card-lose-border); }
     .overlay__confetti, .overlay__icon { font-size: 2.5rem; line-height: 1; user-select: none; }
     .overlay__title { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
-    .overlay--win      .overlay__title { color: #4ade80; }
-    .overlay--gameover .overlay__title { color: #94a3b8; }
-    .overlay__body { margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
-    .overlay__body strong { color: #e2e8f0; font-size: 1rem; }
+    .overlay--win      .overlay__title { color: var(--c-win); }
+    .overlay--gameover .overlay__title { color: var(--c-text-muted); }
+    .overlay__body { margin: 0; font-size: 0.9rem; color: var(--c-text-muted); line-height: 1.5; }
+    .overlay__body strong { color: var(--c-text); font-size: 1rem; }
     .overlay__stats {
       display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: center;
-      margin: 0; font-size: 0.78rem; color: #94a3b8;
+      margin: 0; font-size: 0.78rem; color: var(--c-text-muted);
     }
-    .overlay__stats strong { color: #e2e8f0; }
-    .overlay__built { width: 100%; text-align: left; background: #1e2433; border-radius: 10px; padding: 0.75rem 1rem; }
-    .overlay__built-heading { margin: 0 0 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; }
-    .overlay__built-list { margin: 0; padding: 0 0 0 1rem; font-size: 0.82rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.2rem; }
-    .overlay__built-list strong { color: #e2e8f0; }
+    .overlay__stats strong { color: var(--c-text); }
+    .overlay__built { width: 100%; text-align: left; background: var(--c-card-built-bg); border-radius: 10px; padding: 0.75rem 1rem; }
+    .overlay__built-heading { margin: 0 0 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-label); }
+    .overlay__built-list { margin: 0; padding: 0 0 0 1rem; font-size: 0.82rem; color: var(--c-text-muted); display: flex; flex-direction: column; gap: 0.2rem; }
+    .overlay__built-list strong { color: var(--c-text); }
     .overlay__btn { margin-top: 0.5rem; padding: 0.6rem 1.75rem; border: none; border-radius: 10px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: transform 0.1s ease, filter 0.15s ease; }
     .overlay__btn:hover  { filter: brightness(1.12); }
     .overlay__btn:active { transform: scale(0.96); }
-    .overlay__btn--win      { background: #16a34a; color: #fff; }
-    .overlay__btn--gameover { background: #334155; color: #e2e8f0; }
+    .overlay__btn--win      { background: var(--c-win-btn); color: #fff; }
+    .overlay__btn--gameover { background: var(--c-card-lose-border); color: var(--c-text); }
 
     /* ── actions-panel.css ───────────────────────────────────────────── */
     .actions-panel {
       display: flex; flex-direction: column; gap: 1rem; width: 220px;
       flex-shrink: 0; padding: 1.25rem;
-      background: rgba(14,16,24,.95);
-      border-left: 1px solid rgba(255,255,255,.07);
+      background: var(--c-surface);
+      border-left: 1px solid var(--c-border);
       border-radius: 0 16px 16px 0;
-      color: #e2e8f0;
+      color: var(--c-text);
     }
-    .actions-panel__header { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,.06); }
-    .actions-panel__title { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; }
-    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: #334155; line-height: 1.4; }
+    .actions-panel__header { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--c-border-sub); }
+    .actions-panel__title { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text-dim); }
+    .actions-panel__sub { margin: 0; font-size: 0.72rem; color: var(--c-text-faint); line-height: 1.4; }
     .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
     .action-btn {
       display: flex; align-items: center; gap: 0.75rem; width: 100%;
       padding: 0.7rem 0.875rem;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.07);
-      border-radius: 12px; cursor: pointer; color: #cbd5e1; font-family: inherit;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border);
+      border-radius: 12px; cursor: pointer; color: var(--c-text-btn); font-family: inherit;
       text-align: left;
       transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
     }
-    .action-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
-    .action-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    .action-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); }
+    .action-btn:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
     .action-btn:active { transform: scale(0.97); }
     .action-btn--active {
-      background: rgba(255,255,255,.1);
-      border-color: var(--action-color, #60a5fa);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color,#60a5fa) 22%, transparent),
-                  inset 0 0 0 1px color-mix(in srgb, var(--action-color,#60a5fa) 40%, transparent);
+      background: var(--c-btn-active);
+      border-color: var(--action-color, var(--c-focus));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-color, var(--c-focus)) 22%, transparent),
+                  inset 0 0 0 1px color-mix(in srgb, var(--action-color, var(--c-focus)) 40%, transparent);
     }
-    .action-btn--active .action-btn__cost { background: var(--action-color,#60a5fa); color: #07080d; }
+    .action-btn--active .action-btn__cost { background: var(--action-color, var(--c-focus)); color: var(--c-bg); }
     .action-btn__emoji { font-size: 1.6rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
     .action-btn__body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
-    .action-btn__name { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: #e2e8f0; }
-    .action-btn__cost { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.1em 0.5em; border-radius: 5px; background: rgba(255,255,255,.08); color: #94a3b8; align-self: flex-start; transition: background .15s, color .15s; }
-    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: rgba(127,29,29,.5); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; font-size: 0.76rem; font-weight: 600; color: #fca5a5; animation: shake 0.35s ease; }
+    .action-btn__name { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: var(--c-text); }
+    .action-btn__cost { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.1em 0.5em; border-radius: 5px; background: var(--c-border-btn); color: var(--c-text-muted); align-self: flex-start; transition: background .15s, color .15s; }
+    .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: var(--c-error-bg); border: 1px solid var(--c-error-border); border-radius: 8px; font-size: 0.76rem; font-weight: 600; color: var(--c-error-text); animation: shake 0.35s ease; }
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
@@ -171,45 +285,44 @@
       font-size: 0.62rem; font-weight: 700;
       padding: 0.1em 0.45em; border-radius: 4px; line-height: 1.5;
     }
-    .effect--happy { background: rgba(16,185,129,.15); color: #34d399; }
-    .effect--cong  { background: rgba(239,68,68,.15);  color: #f87171; }
+    .effect--happy { background: rgba(16,185,129,.15); color: var(--c-happy-2); }
+    .effect--cong  { background: rgba(239,68,68,.15);  color: var(--c-cong-2); }
+    .effect--sad   { background: rgba(251,146,60,.15); color: #fb923c; }
 
     .reset-btn {
       margin-top: auto; padding: 0.6rem 0; width: 100%;
       background: transparent;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 10px; color: #334155; font-family: inherit;
+      border: 1px solid var(--c-border-btn);
+      border-radius: 10px; color: var(--c-text-faint); font-family: inherit;
       font-size: 0.76rem; font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
       transition: border-color .15s, color .15s, background .15s;
     }
-    .reset-btn:hover { border-color: rgba(255,255,255,.22); color: #94a3b8; background: rgba(255,255,255,.04); }
+    .reset-btn:hover { border-color: var(--c-border-hover); color: var(--c-text-muted); background: var(--c-btn-bg); }
 
     /* ── city-map styles ─────────────────────────────────────────────── */
     #city-grid {
       display: grid;
-      grid-template-columns: repeat(10, 80px);
-      grid-template-rows: repeat(10, 80px);
-      gap: 4px;
-      background: #2e3240;   /* gap colour = road base → roads form a seamless network */
-      padding: 4px;
+      grid-template-columns: repeat(10, var(--tile-size));
+      grid-template-rows: repeat(10, var(--tile-size));
+      gap: var(--grid-gap);
+      background: var(--c-road);
+      padding: var(--grid-pad);
       border-radius: 16px 0 0 16px;
-      box-shadow:
-        0 30px 80px rgba(0,0,0,.85),
-        0 0 0 1px rgba(255,255,255,.05);
+      box-shadow: var(--shadow-grid);
     }
 
     .tile {
-      width: 80px; height: 80px; cursor: pointer;
+      width: var(--tile-size); height: var(--tile-size); cursor: pointer;
       border: 2px solid transparent;
       transition: border-color .12s, filter .12s, transform .1s;
       position: relative;
       overflow: hidden;
     }
     .tile:hover { filter: brightness(1.22) saturate(1.2); transform: scale(1.06) translateY(-2px); z-index: 2; }
-    .tile.selected { border-color: #fbbf24; box-shadow: 0 0 0 2px #fbbf2460; z-index: 3; }
+    .tile.selected { border-color: var(--c-selected); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-selected) 38%, transparent); z-index: 3; }
 
     /* ── Roads — same colour as gap → seamless dark network ─────────── */
-    .tile.road { background: #2e3240; }
+    .tile.road { background: var(--c-road); }
 
     /* Dashed centre-line: horizontal */
     .tile.road[data-road-dir="h"]::after {
@@ -217,7 +330,7 @@
       top: 50%; left: 0; right: 0; height: 3px;
       transform: translateY(-50%);
       background: repeating-linear-gradient(90deg,
-        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        var(--c-road-line) 0, var(--c-road-line) 18px,
         transparent 18px, transparent 34px
       );
       border-radius: 2px;
@@ -228,7 +341,7 @@
       left: 50%; top: 0; bottom: 0; width: 3px;
       transform: translateX(-50%);
       background: repeating-linear-gradient(180deg,
-        rgba(255,210,40,.8) 0, rgba(255,210,40,.8) 18px,
+        var(--c-road-line) 0, var(--c-road-line) 18px,
         transparent 18px, transparent 34px
       );
       border-radius: 2px;
@@ -238,13 +351,13 @@
       content: ''; position: absolute;
       top: 50%; left: 0; right: 0; height: 3px;
       transform: translateY(-50%);
-      background: rgba(255,210,40,.2);
+      background: var(--c-road-cross);
     }
     .tile.road[data-road-dir="x"]::after {
       content: ''; position: absolute;
       left: 50%; top: 0; bottom: 0; width: 3px;
       transform: translateX(-50%);
-      background: rgba(255,210,40,.2);
+      background: var(--c-road-cross);
     }
 
     /* ── Buildings — pseudo-3D blocks: roof face + facade + right shadow wall ─ */
@@ -269,9 +382,7 @@
           var(--bb)                      100%
         );
       /* Large hard shadow = building casting a shadow on the ground */
-      box-shadow:
-        7px 9px 0 rgba(0,0,0,.78),
-        inset 0 0 0 1px rgba(255,255,255,.08);
+      box-shadow: var(--shadow-building);
     }
 
     /*
@@ -332,6 +443,21 @@
       font-size: 26px; opacity: 0.6;
     }
 
+    .tile.blocker {
+      background: repeating-linear-gradient(
+        -45deg,
+        #18191f 0px, #18191f 7px,
+        #0d0e14 7px, #0d0e14 14px
+      );
+      box-shadow: inset 0 0 0 1px rgba(255,60,60,.18);
+      cursor: not-allowed;
+    }
+    .tile.blocker::after {
+      content: '⛔'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; opacity: 0.75;
+    }
+
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -346,25 +472,25 @@
     .tile--placed::before,
     .tile--placed::after { display: none; }
 
-    #info-bar { font-size: 12px; color: #334155; height: 18px; letter-spacing: 0.03em; }
+    #info-bar { font-size: 12px; color: var(--c-text-faint); height: 18px; letter-spacing: 0.03em; }
     #legend { display: flex; gap: 18px; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #334155; letter-spacing: 0.02em; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-text-faint); letter-spacing: 0.02em; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
 
     /* ── Music toggle button ─────────────────────────────────────────── */
     .hud__music-btn {
       flex-shrink: 0;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.1);
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
       border-radius: 8px;
-      color: #475569;
+      color: var(--c-text-dim);
       font-size: 1.1rem;
       cursor: pointer;
       padding: 0.3rem 0.55rem;
       line-height: 1;
       transition: background .15s, color .15s, border-color .15s;
     }
-    .hud__music-btn:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.22); color: #e2e8f0; }
+    .hud__music-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
 
     /* ── Sidewalk strips ───────────────────────────────────────────── */
     .sw-strip {
@@ -407,7 +533,7 @@
       border-radius: 2px;
       padding: 2px;
       width: 9px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.7);
+      box-shadow: var(--shadow-small);
       z-index: 6;
       pointer-events: none;
     }
@@ -472,6 +598,24 @@
       100% { transform: translate(0,0) }
     }
 
+    /* ── Weather particle keyframes ──────────────────────────────── */
+    @keyframes rain-fall {
+      0%   { transform: translateY(-20px)  translateX(0);    opacity: 0; }
+      8%   { opacity: 1; }
+      92%  { opacity: 1; }
+      100% { transform: translateY(920px)  translateX(-70px); opacity: 0; }
+    }
+    @keyframes snow-fall {
+      0%   { transform: translateY(-10px) translateX(0);    opacity: 0; }
+      10%  { opacity: 0.9; }
+      48%  { transform: translateY(440px) translateX(22px); opacity: 0.9; }
+      100% { transform: translateY(920px) translateX(-12px); opacity: 0; }
+    }
+    @keyframes lightning-flash {
+      0%, 92%, 95.5%, 100% { opacity: 0; }
+      93%, 95%             { opacity: 1; }
+    }
+
     /* ── HUD goal markers ────────────────────────────────────────── */
     .hud-meter__goal {
       position: absolute; top: -3px; bottom: -3px; width: 2px;
@@ -505,21 +649,159 @@
       75%  { opacity: 1; transform: translateX(-50%) translateY(-44px); }
       100% { opacity: 0; transform: translateX(-50%) translateY(-58px); }
     }
-    .popup-happy { color: #34d399; }
-    .popup-cong  { color: #f87171; }
+    .popup-happy { color: var(--c-happy-2); }
+    .popup-cong  { color: var(--c-cong-2); }
 
     /* ── Disabled action buttons ──────────────────────────────────── */
     .action-btn--disabled {
       opacity: 0.28; cursor: not-allowed; pointer-events: none;
     }
-    .action-btn--disabled .action-btn__cost { background: rgba(255,255,255,.04); }
+    .action-btn--disabled .action-btn__cost { background: var(--c-btn-bg); }
 
     /* ── Win screen star rating ───────────────────────────────────── */
     .overlay__stars { font-size: 2.2rem; line-height: 1; letter-spacing: 0.1em; user-select: none; }
-    .overlay__rating-label { margin: 0; font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; }
+    .overlay__rating-label { margin: 0; font-size: 0.72rem; color: var(--c-text-label); text-transform: uppercase; letter-spacing: 0.1em; }
+    .overlay__context { display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; }
+    .ctx-badge {
+      padding: 0.18rem 0.6rem; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      background: rgba(255,255,255,0.06); color: var(--c-text-muted);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ctx-badge--easy   { color: #4ade80; border-color: rgba(74,222,128,0.3);  }
+    .ctx-badge--normal { color: #60a5fa; border-color: rgba(96,165,250,0.3);  }
+    .ctx-badge--hard   { color: #f87171; border-color: rgba(248,113,113,0.3); }
+
+    /* ── Weather badge ───────────────────────────────────────────── */
+    .hud__weather {
+      display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+      gap: 0; cursor: default; min-width: 2.4rem;
+    }
+    .hud__weather-icon  { font-size: 1.3rem; line-height: 1; }
+    .hud__weather-label { font-size: 0.52rem; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.08em; color: var(--c-text-dim); white-space: nowrap; }
+
+    /* ── Distance-to-win delta label ────────────────────────────── */
+    .hud-meter__delta {
+      font-size: 0.62rem; font-weight: 700; color: var(--c-text-dim);
+      white-space: nowrap; flex-shrink: 0; min-width: 3.8ch; text-align: right;
+      font-variant-numeric: tabular-nums; transition: color 0.3s;
+    }
+    .hud-meter__delta--done  { color: var(--c-win); }
+    .hud-meter__delta--close { color: var(--c-cong-2); }
+
+    /* ── Turn counter ────────────────────────────────────────────── */
+    .hud__turns { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__turns-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
+    .hud__turns-value { font-size: 1rem; font-weight: 900; color: var(--c-text-muted); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
+    .hud__turns-value--urgent { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
+
+    /* ── Hotspot road tile glow ──────────────────────────────────── */
+    .tile.road[data-hotspot="1"] { box-shadow: inset 0 0 5px rgba(251,146,60,.12); }
+    .tile.road[data-hotspot="2"] { box-shadow: inset 0 0 7px rgba(251,146,60,.22); }
+    .tile.road[data-hotspot="3"] { box-shadow: inset 0 0 10px rgba(251,146,60,.36); }
+    .tile.road[data-hotspot="4"] { box-shadow: inset 0 0 14px rgba(251,146,60,.52); }
+
+    /* ── Combo notification popup ────────────────────────────────── */
+    .popup-combo {
+      color: #fbbf24; font-size: 0.72rem;
+      text-shadow: 0 0 8px rgba(251,191,36,.7), 0 1px 6px rgba(0,0,0,.9);
+    }
+
+    /* ── Touch: remove 300ms tap delay on interactive elements ───── */
+    .tile, .action-btn, .reset-btn, .hud__music-btn,
+    .overlay__btn, .hud-meter__track { touch-action: manipulation; }
+
+    /* ── Small-screen overlay ────────────────────────────────────── */
+    .small-screen-overlay { display: none; }
+
+    @media (max-width: 1099px) {
+      .small-screen-overlay {
+        display: flex;
+        position: fixed; inset: 0; z-index: 9999;
+        align-items: center; justify-content: center;
+        background: var(--c-bg);
+        background-image: radial-gradient(ellipse at 50% -10%, var(--c-bg-glow) 0%, transparent 65%);
+        padding: 2rem;
+      }
+      .hud, #game-area { visibility: hidden; }
+    }
+
+    .small-screen-overlay__card {
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      padding: 2rem 2.5rem; max-width: 360px; width: 100%;
+      text-align: center;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 20px;
+    }
+    .small-screen-overlay__icon { font-size: 3rem; line-height: 1; }
+    .small-screen-overlay__title {
+      margin: 0; font-size: 1.5rem; font-weight: 800;
+      letter-spacing: -0.01em; color: var(--c-text-hi);
+    }
+    .small-screen-overlay__body {
+      margin: 0; font-size: 0.92rem; color: var(--c-text-muted); line-height: 1.5;
+    }
+    .small-screen-overlay__body strong { color: var(--c-text); }
+    .small-screen-overlay__hint {
+      margin: 0; font-size: 0.8rem; color: var(--c-text-dim); line-height: 1.5;
+    }
+    .small-screen-overlay__rotate { font-size: 2rem; animation: rotate-hint 2s ease-in-out infinite; }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50%       { transform: rotate(90deg); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- ── Small-screen overlay (shown via CSS media query < 1100px) ────── -->
+  <div class="small-screen-overlay" id="smallScreenOverlay" aria-hidden="true">
+    <div class="small-screen-overlay__card">
+      <div class="small-screen-overlay__icon">🏙️</div>
+      <h2 class="small-screen-overlay__title">City Unblocked</h2>
+      <div class="small-screen-overlay__rotate" aria-hidden="true">📱</div>
+      <p class="small-screen-overlay__body">
+        This game needs a screen at least <strong>1100px wide</strong> to play.
+      </p>
+      <p class="small-screen-overlay__hint">
+        Rotate your device to landscape, or open on a larger screen.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Landing page overlay ─────────────────────────────────────────── -->
+  <div class="overlay overlay--landing" id="landingOverlay"
+       role="dialog" aria-modal="true" aria-labelledby="landingTitle">
+    <div class="overlay__card overlay__card--landing">
+      <div class="landing__icon" aria-hidden="true">🏙️</div>
+      <h1 class="landing__title" id="landingTitle">City Unblocked</h1>
+      <p class="landing__tagline">Reduce congestion. Boost happiness. Save the city.</p>
+
+      <div class="landing__difficulty" role="group" aria-label="Select difficulty">
+        <button class="diff-btn" data-difficulty="easy" type="button" aria-pressed="false">
+          <span class="diff-btn__emoji" aria-hidden="true">🌱</span>
+          <span class="diff-btn__label">Easy</span>
+          <span class="diff-btn__detail">£700 · 20 turns<br>open city</span>
+        </button>
+        <button class="diff-btn diff-btn--selected" data-difficulty="normal" type="button" aria-pressed="true">
+          <span class="diff-btn__emoji" aria-hidden="true">🏙️</span>
+          <span class="diff-btn__label">Normal</span>
+          <span class="diff-btn__detail">£500 · 15 turns<br>open city</span>
+        </button>
+        <button class="diff-btn" data-difficulty="hard" type="button" aria-pressed="false">
+          <span class="diff-btn__emoji" aria-hidden="true">🔥</span>
+          <span class="diff-btn__label">Hard</span>
+          <span class="diff-btn__detail">£350 · 12 turns<br>blocked routes</span>
+        </button>
+      </div>
+
+      <p class="landing__hint" id="landingHint">Balance transport, green space and infrastructure.</p>
+
+      <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
+    </div>
+  </div>
 
   <!-- ── HUD ──────────────────────────────────────────────────────────── -->
   <header class="hud" id="hud" role="banner">
@@ -536,6 +818,7 @@
           <div class="hud-meter__goal" style="left:70%" title="Goal: reach 70"></div>
         </div>
         <span class="hud-meter__value" id="happinessValue">0</span>
+        <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
       </div>
       <div class="hud-meter hud-meter--congestion">
         <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
@@ -545,7 +828,16 @@
           <div class="hud-meter__goal" style="left:30%" title="Goal: get below 30"></div>
         </div>
         <span class="hud-meter__value" id="congestionValue">0</span>
+        <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
       </div>
+    </div>
+    <div class="hud__turns" aria-label="Turns remaining">
+      <span class="hud__turns-label">Turns</span>
+      <span class="hud__turns-value" id="turnsValue">0 / 15</span>
+    </div>
+    <div class="hud__weather" id="weatherBadge" aria-label="Current weather" title="">
+      <span class="hud__weather-icon"  id="weatherIcon">☀️</span>
+      <span class="hud__weather-label" id="weatherLabel">Sunny</span>
     </div>
     <div class="hud__budget" aria-label="Remaining budget">
       <span class="hud__budget-label">Budget</span>
@@ -568,6 +860,7 @@
         <span>🚗 Congestion: <strong id="winCongestion">—</strong></span>
         <span>💰 Budget left: <strong id="winBudget">—</strong></span>
       </p>
+      <div class="overlay__context" id="winContext" aria-label="Game context"></div>
       <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
     </div>
   </div>
@@ -576,9 +869,10 @@
   <div class="overlay overlay--gameover" id="gameOverOverlay" hidden
        role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
     <div class="overlay__card">
-      <div class="overlay__icon" aria-hidden="true">💸</div>
+      <div class="overlay__icon" aria-hidden="true" id="gameOverIcon">💸</div>
       <h2 class="overlay__title" id="gameOverTitle">Budget Depleted</h2>
-      <p class="overlay__body">The city ran out of funds.</p>
+      <p class="overlay__body" id="gameOverBody">The city ran out of funds.</p>
+      <div class="overlay__context" id="gameOverContext" aria-label="Game context"></div>
       <div class="overlay__built">
         <p class="overlay__built-heading">What you built:</p>
         <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
@@ -669,6 +963,21 @@
             </span>
           </button>
         </li>
+        <li>
+          <button class="action-btn" data-action="road-widening" data-cost="90"
+                  data-emoji="🚧" data-color="#f97316" data-valid-tiles="road"
+                  data-base-cong="-15" data-base-happy="-5" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🚧</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Road Widening</span>
+              <span class="action-btn__cost">£90</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −15</span>
+                <span class="effect effect--sad">😞 −5</span>
+              </span>
+            </span>
+          </button>
+        </li>
       </ul>
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
@@ -688,9 +997,15 @@
     const happinessFill  = document.getElementById("happinessFill");
     const happinessBar   = document.getElementById("happinessBar");
     const happinessValue = document.getElementById("happinessValue");
+    const happinessDelta = document.getElementById("happinessDelta");
     const congestionFill  = document.getElementById("congestionFill");
     const congestionBar   = document.getElementById("congestionBar");
     const congestionValue = document.getElementById("congestionValue");
+    const congestionDelta = document.getElementById("congestionDelta");
+    const turnsValueEl    = document.getElementById("turnsValue");
+    const weatherBadgeEl  = document.getElementById("weatherBadge");
+    const weatherIconEl   = document.getElementById("weatherIcon");
+    const weatherLabelEl  = document.getElementById("weatherLabel");
     const budgetValueEl   = document.getElementById("budgetValue");
     const winOverlay      = document.getElementById("winOverlay");
     const gameOverOverlay = document.getElementById("gameOverOverlay");
@@ -703,22 +1018,47 @@
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function formatBudget(n) { return "£" + Math.round(n).toLocaleString("en-GB"); }
 
+    function updateDelta(el, value, target, isLower) {
+      // isLower = true means we want value ≤ target (congestion); false = value ≥ target (happiness)
+      const done = isLower ? value <= target : value >= target;
+      const gap  = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
+      const close = !done && gap <= 10;
+      el.textContent = done ? "✓" : (isLower ? "−" + gap : "+" + gap);
+      el.classList.toggle("hud-meter__delta--done",  done);
+      el.classList.toggle("hud-meter__delta--close", !done && close);
+    }
+
     window.refreshHUD = function refreshHUD() {
       const gs = window.gameState;
       if (!gs) return;
       const happiness  = clamp(gs.happiness  ?? 0, 0, 100);
       const congestion = clamp(gs.congestion ?? 0, 0, 100);
       const budget     = gs.budget ?? 0;
+      const turn       = gs.turn   ?? 0;
+      const turnLimit  = gs.turnLimit ?? 15;
 
       happinessFill.style.width = happiness + "%";
       happinessValue.textContent = Math.round(happiness);
       happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
       happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
+      updateDelta(happinessDelta, happiness, 70, false);
 
       congestionFill.style.width = congestion + "%";
       congestionValue.textContent = Math.round(congestion);
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
       congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
+      updateDelta(congestionDelta, congestion, 30, true);
+
+      const turnsLeft = turnLimit - turn;
+      turnsValueEl.textContent = turn + " / " + turnLimit;
+      turnsValueEl.classList.toggle("hud__turns-value--urgent", turnsLeft <= 3 && turnsLeft > 0);
+
+      const weather = window.currentWeather || "sunny";
+      const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const wMeta   = WMETA[weather] || { label: weather, emoji: "🌤️", hint: "" };
+      if (weatherIconEl)  weatherIconEl.textContent  = wMeta.emoji;
+      if (weatherLabelEl) weatherLabelEl.textContent = wMeta.label;
+      if (weatherBadgeEl) weatherBadgeEl.title        = wMeta.hint;
 
       budgetValueEl.textContent = formatBudget(budget);
       budgetValueEl.classList.toggle("hud__budget-value--low", budget < 80);
@@ -727,6 +1067,16 @@
 
     // Stub — game-state.js overrides this with the full recalculation version
     window.updateMeters = window.refreshHUD;
+
+    function buildContextBadges() {
+      const diff    = window.currentDifficulty || 'normal';
+      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard' };
+      const weather = window.currentWeather || 'sunny';
+      const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const wMeta   = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      return `<span class="ctx-badge ctx-badge--${diff}">${diffLabels[diff] || diff}</span>` +
+             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>`;
+    }
 
     window.showWinScreen = function showWinScreen() {
       const gs = window.gameState ?? {};
@@ -743,11 +1093,28 @@
       if (starsEl) starsEl.textContent = "⭐".repeat(stars) + "☆".repeat(3 - stars);
       if (labelEl) labelEl.textContent = starLabels[stars - 1];
 
+      const winContext = document.getElementById("winContext");
+      if (winContext) winContext.innerHTML = buildContextBadges();
+
       winOverlay.removeAttribute("hidden");
       document.getElementById("winRestart")?.focus();
     };
 
-    window.showGameOverScreen = function showGameOverScreen() {
+    window.showGameOverScreen = function showGameOverScreen(reason) {
+      // reason: "budget" | "turns" (optional, defaults to "budget")
+      const gs = window.gameState ?? {};
+      const turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
+      const isTurnLimit = reason === "turns" || (turnsLeft <= 0 && (gs.budget ?? 0) > 40);
+
+      const iconEl  = document.getElementById("gameOverIcon");
+      const titleEl = document.getElementById("gameOverTitle");
+      const bodyEl  = document.getElementById("gameOverBody");
+      if (iconEl)  iconEl.textContent  = isTurnLimit ? "⏰" : "💸";
+      if (titleEl) titleEl.textContent = isTurnLimit ? "Time's Up!" : "Budget Depleted";
+      if (bodyEl)  bodyEl.textContent  = isTurnLimit
+        ? "You ran out of turns before the city could recover."
+        : "The city ran out of funds.";
+
       const placed = document.querySelectorAll(".tile--placed[data-placed-action]");
       const counts = {};
       placed.forEach(function (tile) {
@@ -757,6 +1124,7 @@
       const labels = {
         "bus-stop": "🚌 Bus Stops", "bike-lane": "🚲 Bike Lanes",
         "parking-garage": "🅿️ Parking Garages", "park": "🌳 Parks",
+        "road-widening": "🚧 Road Widenings",
       };
       if (gameOverBuiltList) {
         gameOverBuiltList.innerHTML = "";
@@ -773,6 +1141,9 @@
           });
         }
       }
+      const gameOverContext = document.getElementById("gameOverContext");
+      if (gameOverContext) gameOverContext.innerHTML = buildContextBadges();
+
       gameOverOverlay.removeAttribute("hidden");
       document.getElementById("gameOverRestart")?.focus();
     };
@@ -811,104 +1182,230 @@
   (function () {
     "use strict";
 
-    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false };
+    // ── Pure calculation functions (keep in sync with game-logic.js) ──────
+    // Duplicated here so index.html stays self-contained (no external deps).
+    // For Node testing use game-logic.js directly.
 
-    const EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness: +6  },
-      "bike-lane":      { congestion:  -6, happiness: +8  },
-      "parking-garage": { congestion:  -8, happiness: +4  },
+    var EFFECTS = {
+      "bus-stop":       { congestion: -10, happiness:  +6 },
+      "bike-lane":      { congestion:  -6, happiness:  +8 },
+      "parking-garage": { congestion:  -8, happiness:  +4 },
       "park":           { congestion:  -4, happiness: +12 },
+      "road-widening":  { congestion: -15, happiness:  -5 },
     };
 
-    const WIN_HAPPINESS  = 70;
-    const WIN_CONGESTION = 30;
+    var WIN_HAPPINESS  = 70;
+    var WIN_CONGESTION = 30;
 
-    window.gameState = Object.assign({}, INITIAL);
+    var WEATHER_TYPES = ["sunny", "rainy", "overcast", "snowy", "stormy"];
 
-    window.updateMeters = function updateMeters() {
-      if (!Array.isArray(window.cityGrid)) return;
-      var congestionDelta = 0, happinessDelta = 0;
+    var WEATHER_META = {
+      sunny:    { label: "Sunny",    emoji: "☀️",  hint: "Perfect conditions. All actions at full effect." },
+      rainy:    { label: "Rainy",    emoji: "🌧️",  hint: "Wet roads — bike lanes and parks less effective; bus stops busier." },
+      overcast: { label: "Overcast", emoji: "☁️",  hint: "Grey skies — slight reduction in happiness gains." },
+      snowy:    { label: "Snowy",    emoji: "❄️",  hint: "Icy conditions — bus stops critical; bikes impractical." },
+      stormy:   { label: "Stormy",   emoji: "⛈️",  hint: "Severe weather — only infrastructure actions are effective." },
+    };
 
-      // Count placements per action type for diminishing returns
+    var WEATHER_MULTIPLIERS = {
+      sunny: {},
+      rainy: {
+        "bike-lane":  { cong: 0.75, hap: 0.60 },
+        "park":       { cong: 1.00, hap: 0.70 },
+        "bus-stop":   { cong: 1.30, hap: 1.00 },
+      },
+      overcast: {
+        "bike-lane": { hap: 0.85 },
+        "park":      { hap: 0.90 },
+      },
+      snowy: {
+        "bike-lane":     { cong: 0.40, hap: 0.35 },
+        "park":          { cong: 0.70, hap: 0.50 },
+        "bus-stop":      { cong: 1.40, hap: 1.20 },
+        "road-widening": { cong: 1.30 },
+      },
+      stormy: {
+        "bike-lane":      { cong: 0.30, hap: 0.25 },
+        "park":           { cong: 0.50, hap: 0.30 },
+        "bus-stop":       { cong: 1.50, hap: 1.00 },
+        "road-widening":  { cong: 1.25 },
+        "parking-garage": { cong: 1.20 },
+      },
+    };
+
+    var COMBOS = [
+      { a: "bus-stop",       b: "park",          congestion:  0, happiness: +5, label: "Transit Hub"    },
+      { a: "bike-lane",      b: "park",          congestion: -2, happiness: +3, label: "Green Corridor" },
+      { a: "bus-stop",       b: "bike-lane",     congestion: -3, happiness:  0, label: "Active Streets" },
+      { a: "park",           b: "park",          congestion:  0, happiness: +3, label: "Green Network"  },
+      { a: "parking-garage", b: "bus-stop",      congestion: -3, happiness:  0, label: "Park & Ride"   },
+      { a: "road-widening",  b: "bus-stop",      congestion: -4, happiness:  0, label: "Express Lane"  },
+    ];
+
+    function getGridNeighbours(row, col, grid) {
+      var offsets = [[-1,0],[1,0],[0,-1],[0,1]];
+      return offsets.map(function (o) {
+        return grid.find(function (t) { return t.row === row + o[0] && t.col === col + o[1]; });
+      }).filter(Boolean);
+    }
+
+    function calculateEffects(placements, grid, weather) {
       var placedCount = {};
-      window.cityGrid.forEach(function (tile) {
-        var action = tile.element && tile.element.dataset.placedAction;
-        if (action) placedCount[action] = (placedCount[action] || 0) + 1;
+      placements.forEach(function (p) {
+        placedCount[p.action] = (placedCount[p.action] || 0) + 1;
       });
-
-      window.cityGrid.forEach(function (tile) {
-        var action = tile.element && tile.element.dataset.placedAction;
-        if (!action) return;
-        var effect = EFFECTS[action];
+      var remaining = Object.assign({}, placedCount);
+      var congestionDelta = 0, happinessDelta = 0;
+      placements.forEach(function (p) {
+        var effect = EFFECTS[p.action];
         if (!effect) return;
-
-        // Diminishing returns: each successive same-type placement is 15% weaker
-        var nth = placedCount[action];
-        placedCount[action]--;
+        var nth = remaining[p.action];
+        remaining[p.action]--;
         var diminish = Math.pow(0.85, nth - 1);
-
         var cDelta = effect.congestion * diminish;
         var hDelta = effect.happiness  * diminish;
-
-        // Adjacency bonus: park next to a building tile gives +3 happiness per neighbour
-        // Bus stop next to a building tile gives -2 congestion per neighbour
-        var neighbours = getNeighbours(tile.row, tile.col);
-        if (action === "park") {
-          var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
-          hDelta += adjBuildings * 3;
+        var neighbours = getGridNeighbours(p.row, p.col, grid);
+        var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
+        if (p.action === "park")     hDelta += adjBuildings * 3;
+        if (p.action === "bus-stop") cDelta -= adjBuildings * 2;
+        if (adjBuildings >= 3 && (p.action === "bus-stop" || p.action === "bike-lane")) {
+          cDelta *= 1.25;
+          hDelta *= 1.25;
         }
-        if (action === "bus-stop") {
-          var adjBuildings2 = neighbours.filter(function (n) { return n.type === "building"; }).length;
-          cDelta -= adjBuildings2 * 2;
+        if (weather && WEATHER_MULTIPLIERS[weather]) {
+          var wm = WEATHER_MULTIPLIERS[weather][p.action] || {};
+          if (wm.cong != null) cDelta *= wm.cong;
+          if (wm.hap  != null) hDelta *= wm.hap;
         }
-
         congestionDelta += cDelta;
         happinessDelta  += hDelta;
       });
+      // Combo bonuses
+      for (var i = 0; i < placements.length; i++) {
+        for (var j = i + 1; j < placements.length; j++) {
+          var pi = placements[i], pj = placements[j];
+          var adj = (pi.row === pj.row && Math.abs(pi.col - pj.col) === 1) ||
+                    (pi.col === pj.col && Math.abs(pi.row - pj.row) === 1);
+          if (!adj) continue;
+          var ai = pi.action, aj = pj.action;
+          COMBOS.forEach(function (combo) {
+            if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
+              congestionDelta += combo.congestion;
+              happinessDelta  += combo.happiness;
+            }
+          });
+        }
+      }
+      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta };
+    }
+
+    function checkWinCondition(state) {
+      var turnsLeft = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
+      if (state.happiness >= WIN_HAPPINESS && state.congestion <= WIN_CONGESTION) return "win";
+      if (state.budget <= 0 || (state.minActionCost > 0 && state.budget < state.minActionCost)) return "lose";
+      if (turnsLeft <= 0) return "lose";
+      return "playing";
+    }
+
+    // Expose for test harness (test-effects.js loads this via jsdom or similar)
+    // ── Difficulty presets ────────────────────────────────────────────────
+    var DIFFICULTY_PRESETS = {
+      easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
+      normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
+      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+    };
+    window.currentDifficulty   = window.currentDifficulty   || 'normal';
+    window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
+
+    function makeInitialState() {
+      var p = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
+      return { congestion: 80, happiness: 20, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
+    }
+
+    window.setDifficulty = function setDifficulty(level) {
+      if (!DIFFICULTY_PRESETS[level]) return;
+      window.currentDifficulty = level;
+    };
+
+    window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
+                          DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
+                          calculateEffects, checkWinCondition, getGridNeighbours };
+
+    // ── Game state ────────────────────────────────────────────────────────
+    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
+
+    window.gameState = Object.assign({}, makeInitialState());
+
+    window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+    document.body.dataset.weather = window.currentWeather;
+
+    window.updateMeters = function updateMeters() {
+      if (!Array.isArray(window.cityGrid)) return;
+
+      // Extract placement data from DOM tiles
+      var placements = [];
+      window.cityGrid.forEach(function (tile) {
+        var action = tile.element && tile.element.dataset.placedAction;
+        if (action) placements.push({ action: action, row: tile.row, col: tile.col });
+      });
+
+      // Flatten grid to plain objects for the pure function
+      var gridData = window.cityGrid.map(function (t) {
+        return { row: t.row, col: t.col, type: t.type };
+      });
+
+      var delta = calculateEffects(placements, gridData, window.currentWeather || null);
 
       var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + congestionDelta));
-      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + happinessDelta));
+      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta));
+      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
       if (typeof window.refreshHUD === "function") window.refreshHUD();
     };
 
-    function getNeighbours(row, col) {
-      var offsets = [[-1,0],[1,0],[0,-1],[0,1]];
-      return offsets.map(function (o) {
-        return window.cityGrid.find(function (t) { return t.row === row + o[0] && t.col === col + o[1]; });
-      }).filter(Boolean);
-    }
-
     window.checkWinLose = function checkWinLose() {
       var gs = window.gameState;
       if (!gs) return "playing";
       if (gs.won) return "win";
-      var happiness  = gs.happiness  ?? 0;
-      var congestion = gs.congestion ?? 0;
-      var budget     = gs.budget     ?? 0;
-      if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) {
-        gs.won = true;
-        if (typeof window.showWinScreen === "function") window.showWinScreen();
-        return "win";
-      }
+      var landing = document.getElementById("landingOverlay");
+      if (landing && !landing.hidden) return "playing";
+
       var costs = Array.from(document.querySelectorAll(".action-btn[data-cost]"))
                        .map(function (b) { return Number(b.dataset.cost); })
                        .filter(function (c) { return c > 0; });
       var minCost = costs.length ? Math.min.apply(null, costs) : 0;
-      if (budget <= 0 || (minCost > 0 && budget < minCost)) {
-        if (typeof window.showGameOverScreen === "function") window.showGameOverScreen();
-        return "lose";
+
+      var turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
+      var result = checkWinCondition({
+        happiness: gs.happiness  || 0,
+        congestion: gs.congestion || 0,
+        budget: gs.budget        || 0,
+        minActionCost: minCost,
+        turnsLeft: turnsLeft,
+      });
+
+      if (result === "win") {
+        gs.won = true;
+        if (typeof window.showWinScreen === "function") window.showWinScreen();
+      } else if (result === "lose") {
+        const loseReason = turnsLeft <= 0 ? "turns" : "budget";
+        if (typeof window.showGameOverScreen === "function") window.showGameOverScreen(loseReason);
       }
-      return "playing";
+      return result;
     };
 
     window.restartGame = function restartGame() {
-      Object.assign(window.gameState, INITIAL);
+      Object.assign(window.gameState, makeInitialState());
+      window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+      document.body.dataset.weather = window.currentWeather;
+      if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
       // Generate a fresh random map and rebuild the grid
-      var newMap = (typeof window.generateMap === "function") ? window.generateMap() : null;
+      var preset  = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
+      var newMap = (typeof window.generateMap === "function")
+        ? window.generateMap({ blockerRate: preset.blockerRate })
+        : null;
       if (newMap && typeof window.buildCityGrid === "function") {
         window.currentMap = newMap;
         window.buildCityGrid(newMap.grid);
@@ -963,8 +1460,8 @@
       minBlockSize: 2,    // min non-road tiles between parallel roads
       emptyRate:    0.20, // fraction of eligible building tiles → empty lots
       parkCount:    2,    // decorative (pre-existing) park tiles per map
+      blockerRate:  0,    // fraction of building tiles → impassable blocker (0 = none)
       // Future hooks (not yet used):
-      //   blockerRate: 0,     // fraction of building tiles → impassable blocker
       //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
     };
 
@@ -1096,6 +1593,23 @@
         parksPlaced++;
       }
 
+      // Step 4 — Blocker tiles: convert a fraction of remaining building tiles to impassable
+      if (cfg.blockerRate > 0) {
+        var blockerPool = [];
+        for (var r = 0; r < cfg.rows; r++)
+          for (var c = 0; c < cfg.cols; c++)
+            if (grid[r][c] === 'B') blockerPool.push([r, c]);
+        // Shuffle with seeded RNG so blockers are deterministic per seed
+        for (var i = blockerPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = blockerPool[i]; blockerPool[i] = blockerPool[j]; blockerPool[j] = tmp;
+        }
+        var blockerCount = Math.floor(blockerPool.length * cfg.blockerRate);
+        for (var i = 0; i < blockerCount; i++) {
+          grid[blockerPool[i][0]][blockerPool[i][1]] = 'X';
+        }
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -1131,7 +1645,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty' };
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -1160,14 +1674,26 @@
           el.title     = `(${r},${c})`;
           if (type === 'road') el.dataset.roadDir = roadDir(layout, r, c);
 
-          const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, element: el };
+          // Hotspot: count adjacent building/park tiles on this road tile
+          let hotspot = 0;
+          if (type === 'road') {
+            hotspot = [[-1,0],[1,0],[0,-1],[0,1]].filter(([dr,dc]) => {
+              const nr = r+dr, nc = c+dc;
+              return nr >= 0 && nr < layout.length && nc >= 0 && nc < layout[0].length &&
+                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P');
+            }).length;
+            if (hotspot >= 1) el.dataset.hotspot = hotspot;
+          }
+
+          const tile = { row: r, col: c, type, congestion: type === 'road' ? 0.5 : 0, hotspot, element: el };
 
           el.addEventListener('click', () => {
             if (selectedTile) selectedTile.element.classList.remove('selected');
             selectedTile = tile;
             el.classList.add('selected');
+            const hotspotStr = tile.hotspot >= 2 ? `  ★`.repeat(Math.min(tile.hotspot,4)) + ` hotspot` : '';
             infoBar.textContent =
-              `(${r},${c})  ${tile.type}` +
+              `(${r},${c})  ${tile.type}${hotspotStr}` +
               (tile.type === 'road' ? `  congestion: ${tile.congestion.toFixed(2)}` : '');
           });
 
@@ -1198,8 +1724,9 @@
       window.refreshTile(tile);
     };
 
-    // Generate initial map and build grid
-    window.currentMap = window.generateMap();
+    // Generate initial map and build grid (respects current difficulty's blockerRate)
+    var _initPreset = (window.DIFFICULTY_PRESETS || {})[window.currentDifficulty || 'normal'] || {};
+    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0 });
     window.buildCityGrid(window.currentMap.grid);
     infoBar.textContent = 'Seed: ' + window.currentMap.seed + '  |  ' + window.currentMap.roadRows.length + '×' + window.currentMap.roadCols.length + ' road grid';
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
@@ -1259,6 +1786,14 @@
       const grid = document.getElementById("city-grid");
       if (!grid) { console.warn("[actions-panel] #city-grid not found."); return; }
       grid.addEventListener("click", onTileClick);
+      // On touch devices, fire immediately on touchend to avoid the 300ms click delay.
+      // preventDefault stops the subsequent synthetic click from firing twice.
+      grid.addEventListener("touchend", function (e) {
+        const tile = e.target.closest(".tile");
+        if (!tile) return;
+        e.preventDefault();
+        onTileClick(e);
+      }, { passive: false });
     }
 
     function onTileClick(e) {
@@ -1267,6 +1802,12 @@
 
       const budget = window.gameState?.budget ?? Infinity;
       if (budget < selectedAction.cost) { showBudgetError(); return; }
+
+      // Blocker tiles are always impassable
+      if (tile.classList.contains("blocker")) {
+        showTileError("This area is blocked");
+        return;
+      }
 
       // Placement rule: check tile type is valid for this action
       const TILE_TYPES = ["road", "building", "park", "empty"];
@@ -1290,7 +1831,8 @@
       void tile.offsetWidth;
       tile.classList.add("tile--bounce");
       tile.addEventListener("animationend", () => tile.classList.remove("tile--bounce"), { once: true });
-      showPlacementPopup(tile, selectedAction);
+      const cgTile = window.cityGrid?.find(t => t.element === tile);
+      showPlacementPopup(tile, selectedAction, cgTile);
       window.gameState.budget -= selectedAction.cost;
 
       if (typeof window.updateMeters === "function") window.updateMeters();
@@ -1346,32 +1888,51 @@
     }
 
     // Base effects used for popup preview (adjacency/diminish applied live in game-state)
-    const POPUP_EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness: +6  },
-      "bike-lane":      { congestion:  -6, happiness: +8  },
-      "parking-garage": { congestion:  -8, happiness: +4  },
-      "park":           { congestion:  -4, happiness: +12 },
-    };
-    function showPlacementPopup(tileEl, action) {
-      const effect = POPUP_EFFECTS[action.action];
+    function showPlacementPopup(tileEl, action, cgTile) {
+      const effects = window.GAME_LOGIC?.EFFECTS ?? {};
+      const effect  = effects[action.action];
       if (!effect) return;
 
-      // Count same-type already placed (before this one) for diminishing returns preview
-      const placed = document.querySelectorAll(".tile--placed[data-placed-action='" + action.action + "']").length;
+      const placed   = document.querySelectorAll(".tile--placed[data-placed-action='" + action.action + "']").length;
       const diminish = Math.pow(0.85, Math.max(0, placed - 1));
-      const hVal = Math.round(effect.happiness  * diminish);
-      const cVal = Math.round(effect.congestion * diminish);
+      const hVal     = Math.round(effect.happiness  * diminish);
+      const cVal     = Math.round(effect.congestion * diminish);
+
+      let inner = "";
+      if (hVal > 0) inner += `<span class="popup-happy">😊 +${hVal}</span>`;
+      if (hVal < 0) inner += `<span class="popup-cong">😞 ${hVal}</span>`;
+      inner += `<span class="popup-cong">🚗 ${cVal}</span>`;
+
+      // Detect new combos formed by this placement
+      if (cgTile && Array.isArray(window.cityGrid) && window.GAME_LOGIC?.COMBOS) {
+        const adjPlaced = window.cityGrid.filter(t =>
+          t !== cgTile && t.element.dataset.placedAction &&
+          ((t.row === cgTile.row && Math.abs(t.col - cgTile.col) === 1) ||
+           (t.col === cgTile.col && Math.abs(t.row - cgTile.row) === 1))
+        );
+        const seen = new Set();
+        adjPlaced.forEach(function (adj) {
+          const adjAct = adj.element.dataset.placedAction;
+          window.GAME_LOGIC.COMBOS.forEach(function (combo) {
+            if ((combo.a === action.action && combo.b === adjAct) ||
+                (combo.a === adjAct && combo.b === action.action)) {
+              if (!seen.has(combo.label)) {
+                seen.add(combo.label);
+                inner += `<span class="popup-combo">★ ${combo.label}!</span>`;
+              }
+            }
+          });
+        });
+      }
 
       const popup = document.createElement("div");
       popup.className = "tile-popup";
-      popup.innerHTML =
-        `<span class="popup-happy">😊 +${hVal}</span>` +
-        `<span class="popup-cong">🚗 ${cVal}</span>`;
+      popup.innerHTML = inner;
       const rect = tileEl.getBoundingClientRect();
       popup.style.left = (rect.left + rect.width / 2) + "px";
       popup.style.top  = rect.top + "px";
       document.body.appendChild(popup);
-      setTimeout(() => popup.remove(), 1200);
+      setTimeout(() => popup.remove(), 1400);
     }
 
     window.updateActionAvailability = function () {
@@ -1387,14 +1948,18 @@
         const placed = document.querySelectorAll(
           '[data-placed-action="' + action + '"]'
         ).length;
-        const mult      = Math.pow(0.85, placed);
-        const nextCong  = Math.round(baseCong  * mult);
-        const nextHappy = Math.round(baseHappy * mult);
+        const mult = Math.pow(0.85, placed);
+        const wMult = window.GAME_LOGIC?.WEATHER_MULTIPLIERS?.[window.currentWeather || "sunny"]?.[action] || {};
+        const nextCong  = Math.round(baseCong  * mult * (wMult.cong ?? 1));
+        const nextHappy = Math.round(baseHappy * mult * (wMult.hap  ?? 1));
 
         const congSpan  = btn.querySelector(".effect--cong");
-        const happySpan = btn.querySelector(".effect--happy");
+        const happySpan = btn.querySelector(".effect--happy,.effect--sad");
         if (congSpan)  congSpan.textContent  = "🚗 " + nextCong;
-        if (happySpan) happySpan.textContent = "😊 +" + nextHappy;
+        if (happySpan) {
+          if (nextHappy >= 0) happySpan.textContent = "😊 +" + nextHappy;
+          else                happySpan.textContent = "😞 "  + nextHappy;
+        }
       });
     };
 
@@ -1411,9 +1976,13 @@
   (function () {
     'use strict';
 
-    /* ── Grid geometry ──────────────────────────────────────────── */
-    const TILE = 80, GAP = 4, PAD = 4, CELL = TILE + GAP; // CELL = 84
-    const GRID_PX = PAD * 2 + 10 * CELL;                  // 848
+    /* ── Grid geometry — derived from CSS custom properties ─────── */
+    const _cs   = getComputedStyle(document.documentElement);
+    const TILE  = parseInt(_cs.getPropertyValue('--tile-size'), 10) || 80;
+    const GAP   = parseInt(_cs.getPropertyValue('--grid-gap'),  10) || 4;
+    const PAD   = parseInt(_cs.getPropertyValue('--grid-pad'),  10) || 4;
+    const CELL  = TILE + GAP;
+    const GRID_PX = PAD * 2 + 10 * CELL;
     function tileEdge(i) { return PAD + i * CELL; }
 
     /* ── Animation layer ────────────────────────────────────────── */
@@ -1427,6 +1996,65 @@
       pointerEvents: 'none', zIndex: '10',
     });
     grid.appendChild(layer);
+
+    /* ── Weather particle layer ─────────────────────────────────── */
+    const weatherLayer = document.createElement('div');
+    Object.assign(weatherLayer.style, {
+      position: 'absolute', inset: '0',
+      pointerEvents: 'none', zIndex: '20', overflow: 'hidden',
+    });
+    grid.appendChild(weatherLayer);
+
+    function applyWeatherParticles(weather) {
+      while (weatherLayer.firstChild) weatherLayer.removeChild(weatherLayer.firstChild);
+
+      if (weather === 'rainy' || weather === 'stormy') {
+        const count  = weather === 'stormy' ? 80 : 50;
+        const minDur = weather === 'stormy' ? 0.45 : 0.65;
+        const rngDur = weather === 'stormy' ? 0.45 : 0.55;
+        for (let i = 0; i < count; i++) {
+          const d = document.createElement('div');
+          Object.assign(d.style, {
+            position: 'absolute',
+            width:  weather === 'stormy' ? '1.5px' : '1px',
+            height: weather === 'stormy' ? '15px'  : '10px',
+            background: weather === 'stormy'
+              ? 'rgba(150,175,220,0.9)' : 'rgba(180,210,255,0.65)',
+            borderRadius: '1px',
+            left: (Math.random() * 115 - 8) + '%',
+            top:  '-20px',
+            animation: `rain-fall ${(minDur + Math.random() * rngDur).toFixed(2)}s linear ${(Math.random() * 2).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(d);
+        }
+        if (weather === 'stormy') {
+          const flash = document.createElement('div');
+          Object.assign(flash.style, {
+            position: 'absolute', inset: '0',
+            background: 'rgba(200,215,255,0.35)',
+            animation: `lightning-flash ${(6 + Math.random() * 5).toFixed(1)}s linear ${(Math.random()).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(flash);
+        }
+      } else if (weather === 'snowy') {
+        for (let i = 0; i < 40; i++) {
+          const sz = (2 + Math.random() * 3).toFixed(1);
+          const d  = document.createElement('div');
+          Object.assign(d.style, {
+            position: 'absolute',
+            width: sz + 'px', height: sz + 'px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.88)',
+            left: (Math.random() * 110 - 5) + '%',
+            top:  '-10px',
+            animation: `snow-fall ${(2.5 + Math.random() * 2.5).toFixed(2)}s ease-in-out ${(Math.random() * 4).toFixed(2)}s infinite`,
+          });
+          weatherLayer.appendChild(d);
+        }
+      }
+    }
+
+    window.applyWeatherParticles = applyWeatherParticles;
 
     /* ── Cars ───────────────────────────────────────────────────── */
     const CAR_EMOJI = ['🚗','🚕','🚙','🚐','🏎️','🚑','🚒'];
@@ -1696,17 +2324,70 @@
         row.forEach((code, c) => { if (code === 'P') parkTiles.push([r, c]); });
       });
       spawnParkPedsInternal(parkTiles);
+
+      // ── Weather particles
+      applyWeatherParticles(window.currentWeather || 'sunny');
     };
 
     window.rebuildAnimations(window.currentMap);
 
+    /* ── FPS monitor ────────────────────────────────────────────── */
+    const fpsEl = document.createElement('div');
+    Object.assign(fpsEl.style, {
+      position: 'fixed', bottom: '6px', right: '8px', zIndex: '9999',
+      fontSize: '10px', fontFamily: 'monospace', color: 'rgba(255,255,255,0.28)',
+      pointerEvents: 'none', userSelect: 'none',
+    });
+    document.body.appendChild(fpsEl);
+
+    let fpsSamples = [], fpsLast = 0;
+    function updateFPS(ts) {
+      if (fpsLast) fpsSamples.push(1000 / (ts - fpsLast));
+      fpsLast = ts;
+      if (fpsSamples.length > 60) fpsSamples.shift();
+      if (fpsSamples.length >= 10) {
+        const avg = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
+        const color = avg >= 55 ? 'rgba(74,222,128,0.4)' : avg >= 30 ? 'rgba(251,191,36,0.5)' : 'rgba(248,113,113,0.6)';
+        fpsEl.style.color = color;
+        fpsEl.textContent = avg.toFixed(0) + ' fps';
+      }
+    }
+
     /* ── Main animation loop ────────────────────────────────────── */
-    function tick() {
+
+    // Per-weather pedestrian speed multipliers (bad weather → slower, more cautious peds)
+    const WEATHER_PED_SCALE = { sunny:1.0, rainy:0.70, overcast:0.88, snowy:0.42, stormy:0.32 };
+
+    let lastParkMoodUpdate = 0; // timestamp for throttling park-ped animation updates
+
+    function tick(ts) {
+      updateFPS(ts || 0);
       const cong = window.gameState?.congestion ?? 80;
+      const happ = Math.max(0, Math.min(100, window.gameState?.happiness ?? 20));
+
       // Speed factor: near-zero (~0.08) at max congestion, full at zero congestion
       const factor = 1 - (cong / 100) * 0.92;
       // Stop-and-go probability per frame; only kicks in above congestion 25
       const stopChance = Math.max(0, (cong - 25) / 75) * 0.007;
+
+      // Pedestrian energy: slow+gloomy at low happiness, brisk at high happiness
+      const happPedScale = 0.35 + (happ / 100) * 0.9;
+      const wPedScale    = WEATHER_PED_SCALE[window.currentWeather || 'sunny'] || 1.0;
+      const pedScale     = happPedScale * wPedScale;
+
+      // Pedestrian mood filter: greyscale when happiness is low
+      const pedFilter = happ < 35 ? `grayscale(${(0.65 - happ / 100).toFixed(2)})` : '';
+
+      // Throttled: update park ped wander speed based on happiness
+      const now = Date.now();
+      if (now - lastParkMoodUpdate > 800) {
+        lastParkMoodUpdate = now;
+        // Duration range: 4.2 s (miserable) → 1.8 s (thriving)
+        const parkDur = (4.2 - happ * 0.024).toFixed(2);
+        parkPedEls.forEach(el => { el.style.animationDuration = parkDur + 's'; });
+        // Filter park peds too
+        parkPedEls.forEach(el => { el.style.filter = pedFilter; });
+      }
 
       cars.forEach(car => {
         // Hide cars that only appear above a certain congestion threshold
@@ -1715,9 +2396,10 @@
         if (!active) return;
 
         if (car.stopTimer > 0) {
-          // Car is stopped — show brake-light dimming, don't move
+          // Pulsing brake-light effect — more intense at higher congestion
           car.stopTimer--;
-          car.el.style.filter = 'brightness(0.55) sepia(0.4)';
+          const pulse = 0.42 + 0.14 * Math.sin(Date.now() / 175);
+          car.el.style.filter = `brightness(${pulse.toFixed(2)}) sepia(${(0.4 + cong / 400).toFixed(2)})`;
           return;
         }
 
@@ -1750,13 +2432,14 @@
         }
       });
 
-      // Animate sidewalk pedestrians
+      // Animate sidewalk pedestrians — speed and mood react to happiness + weather
       sidewalkPeople.forEach(p => {
-        p.pos += p.speed;
+        p.pos += p.speed * pedScale;
         if (p.pos > p.max) { p.pos = p.max; p.speed = -Math.abs(p.speed); }
         if (p.pos < p.min) { p.pos = p.min; p.speed =  Math.abs(p.speed); }
         p.el.style.transform = p.speed < 0 ? 'scaleX(-1)' : '';
         p.el.style[p.axis === 'v' ? 'top' : 'left'] = p.pos + 'px';
+        if (p.el.style.filter !== pedFilter) p.el.style.filter = pedFilter;
       });
 
       requestAnimationFrame(tick);
@@ -1853,6 +2536,60 @@
       musicBtn.textContent = musicOn ? '🔊' : '🔇';
       musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
     });
+
+  })();
+  </script>
+
+  <!-- ── Landing page logic ────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    const overlay  = document.getElementById('landingOverlay');
+    const playBtn  = document.getElementById('landingPlay');
+    const hintEl   = document.getElementById('landingHint');
+    const diffBtns = Array.from(document.querySelectorAll('.diff-btn[data-difficulty]'));
+
+    if (!overlay || !playBtn) return;
+
+    const HINTS = {
+      easy:   'Plenty of budget and time — great for learning the mechanics.',
+      normal: 'The balanced challenge. Plan your placements carefully.',
+      hard:   'Tight budget, fewer turns, and some routes are impassable.',
+    };
+
+    let selected = 'normal';
+
+    function selectDifficulty(level) {
+      selected = level;
+      diffBtns.forEach(btn => {
+        const active = btn.dataset.difficulty === level;
+        btn.classList.toggle('diff-btn--selected', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+      if (hintEl) hintEl.textContent = HINTS[level] || '';
+    }
+
+    diffBtns.forEach(btn => {
+      btn.addEventListener('click', () => selectDifficulty(btn.dataset.difficulty));
+      btn.addEventListener('mouseenter', () => { if (hintEl) hintEl.textContent = HINTS[btn.dataset.difficulty] || ''; });
+      btn.addEventListener('mouseleave', () => { if (hintEl) hintEl.textContent = HINTS[selected] || ''; });
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (typeof window.setDifficulty  === 'function') window.setDifficulty(selected);
+      if (typeof window.restartGame    === 'function') window.restartGame();
+      overlay.setAttribute('hidden', '');
+      if (typeof window.refreshHUD === 'function') window.refreshHUD();
+    });
+
+    // Keyboard: Enter/Space on overlay triggers Play
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playBtn.click(); }
+    });
+
+    // Set initial hint text
+    selectDifficulty('normal');
 
   })();
   </script>
