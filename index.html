@@ -157,6 +157,15 @@
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
+    .reset-btn {
+      margin-top: auto; padding: 0.55rem 0; width: 100%;
+      background: transparent; border: 1px solid #334155;
+      border-radius: 8px; color: #64748b; font-family: inherit;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .reset-btn:hover { border-color: #94a3b8; color: #e2e8f0; }
+
     /* Placed tile overlay (applied by actions-panel.js) */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -398,6 +407,7 @@
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
       </p>
+      <button class="reset-btn" id="resetBtn" type="button">↺ Reset</button>
     </aside>
 
   </div><!-- #game-area -->
@@ -799,6 +809,10 @@
     }
 
     attachGridListener();
+
+    document.getElementById("resetBtn").addEventListener("click", function () {
+      if (typeof window.restartGame === "function") window.restartGame();
+    });
   })();
   </script>
 
