@@ -235,6 +235,15 @@
     .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
     .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
     .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+    .landing__audio-row { display: flex; justify-content: center; }
+    .landing__sound-btn {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px; color: var(--c-text-muted); font-family: inherit;
+      font-size: 0.78rem; padding: 0.3rem 0.9rem; cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .landing__sound-btn:hover { background: rgba(255,255,255,.09); color: var(--c-text); border-color: rgba(255,255,255,.22); }
+    .landing__sound-btn[aria-pressed="true"] { color: #fbbf24; border-color: rgba(251,191,36,.4); }
 
     /* ── Arcade tile (landing hero) ──────────────────────────────── */
     .arcade-tile {
@@ -921,8 +930,8 @@
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-text-faint); letter-spacing: 0.02em; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
 
-    /* ── Music toggle button ─────────────────────────────────────────── */
-    .hud__music-btn {
+    /* ── Music / SFX toggle buttons ─────────────────────────────────── */
+    .hud__music-btn, .hud__sfx-btn {
       flex-shrink: 0;
       background: var(--c-btn-bg);
       border: 1px solid var(--c-border-btn);
@@ -934,7 +943,8 @@
       line-height: 1;
       transition: background .15s, color .15s, border-color .15s;
     }
-    .hud__music-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+    .hud__music-btn:hover, .hud__sfx-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+    .hud__sfx-btn[aria-pressed="true"] { color: #fbbf24; border-color: rgba(251,191,36,.4); }
 
     /* ── Help (?) button ─────────────────────────────────────────── */
     .hud__help-btn {
@@ -1478,7 +1488,7 @@
     .mas-card__hap--sad { color: #f87171; }
 
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
-    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__help-btn, .hud__menu-btn,
+    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__sfx-btn, .hud__help-btn, .hud__menu-btn,
     .overlay__btn, .hud-meter__track, .menu-opt-btn, .menu-close { touch-action: manipulation; }
 
     /* ── Small-screen overlay ────────────────────────────────────── */
@@ -1686,10 +1696,11 @@
 
       /* Music + reset at far right */
       .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
-      .hud__help-btn  { order: 7; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
-      .hud__undo-btn  { order: 8; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
-      .hud__menu-btn  { order: 9; font-size: 0.9rem;  padding: 0.2rem 0.4rem; }
-      .hud__reset-mobile { order: 10; }
+      .hud__sfx-btn   { order: 7; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
+      .hud__help-btn  { order: 8; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
+      .hud__undo-btn  { order: 9; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
+      .hud__menu-btn  { order: 10; font-size: 0.9rem;  padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 11; }
     }
   </style>
 </head>
@@ -1773,6 +1784,10 @@
         </ol>
       </details>
 
+      <div class="landing__audio-row">
+        <button class="landing__sound-btn" id="landingSFX" type="button" aria-pressed="false">🔕 SFX Off</button>
+      </div>
+
       <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
     </div>
   </div>
@@ -1819,6 +1834,7 @@
     </div>
     <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
+    <button class="hud__sfx-btn"   id="sfxToggle"   type="button" title="SFX off — click to enable" aria-label="Sound effects off" aria-pressed="false">🔕</button>
     <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
     <button class="hud__menu-btn"  id="hudMenu"     type="button" title="Menu" aria-label="Open menu" aria-expanded="false">☰</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
@@ -4373,96 +4389,122 @@
 
     /* ── Sound effects (SFX) ─────────────────────────────────────────── */
     let sfxCtx = null;
-    function getSFXCtx() {
-      if (!sfxCtx || sfxCtx.state === 'closed') {
-        sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+    window.sfxEnabled = false;
+
+    const sfxHudBtn = document.getElementById('sfxToggle');
+
+    window.toggleSFX = function () {
+      window.sfxEnabled = !window.sfxEnabled;
+      const on = window.sfxEnabled;
+      if (sfxHudBtn) {
+        sfxHudBtn.textContent = on ? '🔔' : '🔕';
+        sfxHudBtn.title = on ? 'SFX on — click to mute' : 'SFX off — click to enable';
+        sfxHudBtn.setAttribute('aria-pressed', String(on));
       }
-      if (sfxCtx.state === 'suspended') sfxCtx.resume();
-      return sfxCtx;
+      const landingBtn = document.getElementById('landingSFX');
+      if (landingBtn) {
+        landingBtn.textContent = on ? '🔔 SFX On' : '🔕 SFX Off';
+        landingBtn.setAttribute('aria-pressed', String(on));
+      }
+    };
+
+    if (sfxHudBtn) sfxHudBtn.addEventListener('click', window.toggleSFX);
+
+    function scheduleSFX(ctx, type) {
+      const out = ctx.createGain();
+      out.gain.value = 0.4;
+      out.connect(ctx.destination);
+      const t = ctx.currentTime + 0.005;
+
+      if (type === 'place') {
+        // Marimba plonk: C5 + G5 triangle tones
+        [523, 784].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(i === 0 ? 0.22 : 0.11, t);
+          env.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+          osc.connect(env); env.connect(out);
+          osc.start(t); osc.stop(t + 0.28);
+        });
+
+      } else if (type === 'undo') {
+        // Descending slide: A4 → E4
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, t);
+        osc.frequency.exponentialRampToValueAtTime(330, t + 0.18);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.2, t);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        osc.connect(env); env.connect(out);
+        osc.start(t); osc.stop(t + 0.22);
+
+      } else if (type === 'demolish') {
+        // Floor-tom pitch drop: 160Hz → 40Hz sine
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(160, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.22);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.45, t);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+        osc.connect(env); env.connect(out);
+        osc.start(t); osc.stop(t + 0.28);
+
+      } else if (type === 'win') {
+        // Ascending arpeggio: C5 E5 G5 C6
+        [523, 659, 784, 1047].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const env = ctx.createGain();
+          const st = t + i * 0.13;
+          env.gain.setValueAtTime(0, st);
+          env.gain.linearRampToValueAtTime(0.22, st + 0.04);
+          env.gain.exponentialRampToValueAtTime(0.0001, st + 0.55);
+          osc.connect(env); env.connect(out);
+          osc.start(st); osc.stop(st + 0.55);
+        });
+
+      } else if (type === 'lose') {
+        // Descending minor: E4 Db4 A3
+        [330, 277, 220].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const env = ctx.createGain();
+          const st = t + i * 0.2;
+          env.gain.setValueAtTime(0, st);
+          env.gain.linearRampToValueAtTime(0.18, st + 0.05);
+          env.gain.exponentialRampToValueAtTime(0.0001, st + 0.6);
+          osc.connect(env); env.connect(out);
+          osc.start(st); osc.stop(st + 0.6);
+        });
+
+      } else if (type === 'tick') {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.09, t);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+        osc.connect(env); env.connect(out);
+        osc.start(t); osc.stop(t + 0.04);
+      }
     }
 
     window.playSFX = function playSFX(type) {
+      if (!window.sfxEnabled) return;
       try {
-        const ctx = getSFXCtx();
-        const out = ctx.createGain();
-        out.gain.value = 0.7;
-        out.connect(ctx.destination);
-
-        if (type === 'place') {
-          const osc = ctx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(360, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(720, ctx.currentTime + 0.07);
-          const env = ctx.createGain();
-          env.gain.setValueAtTime(0.28, ctx.currentTime);
-          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-          osc.connect(env); env.connect(out);
-          osc.start(); osc.stop(ctx.currentTime + 0.18);
-
-        } else if (type === 'undo') {
-          const osc = ctx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(600, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.18);
-          const env = ctx.createGain();
-          env.gain.setValueAtTime(0.22, ctx.currentTime);
-          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
-          osc.connect(env); env.connect(out);
-          osc.start(); osc.stop(ctx.currentTime + 0.22);
-
-        } else if (type === 'demolish') {
-          const bufLen = Math.floor(ctx.sampleRate * 0.18);
-          const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-          const d = buf.getChannelData(0);
-          for (let i = 0; i < bufLen; i++)
-            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 1.4);
-          const noise = ctx.createBufferSource();
-          noise.buffer = buf;
-          const filt = ctx.createBiquadFilter();
-          filt.type = 'lowpass'; filt.frequency.value = 220;
-          const env = ctx.createGain();
-          env.gain.setValueAtTime(0.7, ctx.currentTime);
-          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-          noise.connect(filt); filt.connect(env); env.connect(out);
-          noise.start(); noise.stop(ctx.currentTime + 0.18);
-
-        } else if (type === 'win') {
-          [523, 659, 784, 1047].forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            const env = ctx.createGain();
-            const t = ctx.currentTime + i * 0.13;
-            env.gain.setValueAtTime(0, t);
-            env.gain.linearRampToValueAtTime(0.24, t + 0.06);
-            env.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
-            osc.connect(env); env.connect(out);
-            osc.start(t); osc.stop(t + 0.55);
-          });
-
-        } else if (type === 'lose') {
-          [330, 262, 196].forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            const env = ctx.createGain();
-            const t = ctx.currentTime + i * 0.2;
-            env.gain.setValueAtTime(0, t);
-            env.gain.linearRampToValueAtTime(0.20, t + 0.06);
-            env.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-            osc.connect(env); env.connect(out);
-            osc.start(t); osc.stop(t + 0.6);
-          });
-
-        } else if (type === 'tick') {
-          const osc = ctx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.value = 900;
-          const env = ctx.createGain();
-          env.gain.setValueAtTime(0.07, ctx.currentTime);
-          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
-          osc.connect(env); env.connect(out);
-          osc.start(); osc.stop(ctx.currentTime + 0.045);
+        if (!sfxCtx || sfxCtx.state === 'closed') {
+          sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (sfxCtx.state === 'running') {
+          scheduleSFX(sfxCtx, type);
+        } else {
+          sfxCtx.resume().then(() => scheduleSFX(sfxCtx, type));
         }
       } catch (e) { /* audio unavailable — silently skip */ }
     };
@@ -4535,6 +4577,14 @@
     overlay.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playBtn.click(); }
     });
+
+    // SFX toggle — syncs with HUD button via window.toggleSFX
+    const landingSFXBtn = document.getElementById('landingSFX');
+    if (landingSFXBtn) {
+      landingSFXBtn.addEventListener('click', () => {
+        if (typeof window.toggleSFX === 'function') window.toggleSFX();
+      });
+    }
 
     // Set initial hint text
     selectDifficulty('normal');
