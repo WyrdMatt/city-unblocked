@@ -1102,6 +1102,22 @@
       opacity: 0.5 !important;
       pointer-events: none;
     }
+    .radial-btn--zone-capped {
+      opacity: 0.42 !important;
+      pointer-events: none;
+      filter: sepia(0.5) hue-rotate(20deg);
+    }
+    .radial-btn--zone-capped .radial-btn__cost {
+      background: rgba(161,107,0,.4);
+      color: #fcd34d;
+    }
+    .radial-btn--zone-capped::after {
+      content: '⚠'; position: absolute; top: -4px; right: -4px;
+      font-size: 10px; line-height: 1;
+      background: rgba(161,107,0,.85); color: #fff;
+      border-radius: 50%; width: 14px; height: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
 
     /* ── Mobile reset button (hidden on desktop) ─────────────────────── */
     .hud__reset-mobile {
@@ -2531,7 +2547,35 @@
       if (!radialEl.hasAttribute('hidden')) closeRadialNow();
 
       if (window.gameState?.won) return;
-      if (tile.classList.contains("blocker")) return;
+
+      // Blocker tile — demolish for DEMOLISH_COST
+      if (tile.classList.contains("blocker")) {
+        const demolishCost = (window.GAME_LOGIC && window.GAME_LOGIC.DEMOLISH_COST) || 50;
+        const budget = window.gameState?.budget ?? 0;
+        if (budget < demolishCost) {
+          showTileError("Need £" + demolishCost + " to demolish 🚧");
+          return;
+        }
+        window.gameState.budget -= demolishCost;
+        tile.classList.remove('blocker');
+        tile.classList.add('empty');
+        // Sync cityGrid + currentMap grid
+        const cgDem = Array.isArray(window.cityGrid) ? window.cityGrid.find(function (t) { return t.element === tile; }) : null;
+        if (cgDem) cgDem.type = 'empty';
+        if (window.currentMap && cgDem) window.currentMap.grid[cgDem.row][cgDem.col] = 'E';
+        // Brief demolish popup
+        const dpop = document.createElement('div');
+        dpop.className = 'tile-popup';
+        dpop.innerHTML = '<span class="popup-cong">🏗️ -£' + demolishCost + '</span>';
+        const drect = tile.getBoundingClientRect();
+        dpop.style.left = (drect.left + drect.width / 2) + 'px';
+        dpop.style.top  = drect.top + 'px';
+        document.body.appendChild(dpop);
+        setTimeout(function () { dpop.remove(); }, 1400);
+        if (typeof window.refreshHUD === "function") window.refreshHUD();
+        return;
+      }
+
       if (tile.classList.contains("tile--placed")) {
         showTileError("Tile already upgraded");
         return;
@@ -2600,17 +2644,45 @@
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
       const budget     = window.gameState?.budget ?? 0;
 
+      // Zone-cap context
+      const map      = window.currentMap;
+      const roadRows = (map && map.roadRows) || [];
+      const roadCols = (map && map.roadCols) || [];
+      const cgTile   = Array.isArray(window.cityGrid) ? window.cityGrid.find(function (t) { return t.element === tile; }) : null;
+      const blockId  = (cgTile && window.GAME_LOGIC && window.GAME_LOGIC.getBlockId)
+        ? window.GAME_LOGIC.getBlockId(cgTile.row, cgTile.col, roadRows, roadCols)
+        : null;
+      const capsPlcm = [];
+      if (Array.isArray(window.cityGrid) && window.GAME_LOGIC && window.GAME_LOGIC.getBlockId) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (a) capsPlcm.push({ action: a, blockId: window.GAME_LOGIC.getBlockId(t.row, t.col, roadRows, roadCols) });
+        });
+      }
+
       // Show only buttons valid for this tile type; hide the rest entirely
       const visibleBtns = [];
       radialBtns.forEach(function (btn) {
         const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
-        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--zone-capped', 'radial-btn--open');
 
         if (!meta || !meta.validTiles.includes(tileType)) {
           btn.style.display = 'none';
         } else {
           btn.style.display = '';
-          if (budget < meta.cost) btn.classList.add('radial-btn--unaffordable');
+          if (budget < meta.cost) {
+            btn.classList.add('radial-btn--unaffordable');
+          } else if (blockId && window.GAME_LOGIC && window.GAME_LOGIC.checkZoneCap) {
+            const validInBlock = Array.isArray(window.cityGrid)
+              ? window.cityGrid.filter(function (t) {
+                  return window.GAME_LOGIC.getBlockId(t.row, t.col, roadRows, roadCols) === blockId
+                    && meta.validTiles.includes(t.type);
+                }).length
+              : 0;
+            if (window.GAME_LOGIC.checkZoneCap(capsPlcm, blockId, meta.action, validInBlock)) {
+              btn.classList.add('radial-btn--zone-capped');
+            }
+          }
           visibleBtns.push(btn);
         }
       });
