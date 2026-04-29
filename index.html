@@ -4302,77 +4302,131 @@
     let audioCtx = null, masterGain = null, musicOn = false;
     const musicBtn = document.getElementById('musicToggle');
 
-    function makeNoise(ctx, seconds) {
-      const len = ctx.sampleRate * seconds;
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d   = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf; src.loop = true;
-      return src;
-    }
-
     function buildSound() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Compressor tames square-wave peaks — keeps punch without harshness
+      const comp = audioCtx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.knee.value = 8;
+      comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.12;
+      comp.connect(audioCtx.destination);
+
       masterGain = audioCtx.createGain();
       masterGain.gain.value = 0;
-      masterGain.connect(audioCtx.destination);
+      masterGain.connect(comp);
 
-      /* — Layer 1: deep traffic rumble — lowpass at 85 Hz, gentle ebb/flow LFO — */
-      const rumble = makeNoise(audioCtx, 6);
-      const rFilt  = audioCtx.createBiquadFilter();
-      rFilt.type = 'lowpass'; rFilt.frequency.value = 85; rFilt.Q.value = 0.8;
-      const rGain  = audioCtx.createGain(); rGain.gain.value = 0.06;
-      const rLFO   = audioCtx.createOscillator(); rLFO.frequency.value = 0.04;
-      const rLG    = audioCtx.createGain(); rLG.gain.value = 0.022;
-      rLFO.connect(rLG); rLG.connect(rGain.gain); rLFO.start();
-      rumble.connect(rFilt); rFilt.connect(rGain); rGain.connect(masterGain);
-      rumble.start();
+      const BPM = 140;
+      const S   = (60 / BPM) / 4;   // 16th note ≈ 0.107 s
 
-      /* — Layer 2: mid-distance city texture — lowpass at 160 Hz — */
-      const mid   = makeNoise(audioCtx, 5);
-      const mFilt = audioCtx.createBiquadFilter();
-      mFilt.type = 'lowpass'; mFilt.frequency.value = 160; mFilt.Q.value = 1.2;
-      const mGain = audioCtx.createGain(); mGain.gain.value = 0.022;
-      const mLFO  = audioCtx.createOscillator(); mLFO.frequency.value = 0.027;
-      const mLG   = audioCtx.createGain(); mLG.gain.value = 0.01;
-      mLFO.connect(mLG); mLG.connect(mGain.gain); mLFO.start();
-      mid.connect(mFilt); mFilt.connect(mGain); mGain.connect(masterGain);
-      mid.start();
+      // Pre-baked noise buffer — reused for all percussion
+      const nLen = Math.floor(audioCtx.sampleRate * 0.22);
+      const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+      const nDat = nBuf.getChannelData(0);
+      for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
 
-      /* — Layer 3: sub-bass city hum — 60 Hz + 120 Hz sine — */
-      [60, 120].forEach((freq, i) => {
-        const osc = audioCtx.createOscillator();
-        osc.type  = 'sine'; osc.frequency.value = freq;
-        const g   = audioCtx.createGain(); g.gain.value = [0.048, 0.018][i];
-        const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
-        const lg  = audioCtx.createGain(); lg.gain.value = [0.016, 0.006][i];
-        lfo.connect(lg); lg.connect(g.gain); lfo.start();
-        osc.connect(g); g.connect(masterGain); osc.start();
-      });
+      // Note frequency table (C major + passing tones)
+      const N = {
+        _: 0,
+        C3: 131, F3: 175, G3: 196,
+        C4: 262, D4: 294, E4: 330, G4: 392, A4: 440,
+        C5: 523, D5: 587, E5: 659, G5: 784, A5: 880,
+      };
 
-      /* — Layer 4: sparse sine melody with reverb (no triangle — much smoother) — */
-      const rev = makeReverb(audioCtx);
-      rev.connect(masterGain);
-      // A minor pentatonic: A3 C4 E4 G4 A4
-      const pitches = [220, 262, 330, 392, 440];
-      const seq     = [0, 2, 1, 4, 3, 0, 2, 4, 1, 3, 2, 0, 4, 1, 3, 2];
-      let ni = 0;
-      (function sched() {
-        const freq = pitches[seq[ni++ % seq.length]];
-        const osc  = audioCtx.createOscillator();
-        osc.type   = 'sine';
-        osc.frequency.value = freq;
-        const env  = audioCtx.createGain();
-        const t    = audioCtx.currentTime;
-        env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(0.055, t + 0.35);
-        env.gain.exponentialRampToValueAtTime(0.0001, t + 3.8);
-        osc.connect(env); env.connect(rev);
-        osc.start(t); osc.stop(t + 4.5);
-        setTimeout(sched, 3000 + Math.random() * 1400);
-      })();
+      // 32-step (2-bar) sequences, one entry per 16th note
+      const MEL = [
+        'C5','_','E5','G5','_','E5','C5','_', 'A4','C5','E5','_','G4','A4','_','_',
+        'G5','_','A5','_','G5','E5','_','D5', 'E5','_','C5','E5','G5','_','_','_',
+      ];
+      const BASS = [
+        'C3','_','_','_','G3','_','_','_', 'F3','_','_','_','G3','_','_','_',
+        'C3','_','_','_','G3','_','_','_', 'F3','_','_','_','G3','_','_','_',
+      ];
+      // 1=kick  2=snare  3=hi-hat
+      const PERC = [
+        1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0,
+        1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0,
+      ];
+
+      function playPerc(type, time) {
+        if (type === 1) {  // kick — pitch-drop sine
+          const k = audioCtx.createOscillator(); k.type = 'sine';
+          k.frequency.setValueAtTime(160, time);
+          k.frequency.exponentialRampToValueAtTime(36, time + 0.1);
+          const e = audioCtx.createGain();
+          e.gain.setValueAtTime(0.32, time);
+          e.gain.exponentialRampToValueAtTime(0.0001, time + 0.14);
+          k.connect(e); e.connect(masterGain);
+          k.start(time); k.stop(time + 0.14);
+          return;
+        }
+        const src = audioCtx.createBufferSource();
+        src.buffer = nBuf;
+        const filt = audioCtx.createBiquadFilter();
+        const e = audioCtx.createGain();
+        if (type === 2) {  // snare — bandpass noise
+          filt.type = 'bandpass'; filt.frequency.value = 1700; filt.Q.value = 1.0;
+          e.gain.setValueAtTime(0.18, time);
+          e.gain.exponentialRampToValueAtTime(0.0001, time + 0.11);
+        } else {           // hi-hat — highpass noise
+          filt.type = 'highpass'; filt.frequency.value = 9500;
+          e.gain.setValueAtTime(0.05, time);
+          e.gain.exponentialRampToValueAtTime(0.0001, time + 0.032);
+        }
+        src.connect(filt); filt.connect(e); e.connect(masterGain);
+        src.start(time); src.stop(time + 0.14);
+      }
+
+      let step = 0, nextBeat = 0;
+
+      function schedule() {
+        if (!audioCtx) return;
+        while (nextBeat < audioCtx.currentTime + 0.2) {
+          const t  = nextBeat;
+          const st = step % 32;
+
+          // Melody — square wave, staccato envelope
+          const mf = N[MEL[st]];
+          if (mf) {
+            const osc = audioCtx.createOscillator(); osc.type = 'square';
+            osc.frequency.value = mf;
+            const env = audioCtx.createGain();
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(0.10, t + 0.006);
+            env.gain.setValueAtTime(0.10, t + S * 0.52);
+            env.gain.linearRampToValueAtTime(0, t + S * 0.84);
+            osc.connect(env); env.connect(masterGain);
+            osc.start(t); osc.stop(t + S);
+          }
+
+          // Bass — filtered sawtooth, quarter notes only
+          if (st % 4 === 0) {
+            const bf = N[BASS[st]];
+            if (bf) {
+              const osc = audioCtx.createOscillator(); osc.type = 'sawtooth';
+              osc.frequency.value = bf;
+              const filt = audioCtx.createBiquadFilter();
+              filt.type = 'lowpass'; filt.frequency.value = 300;
+              const env = audioCtx.createGain();
+              env.gain.setValueAtTime(0, t);
+              env.gain.linearRampToValueAtTime(0.26, t + 0.01);
+              env.gain.exponentialRampToValueAtTime(0.0001, t + S * 3.6);
+              osc.connect(filt); filt.connect(env); env.connect(masterGain);
+              osc.start(t); osc.stop(t + S * 4);
+            }
+          }
+
+          // Percussion
+          if (PERC[st]) playPerc(PERC[st], t);
+
+          nextBeat += S;
+          step++;
+        }
+        setTimeout(schedule, 25);
+      }
+
+      nextBeat = audioCtx.currentTime + 0.05;
+      schedule();
     }
 
     function makeReverb(ctx) {
@@ -4394,7 +4448,7 @@
       const t = audioCtx.currentTime;
       masterGain.gain.cancelScheduledValues(t);
       masterGain.gain.setValueAtTime(masterGain.gain.value, t);
-      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.32 : 0, t + 1.5);
+      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.20 : 0, t + 1.5);
       const on = musicOn;
       if (musicBtn) {
         musicBtn.textContent = on ? '🔊' : '🔇';
