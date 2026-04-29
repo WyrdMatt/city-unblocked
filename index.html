@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>City Unblocked</title>
+  <title>Make It Liveable</title>
   <style>
     /* ── Design tokens ───────────────────────────────────────────────────
      * All colours, shadows, and key measurements live here.
@@ -203,10 +203,20 @@
     .overlay--landing  { background: rgba(7,8,13,0.97);    backdrop-filter: blur(8px); z-index: 600; }
 
     /* ── Landing card ────────────────────────────────────────────── */
-    .overlay__card--landing { max-width: 520px; gap: 1.1rem; }
-    .landing__icon  { font-size: 3rem; line-height: 1; user-select: none; }
-    .landing__title { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; color: var(--c-text-hi); }
-    .landing__tagline { margin: 0; font-size: 0.88rem; color: var(--c-text-muted); }
+    .overlay__card--landing {
+      max-width: 520px; gap: 0.9rem;
+      padding-top: 0; overflow: hidden;
+      background: linear-gradient(180deg, #060a1a 0%, #08102c 55%, #060a1c 100%);
+      border: 1.5px solid rgba(0,212,255,.22);
+      box-shadow: 0 0 0 1px rgba(0,212,255,.07), 0 0 55px rgba(0,212,255,.1), 0 28px 80px rgba(0,0,0,.75);
+    }
+    .landing__title { display: none; } /* title moved inside arcade screen */
+    .landing__tagline {
+      margin: 0; font-size: 0.7rem;
+      font-family: 'Courier New', Courier, monospace;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(0,212,255,.7);
+    }
 
     /* ── Difficulty picker ───────────────────────────────────────── */
     .landing__difficulty { display: flex; gap: 0.65rem; width: 100%; }
@@ -225,6 +235,321 @@
     .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
     .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
     .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
+
+    /* ── Arcade tile (landing hero) ──────────────────────────────── */
+    .arcade-tile {
+      --at-cyan:  #00d4ff;
+      --at-green: #39ff14;
+      --at-yell:  #ffd700;
+      --at-red:   #ff3535;
+      --at-win:   rgba(255,252,200,.88);
+      --at-bld1:  #182030;
+      --at-bld2:  #111c2c;
+      --at-dark:  #060911;
+      --at-road:  #101628;
+      /* bleed to card edges — cancels the card's 2.5rem horizontal padding */
+      width: calc(100% + 5rem);
+      margin-left: -2.5rem; margin-right: -2.5rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .arcade-tile__screen {
+      width: 100%; height: 260px;
+      background: var(--at-dark);
+      border: none;
+      border-bottom: 2px solid rgba(0,212,255,.3);
+      border-radius: 0;
+      position: relative; overflow: hidden;
+      box-shadow: 0 0 30px rgba(0,212,255,.15), inset 0 0 50px rgba(0,0,0,.55);
+      animation: at-flicker 9s step-end infinite;
+    }
+    /* Hero title — inside the sky of the scene */
+    .arcade-hero__title {
+      position: absolute; top: 18px; left: 0; right: 0; z-index: 15;
+      margin: 0; padding: 0; pointer-events: none; text-align: center;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(1.55rem, 4.2vw, 2.25rem);
+      font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.1;
+      color: #ffd700;
+      text-shadow: 0 0 10px rgba(255,215,0,.95), 0 0 22px rgba(255,215,0,.65), 0 0 48px rgba(255,215,0,.28);
+      animation: at-title-on 1.1s ease-out both, at-title-neon 3.2s ease-in-out 1.1s infinite;
+    }
+    /* Stars — extended across full wide screen */
+    .arcade-tile__screen::before {
+      content: ''; position: absolute; inset: 0;
+      z-index: 1; pointer-events: none;
+      background:
+        radial-gradient(circle 1.5px at  18px 14px, rgba(255,255,255,.85) 100%, transparent 100%),
+        radial-gradient(circle 1px  at  52px  9px, rgba(255,255,255,.55) 100%, transparent 100%),
+        radial-gradient(circle 1px  at  94px 22px, rgba(255,255,255,.65) 100%, transparent 100%),
+        radial-gradient(circle 1.5px at 136px 11px, rgba(255,255,255,.75) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 176px 20px, rgba(255,255,255,.50) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 215px  8px, rgba(255,255,255,.60) 100%, transparent 100%),
+        radial-gradient(circle 1.5px at 254px 16px, rgba(255,255,255,.80) 100%, transparent 100%),
+        radial-gradient(circle 1px  at  36px 48px, rgba(255,255,255,.30) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 112px 44px, rgba(255,255,255,.40) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 192px 50px, rgba(255,255,255,.35) 100%, transparent 100%),
+        radial-gradient(circle 1.5px at 258px 42px, rgba(255,255,255,.50) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 295px 16px, rgba(255,255,255,.55) 100%, transparent 100%),
+        radial-gradient(circle 1.5px at 332px  8px, rgba(255,255,255,.70) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 375px 24px, rgba(255,255,255,.45) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 415px 12px, rgba(255,255,255,.60) 100%, transparent 100%),
+        radial-gradient(circle 1.5px at 458px 20px, rgba(255,255,255,.75) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 310px 50px, rgba(255,255,255,.30) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 392px 46px, rgba(255,255,255,.40) 100%, transparent 100%),
+        radial-gradient(circle 1px  at 490px 15px, rgba(255,255,255,.55) 100%, transparent 100%);
+    }
+    /* Scanlines + CRT vignette */
+    .arcade-tile__screen::after {
+      content: ''; position: absolute; inset: 0;
+      z-index: 20; pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          to bottom, transparent 0, transparent 3px,
+          rgba(0,0,0,.13) 3px, rgba(0,0,0,.13) 4px
+        ),
+        radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0,0,0,.68) 100%);
+    }
+    /* Buildings base */
+    .arcade-tile__bld { position: absolute; bottom: 44px; }
+    .arcade-tile__bld::before { content: ''; position: absolute; width: 4px; height: 4px; }
+
+    /* A — narrow, tall */
+    .arcade-bld--a { left: 10px; width: 30px; height: 105px; background: var(--at-bld1); z-index: 3; }
+    .arcade-bld--a::before {
+      top: 14px; left: 6px; background: var(--at-win);
+      box-shadow:
+        16px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 16px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 16px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 16px  54px 0 0 var(--at-win),
+        0px  72px 0 0 var(--at-win);
+      animation: at-winflick 5.2s 0.0s infinite;
+    }
+    /* B — wide, medium; neon sign on top */
+    .arcade-bld--b { left: 46px; width: 52px; height: 70px; background: var(--at-bld2); z-index: 2; }
+    .arcade-bld--b::before {
+      top: 18px; left: 6px; background: var(--at-win);
+      box-shadow:
+        18px  0px 0 0 var(--at-win), 36px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 18px  18px 0 0 var(--at-win), 36px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 18px  36px 0 0 var(--at-win), 36px  36px 0 0 var(--at-win);
+      animation: at-winflick 4.0s 0.9s infinite;
+    }
+    .arcade-bld--b::after {
+      content: ''; position: absolute;
+      top: 6px; left: 8px; width: 36px; height: 3px;
+      background: var(--at-cyan); border-radius: 2px;
+      box-shadow: 0 0 6px var(--at-cyan), 0 0 14px rgba(0,212,255,.4);
+      animation: at-neonsign 2.8s ease-in-out infinite;
+    }
+    /* C — tallest, red antenna light */
+    .arcade-bld--c { left: 106px; width: 28px; height: 128px; background: var(--at-bld1); z-index: 4; }
+    .arcade-bld--c::before {
+      top: 12px; left: 5px; background: var(--at-win);
+      box-shadow:
+        16px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 16px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 16px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 16px  54px 0 0 var(--at-win),
+        0px  72px 0 0 var(--at-win), 16px  72px 0 0 var(--at-win),
+        0px  90px 0 0 var(--at-win);
+      animation: at-winflick 6.5s 1.6s infinite;
+    }
+    .arcade-bld--c::after {
+      content: ''; position: absolute;
+      top: -16px; left: 13px; width: 2px; height: 16px;
+      background: #3a4560;
+      box-shadow: 0 -4px 0 3px var(--at-red), 0 -4px 10px rgba(255,53,53,.9);
+      animation: at-antenna 1.2s step-end infinite;
+    }
+    /* D — medium */
+    .arcade-bld--d { left: 142px; width: 42px; height: 86px; background: var(--at-bld2); z-index: 3; }
+    .arcade-bld--d::before {
+      top: 12px; left: 6px; background: var(--at-win);
+      box-shadow:
+        18px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 18px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 18px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 18px  54px 0 0 var(--at-win);
+      animation: at-winflick 3.8s 2.3s infinite;
+    }
+    /* E — wide, short */
+    .arcade-bld--e { left: 194px; width: 60px; height: 54px; background: var(--at-bld1); z-index: 2; }
+    .arcade-bld--e::before {
+      top: 10px; left: 7px; background: var(--at-win);
+      box-shadow:
+        20px  0px 0 0 var(--at-win), 40px  0px 0 0 var(--at-win),
+        0px  20px 0 0 var(--at-win), 20px  20px 0 0 var(--at-win), 40px  20px 0 0 var(--at-win);
+      animation: at-winflick 4.7s 0.4s infinite;
+    }
+    /* Road */
+    .arcade-tile__road {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 44px; z-index: 5;
+      background: var(--at-road);
+      border-top: 2px solid rgba(255,255,255,.07);
+    }
+    .arcade-tile__road::before {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px;
+      transform: translateY(-50%);
+      background: repeating-linear-gradient(
+        to right, rgba(255,215,0,.5) 0, rgba(255,215,0,.5) 16px,
+        transparent 16px, transparent 30px
+      );
+    }
+    /* Bus */
+    .arcade-tile__bus {
+      position: absolute; bottom: 11px; left: -60px;
+      width: 50px; height: 22px;
+      background: var(--at-green); border-radius: 3px 5px 2px 2px;
+      z-index: 6;
+      box-shadow: 0 0 10px rgba(57,255,20,.45), 0 0 22px rgba(57,255,20,.15);
+      animation: at-bus 5.5s linear infinite;
+    }
+    .arcade-tile__bus::before {
+      content: ''; position: absolute;
+      top: 3px; left: 4px; right: 6px; height: 11px;
+      background: rgba(0,0,0,.45); border-radius: 1px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+    }
+    .arcade-tile__bus::after {
+      content: ''; position: absolute;
+      bottom: -5px; left: 7px;
+      width: 10px; height: 10px;
+      background: #0a0d18; border-radius: 50%;
+      border: 2px solid #505870;
+      box-shadow: 26px 0 0 0 #0a0d18, 26px 0 0 2px #505870;
+    }
+    /* Buildings F–I fill wider canvas */
+    .arcade-bld--f { left: 262px; width: 40px; height: 90px; background: var(--at-bld2); z-index: 3; }
+    .arcade-bld--f::before {
+      top: 14px; left: 7px; background: var(--at-win);
+      box-shadow:
+        20px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 20px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 20px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 20px  54px 0 0 var(--at-win);
+      animation: at-winflick 4.4s 1.1s infinite;
+    }
+    .arcade-bld--g { left: 312px; width: 28px; height: 122px; background: var(--at-bld1); z-index: 4; }
+    .arcade-bld--g::before {
+      top: 12px; left: 5px; background: var(--at-win);
+      box-shadow:
+        16px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 16px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 16px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 16px  54px 0 0 var(--at-win),
+        0px  72px 0 0 var(--at-win), 16px  72px 0 0 var(--at-win),
+        0px  90px 0 0 var(--at-win);
+      animation: at-winflick 5.5s 2.8s infinite;
+    }
+    .arcade-bld--h { left: 352px; width: 56px; height: 62px; background: var(--at-bld2); z-index: 2; }
+    .arcade-bld--h::before {
+      top: 12px; left: 7px; background: var(--at-win);
+      box-shadow:
+        22px  0px 0 0 var(--at-win), 42px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 22px  18px 0 0 var(--at-win), 42px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 22px  36px 0 0 var(--at-win), 42px  36px 0 0 var(--at-win);
+      animation: at-winflick 3.6s 0.7s infinite;
+    }
+    .arcade-bld--i { left: 420px; width: 36px; height: 100px; background: var(--at-bld1); z-index: 3; }
+    .arcade-bld--i::before {
+      top: 14px; left: 6px; background: var(--at-win);
+      box-shadow:
+        18px  0px 0 0 var(--at-win),
+        0px  18px 0 0 var(--at-win), 18px  18px 0 0 var(--at-win),
+        0px  36px 0 0 var(--at-win), 18px  36px 0 0 var(--at-win),
+        0px  54px 0 0 var(--at-win), 18px  54px 0 0 var(--at-win),
+        0px  72px 0 0 var(--at-win);
+      animation: at-winflick 4.2s 1.8s infinite;
+    }
+
+    /* Marquee scrolling bar */
+    .arcade-tile__marquee {
+      width: 100%; height: 22px;
+      background: #08091c;
+      overflow: hidden; white-space: nowrap;
+      display: flex; align-items: center;
+    }
+    .arcade-tile__marquee span {
+      display: inline-block; flex-shrink: 0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.22em;
+      color: var(--at-yell);
+      text-shadow: 0 0 8px rgba(255,215,0,.85), 0 0 18px rgba(255,215,0,.3);
+      animation: at-marquee 13s linear infinite;
+    }
+    /* Footer */
+    .arcade-tile__footer {
+      width: 100%;
+      background: #050710;
+      border-top: 1px solid rgba(0,212,255,.2);
+      padding: 5px 16px 6px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.58rem; letter-spacing: 0.08em;
+      color: var(--at-green);
+      text-shadow: 0 0 6px rgba(57,255,20,.55);
+    }
+    .arcade-insert {
+      color: var(--at-yell);
+      text-shadow: 0 0 8px rgba(255,215,0,.75);
+      animation: at-blink 0.9s step-end infinite;
+    }
+    /* ── Arcade keyframes ─────────────────────────────────────── */
+    @keyframes at-bus {
+      0%   { left: -60px; }
+      100% { left: 295px; }
+    }
+    @keyframes at-marquee {
+      0%   { transform: translateX(280px); }
+      100% { transform: translateX(-110%); }
+    }
+    @keyframes at-blink {
+      0%, 49%   { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    @keyframes at-winflick {
+      0%, 90%, 96%, 100% { opacity: 1; }
+      92% { opacity: 0;   }
+      94% { opacity: 0.5; }
+    }
+    @keyframes at-neonsign {
+      0%, 100% { opacity: 1;   box-shadow: 0 0 6px var(--at-cyan), 0 0 14px rgba(0,212,255,.4); }
+      50%       { opacity: 0.4; box-shadow: 0 0 3px var(--at-cyan); }
+    }
+    @keyframes at-antenna {
+      0%,  59% { box-shadow: 0 -4px 0 3px var(--at-red),  0 -4px 10px rgba(255,53,53,.9); }
+      60%, 100% { box-shadow: 0 -4px 0 3px #2a0a0a, 0 -4px 0 rgba(255,53,53,0); }
+    }
+    @keyframes at-flicker {
+      0%, 93%, 97%, 100% { opacity: 1; }
+      94% { opacity: 0.88; }
+      95% { opacity: 1;    }
+      96% { opacity: 0.92; }
+    }
+    @keyframes at-title-on {
+      0%   { opacity: 0; letter-spacing: 0.28em; }
+      6%   { opacity: 1; }
+      9%   { opacity: 0; }
+      14%  { opacity: 0.75; }
+      16%  { opacity: 0; }
+      22%  { opacity: 1; letter-spacing: 0.1em; }
+      24%  { opacity: 0; }
+      28%  { opacity: 1; letter-spacing: 0.06em; }
+      100% { opacity: 1; letter-spacing: 0.06em; }
+    }
+    @keyframes at-title-neon {
+      0%, 100% {
+        text-shadow: 0 0 10px rgba(255,215,0,.95), 0 0 22px rgba(255,215,0,.65), 0 0 48px rgba(255,215,0,.28);
+        color: #ffd700;
+      }
+      50% {
+        text-shadow: 0 0 6px rgba(255,215,0,.72), 0 0 12px rgba(255,215,0,.4), 0 0 22px rgba(255,215,0,.16);
+        color: #ffe566;
+      }
+    }
+
     /* ── How to play ─────────────────────────────────────────────── */
     .how-to-play { width: 100%; text-align: left; }
     .how-to-play__toggle {
@@ -274,6 +599,12 @@
     .overlay__btn:active { transform: scale(0.96); }
     .overlay__btn--win      { background: var(--c-win-btn); color: #fff; }
     .overlay__btn--gameover { background: var(--c-card-lose-border); color: var(--c-text); }
+    .overlay__btn--menu {
+      background: transparent; color: var(--c-text-muted);
+      border: 1px solid rgba(255,255,255,.15); font-size: 0.8rem;
+      padding: 0.45rem 1.4rem; margin-top: -0.2rem;
+    }
+    .overlay__btn--menu:hover { background: rgba(255,255,255,.07); color: var(--c-text); border-color: rgba(255,255,255,.3); }
 
     /* ── Left info panel (weather + combos) ─────────────────────────── */
     .info-panel--left {
@@ -624,6 +955,82 @@
     }
     .hud__undo-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
     .hud__undo-btn[hidden] { display: none; }
+
+    /* ── Menu button (HUD) ───────────────────────────────────────── */
+    .hud__menu-btn {
+      flex-shrink: 0;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px; color: var(--c-text-muted);
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; padding: 0.25rem 0.55rem;
+      line-height: 1; font-family: inherit;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__menu-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+
+    /* ── In-game menu overlay ────────────────────────────────────── */
+    .overlay--menu { background: rgba(7,8,13,0.95); backdrop-filter: blur(8px); z-index: 800; }
+    .overlay__card--menu {
+      max-width: 480px; width: 100%; gap: 0; padding: 0;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .menu-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.4rem 0.9rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      position: sticky; top: 0; background: var(--c-panel); z-index: 1;
+    }
+    .menu-header__title { margin: 0; font-size: 1rem; font-weight: 800; color: var(--c-text-hi); }
+    .menu-close {
+      background: none; border: none; color: var(--c-text-dim);
+      font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0.2rem 0.45rem;
+      border-radius: 6px; font-family: inherit;
+      transition: color .15s, background .15s;
+    }
+    .menu-close:hover { color: var(--c-text); background: rgba(255,255,255,.07); }
+
+    .menu-section { padding: 0.9rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .menu-section:last-child { border-bottom: none; }
+    .menu-section__heading {
+      margin: 0 0 0.55rem; font-size: 0.58rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.13em; color: var(--c-text-dim);
+    }
+
+    /* Weather block inside menu */
+    .menu-weather { display: flex; align-items: flex-start; gap: 0.75rem; }
+    .menu-weather__icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .menu-weather__name { font-size: 0.88rem; font-weight: 700; color: var(--c-text-hi); margin: 0 0 0.2rem; }
+    .menu-weather__hint { font-size: 0.7rem; color: var(--c-text-muted); margin: 0; line-height: 1.45; }
+
+    /* Action key table */
+    .menu-action-table { width: 100%; border-collapse: collapse; font-size: 0.67rem; }
+    .menu-action-table tr { border-bottom: 1px solid rgba(255,255,255,.04); }
+    .menu-action-table tr:last-child { border-bottom: none; }
+    .menu-action-table td { padding: 0.28rem 0.3rem; vertical-align: middle; color: var(--c-text-muted); }
+    .menu-action-table td:first-child { font-size: 0.88rem; width: 1.6rem; text-align: center; }
+    .mat-name  { font-weight: 600; color: var(--c-text); white-space: nowrap; padding-right: 0.5rem !important; }
+    .mat-cost  { color: var(--c-text-dim); text-align: right; white-space: nowrap; padding-right: 0.5rem !important; }
+    .mat-tile  { color: var(--c-text-dim); font-style: italic; white-space: nowrap; padding-right: 0.5rem !important; }
+    .mat-effect { display: flex; gap: 0.35rem; flex-wrap: nowrap; }
+    .mat-cong  { color: #f87171; font-weight: 700; white-space: nowrap; }
+    .mat-hap   { color: #4ade80; font-weight: 700; white-space: nowrap; }
+
+    /* Option buttons */
+    .menu-options { display: flex; flex-direction: column; gap: 0.45rem; }
+    .menu-opt-btn {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; padding: 0.65rem 1rem;
+      color: var(--c-text); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; text-align: left; font-family: inherit; width: 100%;
+      transition: background .15s, border-color .15s;
+    }
+    .menu-opt-btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
+    .menu-opt-btn--danger:hover { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: #fca5a5; }
+    .menu-opt-btn__icon { font-size: 1.05rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+    .menu-opt-btn__body { flex: 1; }
+    .menu-opt-btn__desc { display: block; font-size: 0.62rem; font-weight: 400; color: var(--c-text-dim); margin-top: 0.1rem; }
 
     /* ── Day Briefing overlay ────────────────────────────────────── */
     .overlay--briefing { background: rgba(7,8,13,0.92); backdrop-filter: blur(10px); z-index: 750; }
@@ -986,20 +1393,23 @@
       margin: 0; font-size: 0.66rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.12em; color: var(--c-text-dim);
     }
-    .combos-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+    .combos-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
     .combo-item {
-      display: grid; grid-template-columns: 2.6ch 1fr auto;
-      align-items: center; gap: 0.3rem;
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 0.4rem;
       font-size: 0.65rem; color: var(--c-text-muted);
-      padding: 0.25rem 0.4rem; border-radius: 6px; transition: background 0.15s;
+      padding: 0.3rem 0.45rem; border-radius: 6px; transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,.04);
     }
+    .combo-item:last-child { border-bottom: none; }
     .combo-item--active {
       background: rgba(251,191,36,.10); color: var(--c-text);
       box-shadow: inset 0 0 0 1px rgba(251,191,36,.22);
+      border-bottom-color: transparent;
     }
-    .combo-item__pair  { font-size: 0.78rem; }
+    .combo-item__pair  { font-size: 0.82rem; white-space: nowrap; letter-spacing: -0.05em; }
     .combo-item__label { font-weight: 600; line-height: 1.2; }
-    .combo-item__bonus { display: flex; gap: 0.2rem; font-weight: 700; font-size: 0.6rem; }
+    .combo-item__bonus { display: flex; gap: 0.35rem; font-weight: 700; font-size: 0.62rem; align-items: center; }
     .combo-cong { color: #f87171; }
     .combo-hap  { color: #4ade80; }
 
@@ -1023,7 +1433,7 @@
       padding: 0.2rem 0.35rem; border-radius: 5px;
     }
     .mobile-combo-item--active { background: rgba(251,191,36,.1); color: var(--c-text); }
-    .mci-pair  { font-size: 0.8rem; flex-shrink: 0; }
+    .mci-pair  { font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; letter-spacing: -0.05em; }
     .mci-label { flex: 1; font-weight: 600; }
     .mci-bonus { display: flex; gap: 0.2rem; font-size: 0.6rem; font-weight: 700; }
 
@@ -1061,8 +1471,8 @@
     .mas-card__hap--sad { color: #f87171; }
 
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
-    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__help-btn,
-    .overlay__btn, .hud-meter__track { touch-action: manipulation; }
+    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__help-btn, .hud__menu-btn,
+    .overlay__btn, .hud-meter__track, .menu-opt-btn, .menu-close { touch-action: manipulation; }
 
     /* ── Small-screen overlay ────────────────────────────────────── */
     .small-screen-overlay { display: none; }
@@ -1271,7 +1681,8 @@
       .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
       .hud__help-btn  { order: 7; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
       .hud__undo-btn  { order: 8; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
-      .hud__reset-mobile { order: 9; }
+      .hud__menu-btn  { order: 9; font-size: 0.9rem;  padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 10; }
     }
   </style>
 </head>
@@ -1281,7 +1692,7 @@
   <div class="small-screen-overlay" id="smallScreenOverlay" aria-hidden="true">
     <div class="small-screen-overlay__card">
       <div class="small-screen-overlay__icon">🏙️</div>
-      <h2 class="small-screen-overlay__title">City Unblocked</h2>
+      <h2 class="small-screen-overlay__title">Make It Liveable</h2>
       <div class="small-screen-overlay__rotate" aria-hidden="true">📱</div>
       <p class="small-screen-overlay__body">
         This game needs a screen at least <strong>1100px wide</strong> to play.
@@ -1296,8 +1707,31 @@
   <div class="overlay overlay--landing" id="landingOverlay"
        role="dialog" aria-modal="true" aria-labelledby="landingTitle">
     <div class="overlay__card overlay__card--landing">
-      <div class="landing__icon" aria-hidden="true">🏙️</div>
-      <h1 class="landing__title" id="landingTitle">City Unblocked</h1>
+      <div class="arcade-tile">
+        <div class="arcade-tile__screen">
+          <!-- Animated title in the sky -->
+          <h1 class="arcade-hero__title" id="landingTitle">Make It<br>Liveable</h1>
+          <!-- City scene (decorative) -->
+          <div class="arcade-tile__bld arcade-bld--a" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--b" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--c" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--d" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--e" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--f" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--g" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--h" aria-hidden="true"></div>
+          <div class="arcade-tile__bld arcade-bld--i" aria-hidden="true"></div>
+          <div class="arcade-tile__road" aria-hidden="true">
+            <div class="arcade-tile__bus"></div>
+          </div>
+        </div>
+        <div class="arcade-tile__marquee" aria-hidden="true"><span>★ MAKE IT LIVEABLE ★ MAKE IT LIVEABLE ★ MAKE IT LIVEABLE ★</span></div>
+        <div class="arcade-tile__footer" aria-hidden="true">
+          <span>HI-SCORE 00000</span>
+          <span class="arcade-insert">INSERT COIN</span>
+          <span>CREDIT&nbsp;&nbsp;00</span>
+        </div>
+      </div>
       <p class="landing__tagline">Reduce congestion. Boost happiness. Save the city.</p>
 
       <div class="landing__difficulty" role="group" aria-label="Select difficulty">
@@ -1340,7 +1774,7 @@
   <header class="hud" id="hud" role="banner">
     <div class="hud__brand">
       <span class="hud__brand-icon" aria-hidden="true">🏙️</span>
-      <span class="hud__brand-name">City Unblocked</span>
+      <span class="hud__brand-name">Make It Liveable</span>
     </div>
     <div class="hud__meters" role="group" aria-label="City meters">
       <div class="hud-meter hud-meter--happiness">
@@ -1379,6 +1813,7 @@
     <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
     <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
+    <button class="hud__menu-btn"  id="hudMenu"     type="button" title="Menu" aria-label="Open menu" aria-expanded="false">☰</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
   </header>
 
@@ -1387,7 +1822,7 @@
        role="dialog" aria-modal="true" aria-labelledby="winTitle">
     <div class="overlay__card">
       <div class="overlay__confetti" aria-hidden="true">🎉🏆🎊</div>
-      <h2 class="overlay__title" id="winTitle">City Unblocked!</h2>
+      <h2 class="overlay__title" id="winTitle">It's Liveable!</h2>
       <div class="overlay__stars" id="winStars" aria-label="Star rating">⭐⭐⭐</div>
       <p class="overlay__rating-label" id="winRatingLabel">Perfect score!</p>
       <p class="overlay__body">You made this city more livable in <strong id="winTurns">—</strong> turns.</p>
@@ -1398,6 +1833,7 @@
       </p>
       <div class="overlay__context" id="winContext" aria-label="Game context"></div>
       <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
+      <button class="overlay__btn overlay__btn--menu" id="winMenu" type="button">↩ Main Menu</button>
     </div>
   </div>
 
@@ -1414,6 +1850,107 @@
         <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
       </div>
       <button class="overlay__btn overlay__btn--gameover" id="gameOverRestart" type="button">Try Again</button>
+      <button class="overlay__btn overlay__btn--menu" id="gameOverMenu" type="button">↩ Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ── In-game menu overlay ─────────────────────────────────────────── -->
+  <div class="overlay overlay--menu" id="menuOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+    <div class="overlay__card overlay__card--menu">
+
+      <div class="menu-header">
+        <h2 class="menu-header__title" id="menuTitle">Menu</h2>
+        <button class="menu-close" id="menuClose" aria-label="Close menu" type="button">✕</button>
+      </div>
+
+      <!-- Today's weather -->
+      <div class="menu-section">
+        <p class="menu-section__heading">Today's weather</p>
+        <div class="menu-weather">
+          <span class="menu-weather__icon" id="menuWeatherIcon" aria-hidden="true">☀️</span>
+          <div>
+            <p class="menu-weather__name" id="menuWeatherName">Sunny</p>
+            <p class="menu-weather__hint" id="menuWeatherHint">Perfect conditions. All actions at full effect.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action key -->
+      <div class="menu-section">
+        <p class="menu-section__heading">Action key</p>
+        <table class="menu-action-table" aria-label="Action reference">
+          <tbody>
+            <tr>
+              <td aria-hidden="true">🚌</td>
+              <td class="mat-name">Bus Stop</td>
+              <td class="mat-cost">£80</td>
+              <td class="mat-tile">road</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −10</span><span class="mat-hap">😊 +6</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🚲</td>
+              <td class="mat-name">Bike Lane</td>
+              <td class="mat-cost">£40</td>
+              <td class="mat-tile">road</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −6</span><span class="mat-hap">😊 +8</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🅿️</td>
+              <td class="mat-name">Parking</td>
+              <td class="mat-cost">£120</td>
+              <td class="mat-tile">building</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −8</span><span class="mat-hap">😊 +4</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🌳</td>
+              <td class="mat-name">Park</td>
+              <td class="mat-cost">£60</td>
+              <td class="mat-tile">empty lot</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −4</span><span class="mat-hap">😊 +12</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🚧</td>
+              <td class="mat-name">Road Widening</td>
+              <td class="mat-cost">£90</td>
+              <td class="mat-tile">road</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −15</span><span class="mat-hap">😊 −5</span></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Game options -->
+      <div class="menu-section">
+        <p class="menu-section__heading">Options</p>
+        <div class="menu-options">
+          <button class="menu-opt-btn" id="menuResume" type="button">
+            <span class="menu-opt-btn__icon" aria-hidden="true">▶</span>
+            <span class="menu-opt-btn__body">Resume
+              <span class="menu-opt-btn__desc">Continue the current game</span>
+            </span>
+          </button>
+          <button class="menu-opt-btn" id="menuRestartMap" type="button">
+            <span class="menu-opt-btn__icon" aria-hidden="true">↺</span>
+            <span class="menu-opt-btn__body">Restart this map
+              <span class="menu-opt-btn__desc">Same city layout — reset budget and turns</span>
+            </span>
+          </button>
+          <button class="menu-opt-btn" id="menuNewMap" type="button">
+            <span class="menu-opt-btn__icon" aria-hidden="true">🗺</span>
+            <span class="menu-opt-btn__body">New map
+              <span class="menu-opt-btn__desc">Fresh city, same difficulty</span>
+            </span>
+          </button>
+          <button class="menu-opt-btn menu-opt-btn--danger" id="menuChangeDifficulty" type="button">
+            <span class="menu-opt-btn__icon" aria-hidden="true">⚙️</span>
+            <span class="menu-opt-btn__body">Change difficulty
+              <span class="menu-opt-btn__desc">Return to the main menu</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1910,6 +2447,15 @@
     }
     document.getElementById("winRestart")?.addEventListener("click", onRestart);
     document.getElementById("gameOverRestart")?.addEventListener("click", onRestart);
+
+    function onGoToMenu() {
+      winOverlay.setAttribute("hidden", "");
+      gameOverOverlay.setAttribute("hidden", "");
+      const landing = document.getElementById("landingOverlay");
+      if (landing) landing.removeAttribute("hidden");
+    }
+    document.getElementById("winMenu")?.addEventListener("click", onGoToMenu);
+    document.getElementById("gameOverMenu")?.addEventListener("click", onGoToMenu);
     document.getElementById("hudReset")?.addEventListener("click", onRestart);
 
     // ── Undo last placement ──────────────────────────────────────────
@@ -2243,7 +2789,7 @@
       return result;
     };
 
-    window.restartGame = function restartGame() {
+    window.restartGame = function restartGame(opts) {
       Object.assign(window.gameState, makeInitialState());
       window.lastPlacement = null;
       const undoBtn = document.getElementById('hudUndo');
@@ -2252,10 +2798,12 @@
       document.body.dataset.weather = window.currentWeather;
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
-      // Generate a fresh random map and rebuild the grid
+      // Generate map — reuse seed if provided (e.g. "restart same map")
       var preset  = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
+      var mapOpts = { blockerRate: preset.blockerRate, generatorCount: preset.generatorCount || 0 };
+      if (opts && opts.seed != null) mapOpts.seed = opts.seed;
       var newMap = (typeof window.generateMap === "function")
-        ? window.generateMap({ blockerRate: preset.blockerRate, generatorCount: preset.generatorCount || 0 })
+        ? window.generateMap(mapOpts)
         : null;
       if (newMap && typeof window.buildCityGrid === "function") {
         window.currentMap = newMap;
@@ -3068,8 +3616,8 @@
       combos.forEach(function (c) {
         const ea = EMOJI[c.a] || '?', eb = EMOJI[c.b] || '?';
         let bonus = '';
-        if (c.congestion !== 0) bonus += '<span class="combo-cong">' + (c.congestion > 0 ? '+' : '') + c.congestion + '🚗</span>';
-        if (c.happiness  !== 0) bonus += '<span class="combo-hap">'  + (c.happiness  > 0 ? '+' : '') + c.happiness  + '😊</span>';
+        if (c.congestion !== 0) bonus += '<span class="combo-cong">🚗 ' + (c.congestion > 0 ? '+' : '') + c.congestion + '</span>';
+        if (c.happiness  !== 0) bonus += '<span class="combo-hap">😊 '  + (c.happiness  > 0 ? '+' : '') + c.happiness  + '</span>';
         if (desktopList) {
           const li = document.createElement('li');
           li.className = 'combo-item'; li.dataset.combo = c.label;
@@ -3843,7 +4391,7 @@
       if (typeof window.refreshHUD === 'function') window.refreshHUD();
       // Show day briefing — but only if the tutorial won't intercept (already seen)
       try {
-        if (localStorage.getItem('cityUnblocked_tutorialSeen')) {
+        if (localStorage.getItem('makeItLiveable_tutorialSeen')) {
           setTimeout(() => window.showDayBriefing?.(), 200);
         }
         // First-time: tutorial shows first, its gotIt handler triggers the briefing
@@ -3867,7 +4415,7 @@
   <script>
   (function () {
     'use strict';
-    const STORAGE_KEY   = 'cityUnblocked_tutorialSeen';
+    const STORAGE_KEY   = 'makeItLiveable_tutorialSeen';
     const tutorialEl    = document.getElementById('tutorialOverlay');
     const gotItBtn      = document.getElementById('tutorialGotIt');
     const hudHelpBtn    = document.getElementById('hudHelp');
@@ -4027,6 +4575,77 @@
     // Escape to skip
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !briefingEl.hidden) dismiss();
+    });
+
+  })();
+  </script>
+
+  <!-- ── In-game menu logic ────────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    const menuOverlay   = document.getElementById('menuOverlay');
+    const menuBtn       = document.getElementById('hudMenu');
+    const menuClose     = document.getElementById('menuClose');
+    const resumeBtn     = document.getElementById('menuResume');
+    const restartMapBtn = document.getElementById('menuRestartMap');
+    const newMapBtn     = document.getElementById('menuNewMap');
+    const changeDiffBtn = document.getElementById('menuChangeDifficulty');
+
+    if (!menuOverlay || !menuBtn) return;
+
+    function openMenu() {
+      const WEATHER_META = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const weather = window.currentWeather || 'sunny';
+      const meta    = WEATHER_META[weather] || {};
+      const iconEl  = document.getElementById('menuWeatherIcon');
+      const nameEl  = document.getElementById('menuWeatherName');
+      const hintEl  = document.getElementById('menuWeatherHint');
+      if (iconEl) iconEl.textContent = meta.emoji || '☀️';
+      if (nameEl) nameEl.textContent = meta.label || weather;
+      if (hintEl) hintEl.textContent = meta.hint  || '';
+
+      menuOverlay.removeAttribute('hidden');
+      menuBtn.setAttribute('aria-expanded', 'true');
+      if (menuClose) menuClose.focus();
+    }
+
+    function closeMenu() {
+      menuOverlay.setAttribute('hidden', '');
+      menuBtn.setAttribute('aria-expanded', 'false');
+      menuBtn.focus();
+    }
+
+    menuBtn.addEventListener('click', openMenu);
+    if (menuClose)     menuClose.addEventListener('click', closeMenu);
+    if (resumeBtn)     resumeBtn.addEventListener('click', closeMenu);
+
+    if (restartMapBtn) restartMapBtn.addEventListener('click', function () {
+      const seed = window.currentMap && window.currentMap.seed;
+      closeMenu();
+      if (typeof window.restartGame === 'function') window.restartGame(seed != null ? { seed: seed } : undefined);
+      setTimeout(function () { if (typeof window.showDayBriefing === 'function') window.showDayBriefing(); }, 150);
+    });
+
+    if (newMapBtn) newMapBtn.addEventListener('click', function () {
+      closeMenu();
+      if (typeof window.restartGame === 'function') window.restartGame();
+      setTimeout(function () { if (typeof window.showDayBriefing === 'function') window.showDayBriefing(); }, 150);
+    });
+
+    if (changeDiffBtn) changeDiffBtn.addEventListener('click', function () {
+      closeMenu();
+      const landing = document.getElementById('landingOverlay');
+      if (landing) landing.removeAttribute('hidden');
+    });
+
+    menuOverlay.addEventListener('click', function (e) {
+      if (e.target === menuOverlay) closeMenu();
+    });
+
+    menuOverlay.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
     });
 
   })();
