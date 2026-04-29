@@ -1078,15 +1078,6 @@
       font-size: .875rem; color: rgba(255,255,255,.82); line-height: 1.4;
     }
     .briefing__tips li::before { content: attr(data-icon); flex-shrink: 0; font-size: 1.1em; }
-    .briefing__progress {
-      height: 3px; background: rgba(255,255,255,.10); margin: 18px 0 0; overflow: hidden;
-    }
-    .briefing__progress-bar {
-      height: 100%; background: var(--briefing-accent, rgba(255,255,255,.4));
-      width: 100%; transform-origin: left;
-      animation: briefing-drain var(--briefing-duration, 5s) linear forwards;
-    }
-    @keyframes briefing-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
     .briefing__start-btn {
       border-radius: 0 0 16px 16px; margin: 0; width: 100%;
       background: var(--briefing-accent, rgba(255,255,255,.15));
@@ -1994,9 +1985,6 @@
       <div class="briefing__weather-icon" id="briefingIcon" aria-hidden="true"></div>
       <h2 class="briefing__title" id="briefingTitle"></h2>
       <ul class="briefing__tips" id="briefingTips"></ul>
-      <div class="briefing__progress" id="briefingProgress">
-        <div class="briefing__progress-bar" id="briefingProgressBar"></div>
-      </div>
       <button class="overlay__btn briefing__start-btn" id="briefingStart" type="button">Start Planning →</button>
     </div>
   </div>
@@ -3917,7 +3905,7 @@
       if (dir === 'h') {
         el.style.top  = (tileEdge(lane) + laneOff) + 'px';
         el.style.left = '0';
-        if (going < 0) el.style.transform = 'scaleX(-1)';
+        if (going > 0) el.style.transform = 'scaleX(-1)';
       } else {
         el.style.left = (tileEdge(lane) + laneOff) + 'px';
         el.style.top  = '0';
@@ -4780,7 +4768,6 @@
   (function () {
     'use strict';
 
-    const BRIEFING_DURATION = 5000; // ms before auto-dismiss
 
     const WEATHER_BRIEFINGS = {
       sunny: {
@@ -4830,16 +4817,11 @@
     const iconEl       = document.getElementById('briefingIcon');
     const titleEl      = document.getElementById('briefingTitle');
     const tipsEl       = document.getElementById('briefingTips');
-    const progressBar  = document.getElementById('briefingProgressBar');
     const startBtn     = document.getElementById('briefingStart');
 
     if (!briefingEl) return;
 
-    let dismissTimer = null;
-
     function dismiss() {
-      clearTimeout(dismissTimer);
-      dismissTimer = null;
       briefingEl.setAttribute('hidden', '');
     }
 
@@ -4861,20 +4843,8 @@
       });
       briefingCard.classList.add('briefing--' + weather);
 
-      // Reset + restart progress bar animation
-      if (progressBar) {
-        progressBar.style.animation = 'none';
-        progressBar.style.setProperty('--briefing-duration', (BRIEFING_DURATION / 1000) + 's');
-        void progressBar.offsetWidth;
-        progressBar.style.animation = '';
-      }
-
       briefingEl.removeAttribute('hidden');
       startBtn && startBtn.focus();
-
-      // Auto-dismiss
-      clearTimeout(dismissTimer);
-      dismissTimer = setTimeout(dismiss, BRIEFING_DURATION);
     };
 
     startBtn && startBtn.addEventListener('click', dismiss);
