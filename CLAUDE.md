@@ -1,4 +1,4 @@
-# CLAUDE.md — City Unblocked
+# CLAUDE.md — Make It Liveable
 
 Context for AI sessions working on this project.
 
