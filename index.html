@@ -235,7 +235,7 @@
     .diff-btn--selected { border-color: var(--c-selected) !important; background: rgba(251,191,36,0.09) !important; }
     .diff-btn--selected .diff-btn__label { color: var(--c-selected); }
     .landing__hint { margin: 0; font-size: 0.8rem; color: var(--c-text-dim); min-height: 2.4em; line-height: 1.5; }
-    .landing__audio-row { display: flex; justify-content: center; }
+    .landing__audio-row { display: flex; justify-content: center; gap: 0.5rem; }
     .landing__sound-btn {
       background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
       border-radius: 8px; color: var(--c-text-muted); font-family: inherit;
@@ -1785,7 +1785,8 @@
       </details>
 
       <div class="landing__audio-row">
-        <button class="landing__sound-btn" id="landingSFX" type="button" aria-pressed="false">🔕 SFX Off</button>
+        <button class="landing__sound-btn" id="landingMusic" type="button" aria-pressed="false">🔇 Music Off</button>
+        <button class="landing__sound-btn" id="landingSFX"   type="button" aria-pressed="false">🔕 SFX Off</button>
       </div>
 
       <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
@@ -4300,6 +4301,16 @@
     let audioCtx = null, masterGain = null, musicOn = false;
     const musicBtn = document.getElementById('musicToggle');
 
+    function makeNoise(ctx, seconds) {
+      const len = ctx.sampleRate * seconds;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d   = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      return src;
+    }
+
     function buildSound() {
       if (audioCtx) return;
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -4307,59 +4318,59 @@
       masterGain.gain.value = 0;
       masterGain.connect(audioCtx.destination);
 
-      /* — Traffic noise layer — */
-      const nLen = audioCtx.sampleRate * 4;
-      const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-      const nDat = nBuf.getChannelData(0);
-      for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
-      const noise   = audioCtx.createBufferSource();
-      noise.buffer  = nBuf;
-      noise.loop    = true;
-      const nFilt   = audioCtx.createBiquadFilter();
-      nFilt.type    = 'bandpass';
-      nFilt.frequency.value = 380;
-      nFilt.Q.value = 0.45;
-      const nGain   = audioCtx.createGain();
-      nGain.gain.value = 0.13;
-      noise.connect(nFilt); nFilt.connect(nGain); nGain.connect(masterGain);
-      noise.start();
+      /* — Layer 1: deep traffic rumble — lowpass at 85 Hz, gentle ebb/flow LFO — */
+      const rumble = makeNoise(audioCtx, 6);
+      const rFilt  = audioCtx.createBiquadFilter();
+      rFilt.type = 'lowpass'; rFilt.frequency.value = 85; rFilt.Q.value = 0.8;
+      const rGain  = audioCtx.createGain(); rGain.gain.value = 0.06;
+      const rLFO   = audioCtx.createOscillator(); rLFO.frequency.value = 0.04;
+      const rLG    = audioCtx.createGain(); rLG.gain.value = 0.022;
+      rLFO.connect(rLG); rLG.connect(rGain.gain); rLFO.start();
+      rumble.connect(rFilt); rFilt.connect(rGain); rGain.connect(masterGain);
+      rumble.start();
 
-      /* — Bass city hum — */
-      [55, 110, 165].forEach((freq, i) => {
-        const osc  = audioCtx.createOscillator();
-        osc.type   = 'sine';
-        osc.frequency.value = freq;
-        const g    = audioCtx.createGain();
-        g.gain.value = [0.2, 0.09, 0.04][i];
-        // slow LFO swell
-        const lfo  = audioCtx.createOscillator();
-        lfo.frequency.value = 0.05 + i * 0.02;
-        const lg   = audioCtx.createGain();
-        lg.gain.value = g.gain.value * 0.28;
+      /* — Layer 2: mid-distance city texture — lowpass at 160 Hz — */
+      const mid   = makeNoise(audioCtx, 5);
+      const mFilt = audioCtx.createBiquadFilter();
+      mFilt.type = 'lowpass'; mFilt.frequency.value = 160; mFilt.Q.value = 1.2;
+      const mGain = audioCtx.createGain(); mGain.gain.value = 0.022;
+      const mLFO  = audioCtx.createOscillator(); mLFO.frequency.value = 0.027;
+      const mLG   = audioCtx.createGain(); mLG.gain.value = 0.01;
+      mLFO.connect(mLG); mLG.connect(mGain.gain); mLFO.start();
+      mid.connect(mFilt); mFilt.connect(mGain); mGain.connect(masterGain);
+      mid.start();
+
+      /* — Layer 3: sub-bass city hum — 60 Hz + 120 Hz sine — */
+      [60, 120].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type  = 'sine'; osc.frequency.value = freq;
+        const g   = audioCtx.createGain(); g.gain.value = [0.048, 0.018][i];
+        const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
+        const lg  = audioCtx.createGain(); lg.gain.value = [0.016, 0.006][i];
         lfo.connect(lg); lg.connect(g.gain); lfo.start();
         osc.connect(g); g.connect(masterGain); osc.start();
       });
 
-      /* — Melodic layer: slow pentatonic phrases with reverb — */
-      const rev  = makeReverb(audioCtx);
+      /* — Layer 4: sparse sine melody with reverb (no triangle — much smoother) — */
+      const rev = makeReverb(audioCtx);
       rev.connect(masterGain);
-      // A minor pentatonic: A3 C4 D4 E4 G4 A4 C5
-      const pitches = [220, 262, 294, 330, 392, 440, 523];
-      const seq     = [0,2,4,1,5,3,0,6,2,4,1,3,5,0,4,2];
+      // A minor pentatonic: A3 C4 E4 G4 A4
+      const pitches = [220, 262, 330, 392, 440];
+      const seq     = [0, 2, 1, 4, 3, 0, 2, 4, 1, 3, 2, 0, 4, 1, 3, 2];
       let ni = 0;
       (function sched() {
         const freq = pitches[seq[ni++ % seq.length]];
         const osc  = audioCtx.createOscillator();
-        osc.type   = 'triangle';
+        osc.type   = 'sine';
         osc.frequency.value = freq;
         const env  = audioCtx.createGain();
         const t    = audioCtx.currentTime;
         env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(0.065, t + 0.12);
-        env.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+        env.gain.linearRampToValueAtTime(0.055, t + 0.35);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 3.8);
         osc.connect(env); env.connect(rev);
-        osc.start(t); osc.stop(t + 3);
-        setTimeout(sched, 2400 + Math.random() * 700);
+        osc.start(t); osc.stop(t + 4.5);
+        setTimeout(sched, 3000 + Math.random() * 1400);
       })();
     }
 
@@ -4376,16 +4387,26 @@
       return conv;
     }
 
-    musicBtn.addEventListener('click', () => {
+    window.toggleMusic = function () {
       buildSound();
       musicOn = !musicOn;
       const t = audioCtx.currentTime;
       masterGain.gain.cancelScheduledValues(t);
       masterGain.gain.setValueAtTime(masterGain.gain.value, t);
-      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.28 : 0, t + 1.5);
-      musicBtn.textContent = musicOn ? '🔊' : '🔇';
-      musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
-    });
+      masterGain.gain.linearRampToValueAtTime(musicOn ? 0.32 : 0, t + 1.5);
+      const on = musicOn;
+      if (musicBtn) {
+        musicBtn.textContent = on ? '🔊' : '🔇';
+        musicBtn.title = on ? 'Music on — click to mute' : 'Music off — click to play';
+      }
+      const landingMusicBtn = document.getElementById('landingMusic');
+      if (landingMusicBtn) {
+        landingMusicBtn.textContent = on ? '🔊 Music On' : '🔇 Music Off';
+        landingMusicBtn.setAttribute('aria-pressed', String(on));
+      }
+    };
+
+    musicBtn.addEventListener('click', window.toggleMusic);
 
     /* ── Sound effects (SFX) ─────────────────────────────────────────── */
     let sfxCtx = null;
@@ -4577,6 +4598,14 @@
     overlay.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playBtn.click(); }
     });
+
+    // Music toggle — syncs with HUD button via window.toggleMusic
+    const landingMusicBtn = document.getElementById('landingMusic');
+    if (landingMusicBtn) {
+      landingMusicBtn.addEventListener('click', () => {
+        if (typeof window.toggleMusic === 'function') window.toggleMusic();
+      });
+    }
 
     // SFX toggle — syncs with HUD button via window.toggleSFX
     const landingSFXBtn = document.getElementById('landingSFX');
