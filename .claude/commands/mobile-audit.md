@@ -14,8 +14,10 @@ Grep index.html for all interactive element selectors. Verify each of these has 
 - .action-btn
 - .reset-btn
 - .hud__music-btn
+- .hud__sfx-btn
 - .overlay__btn
 - .diff-btn
+- .landing__sound-btn
 - Any new radial menu buttons (.radial-btn if present)
 
 ## 3. Media queries at mobile breakpoint

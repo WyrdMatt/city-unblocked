@@ -11,7 +11,7 @@ Run locally: `npm run dev` → http://localhost:5173
 ## File structure
 
 ```
-index.html              ← entire game (CSS + HTML + 6 JS blocks)
+index.html              ← entire game (CSS + HTML + 7 JS blocks)
 src/
   game-logic.js         ← pure game logic (ES module, tested)
   radial-logic.js       ← radial menu pure logic (ES module, tested)
@@ -20,9 +20,13 @@ tests/
   balance.test.js       ← balance simulations
   mapgen.test.js        ← map generation fuzzing (5000 seeds)
   radial.test.js        ← ACTIONS, getValidActions, getRadialPosition, getButtonPositions
+  puzzle-mechanics.test.js ← ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST, getBlockId, checkZoneCap, applyGeneratorTick
 .claude/commands/
   sync-check.md         ← /sync-check skill: flags value drift between index.html and src/
   mobile-audit.md       ← /mobile-audit skill: checks mobile-readiness of index.html
+  animation-audit.md    ← /animation-audit skill: checks reactive animation system
+  commit.md             ← /commit skill: runs tests, stages, commits with Conventional Commits
+  test.md               ← /test skill: runs full test suite and reports results
 README.md               ← player-facing docs
 CLAUDE.md               ← this file
 ```
@@ -31,44 +35,67 @@ Legacy reference copies (`game-state.js`, `hud.js`, `actions-panel.js`, etc.) ar
 
 ## Script block load order (inside index.html)
 
-1. **hud** — DOM element refs, `refreshHUD()`, `showWinScreen()`, `showGameOverScreen()`, music toggle
-2. **game-state** — `window.gameState`, `updateMeters()`, `checkWinLose()`, `restartGame()`
+1. **hud** — DOM element refs, `refreshHUD()`, `showWinScreen()`, `showGameOverScreen()`, undo logic (`doUndo`), share-score button, music/SFX toggle buttons wired
+2. **game-state** — `window.gameState`, `updateMeters()`, `checkWinLose()`, `restartGame()`, difficulty presets, puzzle-mechanic constants
 3. **mapgen** — `generateMap()`, `validateMap()`, `window.MAP_CONFIG`; exposes seeded PRNG
-4. **city-map** — `buildCityGrid(layout)`, tile click listener, road-direction helper
-5. **actions-panel** — radial fan menu, tile placement, popup floaters, `updateActionAvailability()`
-6. **animations** — `requestAnimationFrame` loop for cars/pedestrians, `spawnParkPeds(parkTiles)`
+4. **city-map** — `buildCityGrid(layout)`, tile click listener, road-direction helper, blocker demolish
+5. **actions-panel** — radial fan menu, tile placement, popup floaters, `updateActionAvailability()`, placement preview
+6. **animations** — `requestAnimationFrame` loop for cars/pedestrians, ambient music (4-layer city soundscape), SFX system (`window.playSFX`, `window.toggleMusic`, `window.toggleSFX`)
+7. **landing-page** — difficulty selection, Play button, audio toggles on landing overlay, tutorial/briefing trigger
 
 Each block depends on the ones above it. Do not reorder.
 
 ## Key globals
 
-| Global | Owner | Shape |
+| Global | Owner | Shape / purpose |
 |---|---|---|
-| `window.gameState` | game-state | `{ congestion, happiness, budget, turn, won }` |
+| `window.gameState` | game-state | `{ congestion, happiness, budget, turn, turnLimit, won }` |
 | `window.cityGrid` | city-map | `Array<{ row, col, type, congestion, element }>` |
 | `window.currentMap` | city-map | `{ seed, grid, roadRows, roadCols, config }` |
 | `window.MAP_CONFIG` | mapgen | `{ rows, cols, minRoads, maxRoads, emptyRate, parkCount }` |
+| `window.currentWeather` | game-state | string — one of `WEATHER_TYPES` |
+| `window.currentDifficulty` | game-state | `'easy' \| 'normal' \| 'hard'` |
+| `window.DIFFICULTY_PRESETS` | game-state | `{ easy, normal, hard }` — budget, turnLimit, blockerRate, generatorCount |
+| `window.GAME_LOGIC` | game-state | exposes EFFECTS, COMBOS, WEATHER_META, WEATHER_MULTIPLIERS, pure functions for tests |
+| `window.lastPlacement` | hud | `{ element, action, cost }` — single-step undo snapshot; null when nothing to undo |
 | `window.refreshHUD` | hud | updates all meter DOM elements |
+| `window.showWinScreen` | hud | renders win overlay with stars + stats |
+| `window.showGameOverScreen` | hud | renders game-over overlay (budget or turns exhausted) |
 | `window.refreshTile` | city-map | redraws one road tile's congestion colour |
 | `window.buildCityGrid` | city-map | tears down tiles, rebuilds from a layout grid |
 | `window.generateMap` | mapgen | returns `{ seed, grid, roadRows, roadCols, config }` |
 | `window.spawnParkPeds` | animations | spawns wandering pedestrians at park tile coords |
 | `window.rebuildAnimations` | animations | clears + rebuilds all animation elements from a map |
+| `window.toggleMusic` | animations | toggles ambient music on/off; updates HUD + landing buttons |
+| `window.toggleSFX` | animations | toggles SFX on/off; updates HUD + landing buttons |
+| `window.playSFX` | animations | `playSFX(type)` — no-op if `sfxEnabled` false; types: `place`, `undo`, `demolish`, `win`, `lose`, `tick` |
+| `window.sfxEnabled` | animations | boolean — SFX on/off state (default `false`) |
 | `window.updateActionAvailability` | actions-panel | refreshes live effect values in reference panel |
+| `window.setDifficulty` | game-state | sets `window.currentDifficulty` and resets presets |
 
 ## Game constants (game-state block)
 
 ```js
-INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false }
 WIN_HAPPINESS  = 70   // happiness must reach this
 WIN_CONGESTION = 30   // congestion must fall to or below this
+
 EFFECTS = {
   "bus-stop":       { congestion: -10, happiness: +6  },
   "bike-lane":      { congestion:  -6, happiness: +8  },
   "parking-garage": { congestion:  -8, happiness: +4  },
   "park":           { congestion:  -4, happiness: +12 },
-  "road-widening":  { congestion: -15, happiness: -5  },
+  "road-widening":  { congestion: -15, happiness:  -5 },
 }
+
+DIFFICULTY_PRESETS = {
+  easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
+  normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
+  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
+}
+
+ZONE_CAP        = 2    // max same-action placements per city block
+GENERATOR_DELTA = 3    // congestion added per unsuppressed generator each tick
+DEMOLISH_COST   = 50   // cost to demolish a blocker tile
 ```
 
 ## Interaction model (desktop + mobile)
@@ -102,7 +129,35 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 - Park next to building tile: +3 happiness per neighbour
 - Bus stop next to building tile: –2 congestion per neighbour
 
+**Combo bonuses:** Adjacent placements of specific pairs trigger extra effects (Transit Hub, Green Corridor, Active Streets, Green Network, Park & Ride, Express Lane). Checked in `calculateEffects`.
+
+**Zone caps:** Max `ZONE_CAP` (2) placements of the same action type per city block. Cap scales up for large blocks: `max(2, floor(validTiles/2))`.
+
+**Generator tiles (🏭):** Placed on building cells adjacent to roads during mapgen. Each unsuppressed generator adds `GENERATOR_DELTA` (+3) congestion every `updateMeters()` call. Suppressed by any orthogonally adjacent road action (`bus-stop`, `bike-lane`, `road-widening`). Pulses red (`.generator--firing`) when active.
+
+**Demolishable blockers (🚧):** `blockerRate` fraction of empty cells become impassable blockers. Clicking one spends `DEMOLISH_COST` (£50) and converts it to an empty lot.
+
+**Single-step undo:** `window.lastPlacement` holds the most recent placement snapshot. `doUndo()` (↩ button / Ctrl+Z) reverses it and decrements the turn counter.
+
 **Goal markers** sit at `left: 70%` (happiness bar) and `left: 30%` (congestion bar) — these match WIN_HAPPINESS / WIN_CONGESTION exactly.
+
+## Audio system (animations block)
+
+**Ambient music** (`window.toggleMusic`) — 4-layer city soundscape, default OFF:
+- Layer 1: lowpass noise at 85 Hz — distant traffic rumble with ebb/flow LFO
+- Layer 2: lowpass noise at 160 Hz — mid-distance city texture
+- Layer 3: 60 Hz + 120 Hz sine hum with slow LFO swell
+- Layer 4: sparse A-minor-pentatonic sine melody through reverb
+
+**SFX** (`window.playSFX(type)`) — default OFF, gated by `window.sfxEnabled`:
+- `place` — marimba plonk (C5 + G5 triangles)
+- `undo` — descending A4→E4 slide
+- `demolish` — low sine pitch-drop (floor tom)
+- `win` — ascending C-E-G-C arpeggio
+- `lose` — descending E4-Db4-A3 minor chord
+- `tick` — subtle 880 Hz click on radial open
+
+Both use a shared `sfxCtx` (separate from `audioCtx`). SFX always awaits `ctx.resume()` before scheduling to avoid static on first use.
 
 ## Mobile support
 
@@ -118,6 +173,8 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 2. Fills non-road cells with buildings (B)
 3. Randomly converts `emptyRate` fraction of building cells adjacent to buildings to empty lots (E)
 4. Places `parkCount` parks (P) on high-adjacency building cells
+5. Places generator tiles (G) on building cells adjacent to roads (count from difficulty preset)
+6. Places blocker tiles (X) on empty cells at `blockerRate` fraction
 
 `validateMap(grid, cfg)` can be called from the browser console to assert counts.
 
@@ -137,7 +194,7 @@ Tiles animate in with a diagonal stagger (`animation-delay: (row+col)*15ms`) on 
 
 Calculated in `showWinScreen()` from budget remaining:
 - ⭐⭐⭐ — £200+
-- ⭐⭐ — £100–199
+- ⭐⭐ — £80–199
 - ⭐ — any win
 
 ## Development workflow
@@ -146,21 +203,22 @@ Calculated in `showWinScreen()` from budget remaining:
 ```
 npm test
 ```
-All **126 tests** across 4 suites must pass before any commit.
+All **175 tests** across 5 suites must pass before any commit.
 
 **Toolchain:** Vite (dev server) + Vitest (test runner). Run `npm install` once after checkout.
 
 ```
 npm run dev      # start Vite dev server → http://localhost:5173
-npm test         # run all 126 Vitest tests
+npm test         # run all 175 Vitest tests
 npm run build    # production build to dist/
 ```
 
 **Test files:**
-- `tests/effects.test.js` — calculateEffects, checkWinCondition
-- `tests/balance.test.js` — balance simulations
-- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds
+- `tests/effects.test.js` — calculateEffects, checkWinCondition (51 tests)
+- `tests/balance.test.js` — balance simulations (33 tests)
+- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds (19 tests)
 - `tests/radial.test.js`  — ACTIONS, getValidActions, getRadialPosition, getButtonPositions (40 tests)
+- `tests/puzzle-mechanics.test.js` — ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST, getBlockId, checkZoneCap, applyGeneratorTick (32 tests)
 
 **Commit convention:** Conventional Commits.
 Format: `type: short description` where type is `feat`, `refactor`, `fix`, `test`, or `chore`.
@@ -170,6 +228,17 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 Never commit directly to `main`. Never use `--no-verify`.
+
+## After every change — Definition of Done
+
+Before marking any task complete or opening a PR, work through this checklist:
+
+1. **Tests** — run `npm test`; all 175 tests must be green. If new pure logic was added to `src/`, write tests for it.
+2. **CLAUDE.md** — update if: a new global was added, a mechanic changed, a constant changed, the test count changed, a new skill was added, or the audio/UI system changed.
+3. **README.md** — update if: action costs/effects changed, new mechanics affect gameplay, win conditions changed, or running instructions changed.
+4. **Skill files** (`.claude/commands/`) — update if their grep targets changed (new buttons added to touch-action rule, new constants in sync-check, etc.).
+5. **`src/game-logic.js`** — if new pure logic (no DOM, no globals) was written inline in index.html and can be unit-tested, extract it here.
+6. **Test count** — keep the count in CLAUDE.md and test.md accurate.
 
 ## GitHub
 
@@ -182,10 +251,12 @@ Live: https://idyllic-cannoli-358897.netlify.app/ (auto-deploys from `main`)
 - `/sync-check` — greps `src/game-logic.js` and `index.html` for key constants and flags any value mismatches
 - `/mobile-audit` — checks hardcoded px in animations, touch-action on interactive elements, media query breakpoint, dynamic --tile-size, tap target sizes
 - `/animation-audit` — checks the reactive animation system: car speed/stop-go from congestion, ped density/speed from happiness, generator --firing indicator, syncRoadCongestion wiring, weather ped multipliers
+- `/commit` — runs tests, stages files, commits with Conventional Commits format
+- `/test` — runs full test suite across all 5 suites and reports results
 
 ## Future scaling hooks
 
 `MAP_CONFIG` is designed to be extended:
-- `blockerRate` — impassable tiles that force route choices
 - `weatherZones` — areas where action effects are reduced
 - Larger grid sizes by changing `rows`/`cols`
+- Multiple scenarios / campaign mode
