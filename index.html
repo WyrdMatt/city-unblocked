@@ -556,6 +556,13 @@
       font-size: clamp(12px, calc(var(--tile-size) * 0.50), 24px);
       filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
     }
+    @keyframes gen-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 2px rgba(239,68,68,.5), inset 0 0 14px rgba(239,68,68,.15); }
+      50%       { box-shadow: inset 0 0 0 2px rgba(239,68,68,.9), inset 0 0 22px rgba(239,68,68,.40), 0 0 8px rgba(239,68,68,.35); }
+    }
+    .tile.generator--firing {
+      animation: gen-pulse 1.4s ease-in-out infinite;
+    }
 
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
@@ -2101,6 +2108,19 @@
       gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
+      // Update generator tile firing visual
+      var ROAD_ACTIONS_SET = ['bus-stop', 'bike-lane', 'road-widening'];
+      generatorTiles.forEach(function (gen) {
+        var suppressed = placements.some(function (p) {
+          if (ROAD_ACTIONS_SET.indexOf(p.action) === -1) return false;
+          return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
+                 (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
+        });
+        var cgGen = window.cityGrid.find(function (t) { return t.row === gen.row && t.col === gen.col; });
+        if (cgGen && cgGen.element) {
+          cgGen.element.classList.toggle('generator--firing', !suppressed);
+        }
+      });
       if (typeof window.refreshHUD === "function") window.refreshHUD();
     };
 
@@ -3195,6 +3215,8 @@
       layer.appendChild(d);
     }
 
+    let _swPersonCount = 0; // counter to distribute minHapp thresholds evenly
+
     function addSWPerson(axis, fixed, min, max) {
       const el = document.createElement('span');
       el.textContent = SW_EMOJI[Math.floor(Math.random() * SW_EMOJI.length)];
@@ -3208,7 +3230,11 @@
       el.style[axis === 'v' ? 'left' : 'top']  = fixed + 'px';
       el.style[axis === 'v' ? 'top'  : 'left'] = pos   + 'px';
       layer.appendChild(el);
-      sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max });
+      // Distribute minHapp thresholds: 0 / 30 / 55 cycling so density grows with happiness
+      const minHappThresholds = [0, 30, 55];
+      const minHapp = minHappThresholds[_swPersonCount % minHappThresholds.length];
+      _swPersonCount++;
+      sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max, minHapp });
     }
 
     /* ── Traffic lights ────────────────────────────────────────── */
@@ -3260,6 +3286,7 @@
       cars.length = 0;
       sidewalkPeople.length = 0;
       parkPedEls = [];
+      _swPersonCount = 0;
       const SW_W = getSWW(); // scaled sidewalk width
 
       const { roadRows, roadCols, config: cfg } = map;
@@ -3506,8 +3533,12 @@
         }
       });
 
-      // Animate sidewalk pedestrians — speed and mood react to happiness + weather
+      // Animate sidewalk pedestrians — speed, mood, and density react to happiness + weather
       sidewalkPeople.forEach(p => {
+        const visible = happ >= p.minHapp;
+        const wantedVis = visible ? '' : 'hidden';
+        if (p.el.style.visibility !== wantedVis) p.el.style.visibility = wantedVis;
+        if (!visible) return;
         p.pos += p.speed * pedScale;
         if (p.pos > p.max) { p.pos = p.max; p.speed = -Math.abs(p.speed); }
         if (p.pos < p.min) { p.pos = p.min; p.speed =  Math.abs(p.speed); }
