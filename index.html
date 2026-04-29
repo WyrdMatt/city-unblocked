@@ -151,21 +151,38 @@
       letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
     }
     .hud-meter__track {
-      position: relative; flex: 1; height: 8px;
+      position: relative; flex: 1; height: 14px;
       background: var(--c-border-btn);
-      border-radius: 999px; overflow: hidden; min-width: 80px;
+      border-radius: 999px; overflow: visible; min-width: 80px;
+      /* padding-bottom makes room for the WIN label ::after on .hud-meter__goal */
+      padding-bottom: 16px; margin-bottom: -16px;
+    }
+    /* Colour zones: green=win, amber=close, red=bad */
+    .hud-meter--happiness .hud-meter__track {
+      background: linear-gradient(90deg,
+        rgba(220,38,38,.20)  0%,  rgba(220,38,38,.20)  50%,
+        rgba(251,146,60,.20) 50%, rgba(251,146,60,.20) 65%,
+        rgba(16,185,129,.20) 65%, rgba(16,185,129,.20) 100%);
+    }
+    .hud-meter--congestion .hud-meter__track {
+      background: linear-gradient(90deg,
+        rgba(16,185,129,.20) 0%,  rgba(16,185,129,.20) 30%,
+        rgba(251,146,60,.20) 30%, rgba(251,146,60,.20) 50%,
+        rgba(220,38,38,.20)  50%, rgba(220,38,38,.20)  100%);
     }
     .hud-meter__fill {
       position: absolute; inset: 0 auto 0 0; width: 0%;
       border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+      clip-path: inset(0 round 999px);
     }
     .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
     .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg, var(--c-cong-1), var(--c-cong-2)); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
     @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
     .hud-meter__value {
-      font-size: 0.8rem; font-weight: 800; color: var(--c-text);
-      width: 2.4ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
+      font-size: 0.75rem; font-weight: 800; color: var(--c-text);
+      min-width: 5ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
     .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
@@ -361,7 +378,7 @@
       position: relative;
       overflow: hidden;
     }
-    .tile:hover { filter: brightness(1.22) saturate(1.2); transform: scale(1.06) translateY(-2px); z-index: 2; }
+    .tile:hover { filter: brightness(1.22) saturate(1.2); }
     .tile.selected { border-color: var(--c-selected); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-selected) 38%, transparent); z-index: 3; }
 
     /* ── Roads — same colour as gap → seamless dark network ─────────── */
@@ -455,9 +472,23 @@
       content: ''; position: absolute;
       top: calc(var(--rh, 26%) + 5px);
       left: 3px; right: calc(var(--tile-size) * 0.22); bottom: 3px;
-      background-image: radial-gradient(circle, rgba(255,240,140,.85) 2px, transparent 2px);
-      background-size: calc(var(--tile-size) * 0.175) calc(var(--tile-size) * 0.175);
+      background-image: radial-gradient(circle, var(--wc, rgba(255,240,140,.85)) var(--wr, 2px), transparent var(--wr, 2px));
+      background-size: calc(var(--tile-size) * var(--wg, 0.175)) calc(var(--tile-size) * var(--wg, 0.175));
       background-position: 3px 3px;
+    }
+    /* Per-variant window colour, size, grid density */
+    /* Steel/glass  */ .tile.building:nth-child(6n)   { --wc: rgba(160,220,255,.90); --wr: 1.5px; --wg: 0.155; }
+    /* Brick        */ .tile.building:nth-child(6n+1) { --wc: rgba(255,210,120,.80); --wr: 2.5px; --wg: 0.210; }
+    /* Sandstone    */ .tile.building:nth-child(6n+2) { --wc: rgba(255,230,160,.75); --wr: 2px;   --wg: 0.195; }
+    /* Teal glass   */ .tile.building:nth-child(6n+3) { --wc: rgba(100,240,220,.85); --wr: 1.5px; --wg: 0.160; }
+    /* Industrial   */ .tile.building:nth-child(6n+4) { --wc: rgba(200,210,180,.50); --wr: 2px;   --wg: 0.260; }
+    /* Concrete     */ .tile.building:nth-child(6n+5) { --wc: rgba(220,230,255,.70); --wr: 2px;   --wg: 0.185; }
+
+    /* Commercial shopfront (sandstone, 6n+2) — faint awning stripe at base */
+    .tile.building:nth-child(6n+2)::before {
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.18) 0%, rgba(0,0,0,.48) 100%),
+        linear-gradient(180deg, transparent 80%, rgba(200,100,30,.35) 80%, rgba(200,100,30,.35) 90%, transparent 90%);
     }
 
     /* ── Parks ───────────────────────────────────────────────────────── */
@@ -489,19 +520,48 @@
       font-size: clamp(14px, calc(var(--tile-size) * 0.56), 26px); opacity: 0.75;
     }
 
+    /* Blocker — construction site: demolishable for £50 (T9) */
     .tile.blocker {
       background: repeating-linear-gradient(
         -45deg,
-        #18191f 0px, #18191f 7px,
-        #0d0e14 7px, #0d0e14 14px
+        #1a1200 0px,    #1a1200 6px,
+        #3d2a00 6px,    #3d2a00 12px
       );
-      box-shadow: inset 0 0 0 1px rgba(255,60,60,.18);
-      cursor: not-allowed;
+      box-shadow: inset 0 0 0 2px rgba(245,158,11,.45),
+                  inset 0 0 12px rgba(245,158,11,.12);
+      cursor: pointer;
     }
+    .tile.blocker:hover { filter: brightness(1.3); }
     .tile.blocker::after {
-      content: '⛔'; position: absolute; inset: 0;
+      content: '🚧'; position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 24px); opacity: 0.75;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.55), 26px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
+    }
+
+    /* Generator — traffic source that raises congestion each turn unless suppressed */
+    .tile.generator {
+      background: repeating-linear-gradient(
+        135deg,
+        #1a0a00 0px, #1a0a00 5px,
+        #3b1400 5px, #3b1400 10px
+      );
+      box-shadow: inset 0 0 0 2px rgba(239,68,68,.5),
+                  inset 0 0 14px rgba(239,68,68,.15);
+    }
+    .tile.generator:hover { filter: brightness(1.25); }
+    .tile.generator::after {
+      content: '🏭'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.50), 24px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
+    }
+    @keyframes gen-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 2px rgba(239,68,68,.5), inset 0 0 14px rgba(239,68,68,.15); }
+      50%       { box-shadow: inset 0 0 0 2px rgba(239,68,68,.9), inset 0 0 22px rgba(239,68,68,.40), 0 0 8px rgba(239,68,68,.35); }
+    }
+    .tile.generator--firing {
+      animation: gen-pulse 1.4s ease-in-out infinite;
     }
 
     /* ── Placed tiles ────────────────────────────────────────────────── */
@@ -538,7 +598,138 @@
     }
     .hud__music-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
 
-    /* ── Sidewalk strips ───────────────────────────────────────────── */
+    /* ── Help (?) button ─────────────────────────────────────────── */
+    .hud__help-btn {
+      flex-shrink: 0;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px; color: var(--c-text-muted);
+      font-size: 0.85rem; font-weight: 800;
+      cursor: pointer; padding: 0.25rem 0.55rem;
+      line-height: 1; font-family: inherit;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__help-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+
+    /* ── Undo button ─────────────────────────────────────────────── */
+    .hud__undo-btn {
+      flex-shrink: 0;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px; color: var(--c-text-muted);
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; padding: 0.25rem 0.6rem;
+      line-height: 1; font-family: inherit; white-space: nowrap;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__undo-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+    .hud__undo-btn[hidden] { display: none; }
+
+    /* ── Day Briefing overlay ────────────────────────────────────── */
+    .overlay--briefing { background: rgba(7,8,13,0.92); backdrop-filter: blur(10px); z-index: 750; }
+    .overlay__card--briefing {
+      max-width: 400px; gap: 0; padding: 0; overflow: hidden;
+      border: 1.5px solid var(--briefing-accent, rgba(255,255,255,.15));
+      box-shadow: 0 0 40px var(--briefing-glow, rgba(255,255,255,.05));
+    }
+    .briefing__label {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      color: var(--briefing-accent, rgba(255,255,255,.5));
+      text-align: center; padding: 14px 24px 0;
+    }
+    .briefing__weather-icon {
+      font-size: clamp(52px, 10vw, 72px); line-height: 1; text-align: center;
+      padding: 10px 0 6px; filter: drop-shadow(0 2px 12px var(--briefing-glow, rgba(0,0,0,.3)));
+    }
+    .briefing__title {
+      font-size: clamp(1.15rem, 3vw, 1.5rem); font-weight: 800;
+      text-align: center; color: #fff; padding: 0 24px; margin: 0;
+    }
+    .briefing__tips {
+      list-style: none; padding: 18px 24px 0; margin: 0; display: flex; flex-direction: column; gap: 10px;
+    }
+    .briefing__tips li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: .875rem; color: rgba(255,255,255,.82); line-height: 1.4;
+    }
+    .briefing__tips li::before { content: attr(data-icon); flex-shrink: 0; font-size: 1.1em; }
+    .briefing__progress {
+      height: 3px; background: rgba(255,255,255,.10); margin: 18px 0 0; overflow: hidden;
+    }
+    .briefing__progress-bar {
+      height: 100%; background: var(--briefing-accent, rgba(255,255,255,.4));
+      width: 100%; transform-origin: left;
+      animation: briefing-drain var(--briefing-duration, 5s) linear forwards;
+    }
+    @keyframes briefing-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    .briefing__start-btn {
+      border-radius: 0 0 16px 16px; margin: 0; width: 100%;
+      background: var(--briefing-accent, rgba(255,255,255,.15));
+      color: #fff; font-size: .95rem;
+    }
+    .briefing__start-btn:hover { filter: brightness(1.15); }
+
+    /* Accent colours per weather */
+    .briefing--sunny   { --briefing-accent: rgba(251,191,36,.8);  --briefing-glow: rgba(251,191,36,.15); }
+    .briefing--rainy   { --briefing-accent: rgba(96,165,250,.8);  --briefing-glow: rgba(96,165,250,.15); }
+    .briefing--overcast{ --briefing-accent: rgba(148,163,184,.8); --briefing-glow: rgba(148,163,184,.12); }
+    .briefing--snowy   { --briefing-accent: rgba(186,230,253,.9); --briefing-glow: rgba(186,230,253,.18); }
+    .briefing--stormy  { --briefing-accent: rgba(167,139,250,.8); --briefing-glow: rgba(167,139,250,.18); }
+
+    /* ── Tutorial overlay ────────────────────────────────────────── */
+    .overlay--tutorial { background: rgba(7,8,13,0.93); backdrop-filter: blur(10px); z-index: 700; }
+    .overlay__card--tutorial {
+      max-width: 580px; gap: 1.1rem;
+      background: #0d1424; border: 1px solid rgba(255,255,255,.1);
+    }
+    .tutorial__heading {
+      margin: 0; font-size: 1.4rem; font-weight: 900;
+      letter-spacing: -0.02em; color: var(--c-text-hi);
+    }
+    .tutorial__sub {
+      margin: 0; font-size: 0.8rem; color: var(--c-text-muted);
+    }
+    .tutorial-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; width: 100%; text-align: left;
+    }
+    @media (max-width: 500px) { .tutorial-grid { grid-template-columns: 1fr; } }
+    .tutorial-section {
+      background: rgba(255,255,255,.04); border-radius: 10px;
+      padding: 0.75rem 0.9rem; border: 1px solid rgba(255,255,255,.06);
+    }
+    .tutorial-section__title {
+      margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-label);
+    }
+    .tutorial-section p {
+      margin: 0; font-size: 0.77rem; color: var(--c-text-muted); line-height: 1.55;
+    }
+    .tutorial-section p b { color: var(--c-text); }
+    .tutorial-tiles {
+      margin: 0; padding: 0; list-style: none;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .tutorial-tiles li {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.75rem; color: var(--c-text-muted); line-height: 1.3;
+    }
+    .tutorial-tiles li b { color: var(--c-text); }
+    .tutorial-swatch {
+      width: 14px; height: 14px; border-radius: 3px;
+      flex-shrink: 0; display: inline-block;
+    }
+    .tutorial-swatch--road     { background: #2e3240; border: 1px solid #4e5568; }
+    .tutorial-swatch--building { background: #4e6882; }
+    .tutorial-swatch--empty    { background: #3d5020; }
+    .tutorial__got-it {
+      background: #1d4ed8; color: #fff;
+      font-size: 0.95rem; padding: 0.7rem 2.2rem;
+      margin-top: 0.25rem;
+    }
+    .tutorial__got-it:hover { filter: brightness(1.12); }
+
+    /* Sidewalk strips ───────────────────────────────────────────── */
     .sw-strip {
       position: absolute;
       background: rgba(195, 188, 178, 0.26);
@@ -664,21 +855,22 @@
 
     /* ── HUD goal markers ────────────────────────────────────────── */
     .hud-meter__goal {
-      position: absolute; top: -3px; bottom: -3px; width: 2px;
-      background: rgba(255,255,255,.55);
+      position: absolute; top: -4px; bottom: -4px; width: 3px;
+      background: rgba(255,255,255,.92);
       border-radius: 2px;
-      box-shadow: 0 0 4px rgba(255,255,255,.4);
+      box-shadow: 0 0 8px rgba(255,255,255,.75), 0 0 2px #fff;
       pointer-events: none;
     }
-
-    /* ── Tile placement bounce ────────────────────────────────────── */
-    @keyframes tile-bounce {
-      0%   { transform: scale(1); }
-      35%  { transform: scale(1.18); }
-      65%  { transform: scale(0.94); }
-      100% { transform: scale(1); }
+    /* WIN label pinned just below the goal tick */
+    .hud-meter__goal::after {
+      content: attr(data-win-label);
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 50%; transform: translateX(-50%);
+      font-size: 0.48rem; font-weight: 800; letter-spacing: 0.06em;
+      color: rgba(255,255,255,.5); white-space: nowrap; pointer-events: none;
     }
-    .tile--bounce { animation: tile-bounce 0.32s cubic-bezier(0.34,1.56,0.64,1); }
+
 
     /* Grid entrance — tiles scale+fade in from near-zero, staggered by (row+col) delay */
     @keyframes tile-entrance {
@@ -751,7 +943,7 @@
 
     /* ── Distance-to-win delta label ────────────────────────────── */
     .hud-meter__delta {
-      font-size: 0.62rem; font-weight: 700; color: var(--c-text-dim);
+      font-size: 0.68rem; font-weight: 700; color: var(--c-text-muted);
       white-space: nowrap; flex-shrink: 0; min-width: 3.8ch; text-align: right;
       font-variant-numeric: tabular-nums; transition: color 0.3s;
     }
@@ -869,7 +1061,7 @@
     .mas-card__hap--sad { color: #f87171; }
 
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
-    .tile, .action-btn, .reset-btn, .hud__music-btn,
+    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__help-btn,
     .overlay__btn, .hud-meter__track { touch-action: manipulation; }
 
     /* ── Small-screen overlay ────────────────────────────────────── */
@@ -954,6 +1146,18 @@
       padding: 2px 6px; border-radius: 8px;
       background: rgba(255,255,255,0.15); color: #fff;
     }
+    .radial-btn__preview {
+      font-size: 9px; color: rgba(255,255,255,0.65); text-align: center; line-height: 1.2;
+      white-space: nowrap;
+    }
+    .radial-btn__preview:empty { display: none; }
+    .radial-btn__combo {
+      font-size: 9px; font-weight: 700;
+      color: #fde68a; background: rgba(161,107,0,.50);
+      border-radius: 6px; padding: 1px 4px;
+      white-space: nowrap; text-align: center;
+    }
+    .radial-btn__combo:empty { display: none; }
 
     .radial-btn--wrong-tile {
       opacity: 0.32 !important;
@@ -967,6 +1171,22 @@
     .radial-btn--unaffordable {
       opacity: 0.5 !important;
       pointer-events: none;
+    }
+    .radial-btn--zone-capped {
+      opacity: 0.42 !important;
+      pointer-events: none;
+      filter: sepia(0.5) hue-rotate(20deg);
+    }
+    .radial-btn--zone-capped .radial-btn__cost {
+      background: rgba(161,107,0,.4);
+      color: #fcd34d;
+    }
+    .radial-btn--zone-capped::after {
+      content: '⚠'; position: absolute; top: -4px; right: -4px;
+      font-size: 10px; line-height: 1;
+      background: rgba(161,107,0,.85); color: #fff;
+      border-radius: 50%; width: 14px; height: 14px;
+      display: flex; align-items: center; justify-content: center;
     }
 
     /* ── Mobile reset button (hidden on desktop) ─────────────────────── */
@@ -1027,10 +1247,10 @@
         order: 2;
       }
       .hud-meter__label { display: none; }
-      /* Hide delta (need +50 / need −50) — saves significant space */
-      .hud-meter__delta { display: none; }
-      .hud-meter__track { min-width: 36px; height: 6px; }
-      .hud-meter__value { font-size: 0.68rem; width: 2ch; }
+      .hud-meter__delta { font-size: 0.55rem; min-width: 2.8ch; }
+      .hud-meter__track { min-width: 36px; height: 10px; padding-bottom: 0; margin-bottom: 0; }
+      .hud-meter__goal::after { display: none; }
+      .hud-meter__value { font-size: 0.65rem; min-width: 4ch; }
 
       /* Budget always visible, right of meters */
       .hud__budget { order: 3; flex-shrink: 0; }
@@ -1049,7 +1269,9 @@
 
       /* Music + reset at far right */
       .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
-      .hud__reset-mobile { order: 7; }
+      .hud__help-btn  { order: 7; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
+      .hud__undo-btn  { order: 8; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 9; }
     }
   </style>
 </head>
@@ -1126,7 +1348,7 @@
         <div class="hud-meter__track" role="progressbar" aria-label="Happiness"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="happinessBar">
           <div class="hud-meter__fill" id="happinessFill"></div>
-          <div class="hud-meter__goal" id="happinessGoal" style="left:70%" title="Goal: reach 70"></div>
+          <div class="hud-meter__goal" id="happinessGoal" style="left:70%" title="Goal: reach 70" data-win-label="≥70 WIN"></div>
         </div>
         <span class="hud-meter__value" id="happinessValue">0</span>
         <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
@@ -1136,7 +1358,7 @@
         <div class="hud-meter__track" role="progressbar" aria-label="Congestion"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="congestionBar">
           <div class="hud-meter__fill" id="congestionFill"></div>
-          <div class="hud-meter__goal" id="congestionGoal" style="left:30%" title="Goal: get below 30"></div>
+          <div class="hud-meter__goal" id="congestionGoal" style="left:30%" title="Goal: get below 30" data-win-label="≤30 WIN"></div>
         </div>
         <span class="hud-meter__value" id="congestionValue">0</span>
         <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
@@ -1154,7 +1376,9 @@
       <span class="hud__budget-label">Budget</span>
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
+    <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
+    <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
   </header>
 
@@ -1193,6 +1417,58 @@
     </div>
   </div>
 
+  <!-- ── Tutorial overlay (first-time, Option B cheat sheet) ────────── -->
+  <!-- ── Day Briefing overlay ─────────────────────────────────────────── -->
+  <div class="overlay overlay--briefing" id="briefingOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="briefingTitle">
+    <div class="overlay__card overlay__card--briefing" id="briefingCard">
+      <div class="briefing__label">TODAY'S CONDITIONS</div>
+      <div class="briefing__weather-icon" id="briefingIcon" aria-hidden="true"></div>
+      <h2 class="briefing__title" id="briefingTitle"></h2>
+      <ul class="briefing__tips" id="briefingTips"></ul>
+      <div class="briefing__progress" id="briefingProgress">
+        <div class="briefing__progress-bar" id="briefingProgressBar"></div>
+      </div>
+      <button class="overlay__btn briefing__start-btn" id="briefingStart" type="button">Start Planning →</button>
+    </div>
+  </div>
+
+  <div class="overlay overlay--tutorial" id="tutorialOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+    <div class="overlay__card overlay__card--tutorial">
+      <h2 class="tutorial__heading" id="tutorialTitle">🏙️ How to Play</h2>
+      <p class="tutorial__sub">One screen. Everything you need to know.</p>
+
+      <div class="tutorial-grid">
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">🗺️ Tile Types</h3>
+          <ul class="tutorial-tiles">
+            <li><span class="tutorial-swatch tutorial-swatch--road"></span>     <b>Road</b> — Bus Stop, Bike Lane, Road Widening</li>
+            <li><span class="tutorial-swatch tutorial-swatch--building"></span> <b>Building</b> — Parking Garage</li>
+            <li><span class="tutorial-swatch tutorial-swatch--empty"></span>    <b>Empty Lot</b> — Park</li>
+          </ul>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">👆 Placing Actions</h3>
+          <p>Tap any tile to open the action fan menu. Tap an action to place it. Each action only works on its matching tile type — wrong tiles are greyed out.</p>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">🏆 How to Win</h3>
+          <p>Get <b>Congestion → 30</b> and <b>Happiness → 70</b> before your budget and turns run out. The coloured zones on the top bars show exactly where you need to be — aim for the green.</p>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">⭐ Combos &amp; Weather</h3>
+          <p>Place actions next to each other for bonus effects — <b>Bus Stop + Park</b> unlocks <em>Transit Hub</em>. Weather changes each game and boosts or weakens certain actions.</p>
+        </div>
+      </div>
+
+      <button class="overlay__btn tutorial__got-it" id="tutorialGotIt" type="button">Got it, let's go! →</button>
+    </div>
+  </div>
+
   <!-- ── Radial action fan menu ───────────────────────────────────────── -->
   <div id="action-radial" hidden aria-label="Action menu" role="dialog">
     <div class="radial-backdrop" id="radialBackdrop"></div>
@@ -1200,26 +1476,36 @@
       <span class="radial-btn__emoji">🚌</span>
       <span class="radial-btn__name">Bus Stop</span>
       <span class="radial-btn__cost" style="background:rgba(245,158,11,0.3);color:#fcd34d;">£80</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-bike-lane" data-action="bike-lane" type="button" aria-label="Bike Lane £40" touch-action="manipulation">
       <span class="radial-btn__emoji">🚲</span>
       <span class="radial-btn__name">Bike Lane</span>
       <span class="radial-btn__cost" style="background:rgba(34,197,94,0.3);color:#86efac;">£40</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-parking-garage" data-action="parking-garage" type="button" aria-label="Parking £120" touch-action="manipulation">
       <span class="radial-btn__emoji">🅿️</span>
       <span class="radial-btn__name">Parking</span>
       <span class="radial-btn__cost" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">£120</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-park" data-action="park" type="button" aria-label="Park £60" touch-action="manipulation">
       <span class="radial-btn__emoji">🌳</span>
       <span class="radial-btn__name">Park</span>
       <span class="radial-btn__cost" style="background:rgba(134,239,172,0.3);color:#bbf7d0;">£60</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-road-widening" data-action="road-widening" type="button" aria-label="Road Widening £90" touch-action="manipulation">
       <span class="radial-btn__emoji">🚧</span>
       <span class="radial-btn__name">Road Widening</span>
       <span class="radial-btn__cost" style="background:rgba(249,115,22,0.3);color:#fed7aa;">£90</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
   </div>
 
@@ -1461,23 +1747,23 @@
       const turnLimit  = gs.turnLimit ?? 15;
 
       happinessFill.style.width = happiness + "%";
-      happinessValue.textContent = Math.round(happiness);
       happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
       happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
       updateDelta(happinessDelta, happiness, 70, false);
       const hapDone  = happiness >= 70;
       const hapClose = !hapDone && happiness >= 60;
+      happinessValue.textContent = hapDone ? "✓" : Math.round(happiness) + "→70";
       happinessValue.classList.toggle("hud-meter__value--good",  hapDone);
       happinessValue.classList.toggle("hud-meter__value--close", hapClose);
       if (happinessGoal) happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
 
       congestionFill.style.width = congestion + "%";
-      congestionValue.textContent = Math.round(congestion);
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
       congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
       updateDelta(congestionDelta, congestion, 30, true);
       const congDone  = congestion <= 30;
       const congClose = !congDone && congestion <= 40;
+      congestionValue.textContent = congDone ? "✓" : Math.round(congestion) + "→30";
       congestionValue.classList.toggle("hud-meter__value--good",  congDone);
       congestionValue.classList.toggle("hud-meter__value--close", congClose);
       if (congestionGoal) congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
@@ -1626,6 +1912,44 @@
     document.getElementById("gameOverRestart")?.addEventListener("click", onRestart);
     document.getElementById("hudReset")?.addEventListener("click", onRestart);
 
+    // ── Undo last placement ──────────────────────────────────────────
+    const hudUndoBtn = document.getElementById("hudUndo");
+
+    function doUndo() {
+      const snap = window.lastPlacement;
+      if (!snap) return;
+      const tile = snap.element;
+      // Reverse the placeTile() call
+      delete tile.dataset.placedAction;
+      delete tile.dataset.placedCost;
+      tile.style.removeProperty("--tile-placed-color");
+      tile.classList.remove("tile--placed");
+      tile.textContent = "";
+      tile.removeAttribute("aria-label");
+      // Restore tile's road/building visual
+      const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
+      if (cgTile && typeof window.refreshTile === "function") window.refreshTile(cgTile);
+      // Restore budget
+      window.gameState.budget += snap.cost;
+      // Recalculate — updateMeters does turn++, so preserve the pre-undo count
+      const prevTurn = window.gameState.turn;
+      if (typeof window.updateMeters === "function") window.updateMeters();
+      window.gameState.turn = Math.max(0, prevTurn - 1);
+      if (typeof window.refreshHUD === "function") window.refreshHUD();
+      // Clear snapshot
+      window.lastPlacement = null;
+      if (hudUndoBtn) hudUndoBtn.setAttribute("hidden", "");
+    }
+
+    hudUndoBtn?.addEventListener("click", doUndo);
+
+    document.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        doUndo();
+      }
+    });
+
     setInterval(window.refreshHUD, 500);
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", window.refreshHUD);
@@ -1768,10 +2092,41 @@
     // Expose for test harness (test-effects.js loads this via jsdom or similar)
     // ── Difficulty presets ────────────────────────────────────────────────
     var DIFFICULTY_PRESETS = {
-      easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
-      normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
-      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+      easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
+      normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
+      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
     };
+
+    // ── Puzzle-mechanic constants ─────────────────────────────────────────
+    var ZONE_CAP        = 2;
+    var GENERATOR_DELTA = 3;
+    var DEMOLISH_COST   = 50;
+
+    function getBlockId(row, col, roadRows, roadCols) {
+      var rowBand = roadRows.filter(function (r) { return r < row; }).length;
+      var colBand = roadCols.filter(function (c) { return c < col; }).length;
+      return rowBand + ':' + colBand;
+    }
+
+    function checkZoneCap(placements, blockId, action, validTilesInBlock) {
+      var cap   = Math.max(ZONE_CAP, Math.floor((validTilesInBlock || 0) / 2));
+      var count = placements.filter(function (p) { return p.blockId === blockId && p.action === action; }).length;
+      return count >= cap;
+    }
+
+    function applyGeneratorTick(generatorTiles, placements) {
+      var ROAD_ACTIONS = ['bus-stop', 'bike-lane', 'road-widening'];
+      var delta = 0;
+      generatorTiles.forEach(function (gen) {
+        var suppressed = placements.some(function (p) {
+          if (ROAD_ACTIONS.indexOf(p.action) === -1) return false;
+          return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
+                 (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
+        });
+        if (!suppressed) delta += GENERATOR_DELTA;
+      });
+      return delta;
+    }
     window.currentDifficulty   = window.currentDifficulty   || 'normal';
     window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
 
@@ -1787,7 +2142,9 @@
 
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
                           DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
-                          calculateEffects, checkWinCondition, getGridNeighbours };
+                          ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
+                          calculateEffects, checkWinCondition, getGridNeighbours,
+                          getBlockId, checkZoneCap, applyGeneratorTick };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
@@ -1800,25 +2157,58 @@
     window.updateMeters = function updateMeters() {
       if (!Array.isArray(window.cityGrid)) return;
 
-      // Extract placement data from DOM tiles
+      var map = window.currentMap;
+      var roadRows = (map && map.roadRows) || [];
+      var roadCols = (map && map.roadCols) || [];
+
+      // Extract placement data from DOM tiles (with blockId for zone-cap checks)
       var placements = [];
       window.cityGrid.forEach(function (tile) {
         var action = tile.element && tile.element.dataset.placedAction;
-        if (action) placements.push({ action: action, row: tile.row, col: tile.col });
+        if (action) placements.push({
+          action:  action,
+          row:     tile.row,
+          col:     tile.col,
+          blockId: getBlockId(tile.row, tile.col, roadRows, roadCols),
+        });
       });
+
+      // Collect generator tiles from current map grid
+      var generatorTiles = [];
+      if (map && map.grid) {
+        map.grid.forEach(function (row, r) {
+          row.forEach(function (cell, c) {
+            if (cell === 'G') generatorTiles.push({ row: r, col: c });
+          });
+        });
+      }
 
       // Flatten grid to plain objects for the pure function
       var gridData = window.cityGrid.map(function (t) {
         return { row: t.row, col: t.col, type: t.type };
       });
 
-      var delta = calculateEffects(placements, gridData, window.currentWeather || null);
+      var delta      = calculateEffects(placements, gridData, window.currentWeather || null);
+      var genPenalty = applyGeneratorTick(generatorTiles, placements);
 
       var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta));
+      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta + genPenalty));
       gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
+      // Update generator tile firing visual
+      var ROAD_ACTIONS_SET = ['bus-stop', 'bike-lane', 'road-widening'];
+      generatorTiles.forEach(function (gen) {
+        var suppressed = placements.some(function (p) {
+          if (ROAD_ACTIONS_SET.indexOf(p.action) === -1) return false;
+          return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
+                 (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
+        });
+        var cgGen = window.cityGrid.find(function (t) { return t.row === gen.row && t.col === gen.col; });
+        if (cgGen && cgGen.element) {
+          cgGen.element.classList.toggle('generator--firing', !suppressed);
+        }
+      });
       if (typeof window.refreshHUD === "function") window.refreshHUD();
     };
 
@@ -1855,6 +2245,9 @@
 
     window.restartGame = function restartGame() {
       Object.assign(window.gameState, makeInitialState());
+      window.lastPlacement = null;
+      const undoBtn = document.getElementById('hudUndo');
+      if (undoBtn) undoBtn.setAttribute('hidden', '');
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
@@ -1862,7 +2255,7 @@
       // Generate a fresh random map and rebuild the grid
       var preset  = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
       var newMap = (typeof window.generateMap === "function")
-        ? window.generateMap({ blockerRate: preset.blockerRate })
+        ? window.generateMap({ blockerRate: preset.blockerRate, generatorCount: preset.generatorCount || 0 })
         : null;
       if (newMap && typeof window.buildCityGrid === "function") {
         window.currentMap = newMap;
@@ -1911,16 +2304,15 @@
 
     /* ── Default config — override any field via generateMap(overrides) ─ */
     var DEFAULT_CONFIG = {
-      rows:         10,
-      cols:         10,
-      minRoads:     2,    // min road lines per axis
-      maxRoads:     3,    // max road lines per axis (raise for larger grids)
-      minBlockSize: 2,    // min non-road tiles between parallel roads
-      emptyRate:    0.20, // fraction of eligible building tiles → empty lots
-      parkCount:    2,    // decorative (pre-existing) park tiles per map
-      blockerRate:  0,    // fraction of building tiles → impassable blocker (0 = none)
-      // Future hooks (not yet used):
-      //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
+      rows:           10,
+      cols:           10,
+      minRoads:       2,    // min road lines per axis
+      maxRoads:       3,    // max road lines per axis (raise for larger grids)
+      minBlockSize:   2,    // min non-road tiles between parallel roads
+      emptyRate:      0.20, // fraction of eligible building tiles → empty lots
+      parkCount:      2,    // decorative (pre-existing) park tiles per map
+      blockerRate:    0,    // fraction of building tiles → impassable blocker (0 = none)
+      generatorCount: 0,    // number of traffic-generator tiles placed adjacent to roads
     };
 
     /* ── Neighbour helper ────────────────────────────────────────── */
@@ -2068,6 +2460,28 @@
         }
       }
 
+      // Step 5 — Generator tiles: place traffic-generator tiles on building cells adjacent to roads
+      if (cfg.generatorCount > 0) {
+        var genPool = [];
+        for (var r = 0; r < cfg.rows; r++) {
+          for (var c = 0; c < cfg.cols; c++) {
+            if (grid[r][c] !== 'B') continue;
+            var adjRoad = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                            .filter(function (t) { return t === 'R'; }).length;
+            if (adjRoad > 0) genPool.push([r, c, adjRoad]);
+          }
+        }
+        // Shuffle with seeded RNG
+        for (var i = genPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = genPool[i]; genPool[i] = genPool[j]; genPool[j] = tmp;
+        }
+        var toPlace = Math.min(cfg.generatorCount, genPool.length);
+        for (var i = 0; i < toPlace; i++) {
+          grid[genPool[i][0]][genPool[i][1]] = 'G';
+        }
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -2091,6 +2505,9 @@
       if ((counts.E || 0) < 4)  issues.push('Too few empty lots: '           + (counts.E || 0));
       if ((counts.R || 0) < 10) issues.push('Too few road tiles: '            + (counts.R || 0));
       if (emptyWithAdj < 3)     issues.push('Too few empty lots adj buildings: ' + emptyWithAdj);
+      if (cfg.generatorCount > 0 && (counts.G || 0) < cfg.generatorCount) {
+        issues.push('Too few generator tiles: ' + (counts.G || 0) + ' / ' + cfg.generatorCount);
+      }
       return { counts: counts, emptyWithAdj: emptyWithAdj, valid: issues.length === 0, issues: issues };
     }
 
@@ -2103,7 +2520,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker' };
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker', G:'generator' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -2183,9 +2600,9 @@
       window.refreshTile(tile);
     };
 
-    // Generate initial map and build grid (respects current difficulty's blockerRate)
+    // Generate initial map and build grid (respects current difficulty's blockerRate + generatorCount)
     var _initPreset = (window.DIFFICULTY_PRESETS || {})[window.currentDifficulty || 'normal'] || {};
-    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0 });
+    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0, generatorCount: _initPreset.generatorCount || 0 });
     window.buildCityGrid(window.currentMap.grid);
     infoBar.textContent = 'Seed: ' + window.currentMap.seed + '  |  ' + window.currentMap.roadRows.length + '×' + window.currentMap.roadCols.length + ' road grid';
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
@@ -2238,7 +2655,35 @@
       if (!radialEl.hasAttribute('hidden')) closeRadialNow();
 
       if (window.gameState?.won) return;
-      if (tile.classList.contains("blocker")) return;
+
+      // Blocker tile — demolish for DEMOLISH_COST
+      if (tile.classList.contains("blocker")) {
+        const demolishCost = (window.GAME_LOGIC && window.GAME_LOGIC.DEMOLISH_COST) || 50;
+        const budget = window.gameState?.budget ?? 0;
+        if (budget < demolishCost) {
+          showTileError("Need £" + demolishCost + " to demolish 🚧");
+          return;
+        }
+        window.gameState.budget -= demolishCost;
+        tile.classList.remove('blocker');
+        tile.classList.add('empty');
+        // Sync cityGrid + currentMap grid
+        const cgDem = Array.isArray(window.cityGrid) ? window.cityGrid.find(function (t) { return t.element === tile; }) : null;
+        if (cgDem) cgDem.type = 'empty';
+        if (window.currentMap && cgDem) window.currentMap.grid[cgDem.row][cgDem.col] = 'E';
+        // Brief demolish popup
+        const dpop = document.createElement('div');
+        dpop.className = 'tile-popup';
+        dpop.innerHTML = '<span class="popup-cong">🏗️ -£' + demolishCost + '</span>';
+        const drect = tile.getBoundingClientRect();
+        dpop.style.left = (drect.left + drect.width / 2) + 'px';
+        dpop.style.top  = drect.top + 'px';
+        document.body.appendChild(dpop);
+        setTimeout(function () { dpop.remove(); }, 1400);
+        if (typeof window.refreshHUD === "function") window.refreshHUD();
+        return;
+      }
+
       if (tile.classList.contains("tile--placed")) {
         showTileError("Tile already upgraded");
         return;
@@ -2307,17 +2752,102 @@
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
       const budget     = window.gameState?.budget ?? 0;
 
+      // Zone-cap context
+      const map      = window.currentMap;
+      const roadRows = (map && map.roadRows) || [];
+      const roadCols = (map && map.roadCols) || [];
+      const cgTile   = Array.isArray(window.cityGrid) ? window.cityGrid.find(function (t) { return t.element === tile; }) : null;
+      const blockId  = (cgTile && window.GAME_LOGIC && window.GAME_LOGIC.getBlockId)
+        ? window.GAME_LOGIC.getBlockId(cgTile.row, cgTile.col, roadRows, roadCols)
+        : null;
+      const capsPlcm = [];
+      if (Array.isArray(window.cityGrid) && window.GAME_LOGIC && window.GAME_LOGIC.getBlockId) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (a) capsPlcm.push({ action: a, blockId: window.GAME_LOGIC.getBlockId(t.row, t.col, roadRows, roadCols) });
+        });
+      }
+
+      // Preview + combo context
+      const glEffects = (window.GAME_LOGIC && window.GAME_LOGIC.EFFECTS) || {};
+      const glCombos  = (window.GAME_LOGIC && window.GAME_LOGIC.COMBOS)  || [];
+      const weather   = window.currentWeather || 'sunny';
+      const wMults    = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_MULTIPLIERS && window.GAME_LOGIC.WEATHER_MULTIPLIERS[weather]) || {};
+      // Count already-placed actions
+      const placedCounts = {};
+      if (Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (a) placedCounts[a] = (placedCounts[a] || 0) + 1;
+        });
+      }
+      // Adjacent placed tiles for combo detection
+      const adjPlacedActions = [];
+      if (cgTile && Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (!a) return;
+          const ar = (t.row === cgTile.row && Math.abs(t.col - cgTile.col) === 1);
+          const ac = (t.col === cgTile.col && Math.abs(t.row - cgTile.row) === 1);
+          if (ar || ac) adjPlacedActions.push(a);
+        });
+      }
+
       // Show only buttons valid for this tile type; hide the rest entirely
       const visibleBtns = [];
       radialBtns.forEach(function (btn) {
         const meta = RADIAL_ACTIONS.find(a => a.action === btn.dataset.action);
-        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--open');
+        btn.classList.remove('radial-btn--wrong-tile', 'radial-btn--unaffordable', 'radial-btn--zone-capped', 'radial-btn--open');
 
         if (!meta || !meta.validTiles.includes(tileType)) {
           btn.style.display = 'none';
         } else {
           btn.style.display = '';
-          if (budget < meta.cost) btn.classList.add('radial-btn--unaffordable');
+          if (budget < meta.cost) {
+            btn.classList.add('radial-btn--unaffordable');
+          } else if (blockId && window.GAME_LOGIC && window.GAME_LOGIC.checkZoneCap) {
+            const validInBlock = Array.isArray(window.cityGrid)
+              ? window.cityGrid.filter(function (t) {
+                  return window.GAME_LOGIC.getBlockId(t.row, t.col, roadRows, roadCols) === blockId
+                    && meta.validTiles.includes(t.type);
+                }).length
+              : 0;
+            if (window.GAME_LOGIC.checkZoneCap(capsPlcm, blockId, meta.action, validInBlock)) {
+              btn.classList.add('radial-btn--zone-capped');
+            }
+          }
+          // Effect preview
+          const previewEl = btn.querySelector('.radial-btn__preview');
+          if (previewEl) {
+            const effect = glEffects[meta.action];
+            if (effect) {
+              const nth     = (placedCounts[meta.action] || 0) + 1;
+              const diminish = Math.pow(0.85, nth - 1);
+              const wm      = wMults[meta.action] || {};
+              const cVal    = Math.round(effect.congestion * diminish * (wm.cong != null ? wm.cong : 1));
+              const hVal    = Math.round(effect.happiness  * diminish * (wm.hap  != null ? wm.hap  : 1));
+              const parts   = [];
+              if (cVal !== 0) parts.push('🚗 ' + (cVal > 0 ? '+' : '') + cVal);
+              if (hVal !== 0) parts.push(hVal >= 0 ? '😊 +' + hVal : '😞 ' + hVal);
+              previewEl.textContent = parts.join(' ');
+            } else {
+              previewEl.textContent = '';
+            }
+          }
+          // Combo hint
+          const comboEl = btn.querySelector('.radial-btn__combo');
+          if (comboEl) {
+            var comboHint = null;
+            for (var ai = 0; ai < adjPlacedActions.length; ai++) {
+              var adjAct = adjPlacedActions[ai];
+              var found  = glCombos.find(function (c) {
+                return (c.a === meta.action && c.b === adjAct) ||
+                       (c.b === meta.action && c.a === adjAct);
+              });
+              if (found) { comboHint = found.label; break; }
+            }
+            comboEl.textContent = comboHint ? '★ ' + comboHint : '';
+          }
           visibleBtns.push(btn);
         }
       });
@@ -2388,13 +2918,13 @@
       if (budget < meta.cost) { showBudgetError(); return; }
 
       placeTile(tile, meta);
-      tile.classList.remove("tile--bounce");
-      void tile.offsetWidth;
-      tile.classList.add("tile--bounce");
-      tile.addEventListener("animationend", function () { tile.classList.remove("tile--bounce"); }, { once: true });
       const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
       showPlacementPopup(tile, meta, cgTile);
       window.gameState.budget -= meta.cost;
+      // Save undo snapshot — one level only; next placement overwrites
+      window.lastPlacement = { element: tile, action: meta.action, cost: meta.cost };
+      const undoBtn = document.getElementById('hudUndo');
+      if (undoBtn) undoBtn.removeAttribute('hidden');
       if (typeof window.updateMeters    === "function") window.updateMeters();
       if (typeof window.checkWinLose    === "function") window.checkWinLose();
       window.updateActionAvailability();
@@ -2647,6 +3177,7 @@
 
     document.getElementById("resetBtn").addEventListener("click", function () {
       if (typeof window.restartGame === "function") window.restartGame();
+      setTimeout(function () { window.showDayBriefing?.(); }, 150);
     });
   })();
   </script>
@@ -2830,6 +3361,8 @@
       layer.appendChild(d);
     }
 
+    let _swPersonCount = 0; // counter to distribute minHapp thresholds evenly
+
     function addSWPerson(axis, fixed, min, max) {
       const el = document.createElement('span');
       el.textContent = SW_EMOJI[Math.floor(Math.random() * SW_EMOJI.length)];
@@ -2843,7 +3376,11 @@
       el.style[axis === 'v' ? 'left' : 'top']  = fixed + 'px';
       el.style[axis === 'v' ? 'top'  : 'left'] = pos   + 'px';
       layer.appendChild(el);
-      sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max });
+      // Distribute minHapp thresholds: 0 / 30 / 55 cycling so density grows with happiness
+      const minHappThresholds = [0, 30, 55];
+      const minHapp = minHappThresholds[_swPersonCount % minHappThresholds.length];
+      _swPersonCount++;
+      sidewalkPeople.push({ el, axis, fixed, pos, speed: spd, min, max, minHapp });
     }
 
     /* ── Traffic lights ────────────────────────────────────────── */
@@ -2895,6 +3432,7 @@
       cars.length = 0;
       sidewalkPeople.length = 0;
       parkPedEls = [];
+      _swPersonCount = 0;
       const SW_W = getSWW(); // scaled sidewalk width
 
       const { roadRows, roadCols, config: cfg } = map;
@@ -3141,8 +3679,12 @@
         }
       });
 
-      // Animate sidewalk pedestrians — speed and mood react to happiness + weather
+      // Animate sidewalk pedestrians — speed, mood, and density react to happiness + weather
       sidewalkPeople.forEach(p => {
+        const visible = happ >= p.minHapp;
+        const wantedVis = visible ? '' : 'hidden';
+        if (p.el.style.visibility !== wantedVis) p.el.style.visibility = wantedVis;
+        if (!visible) return;
         p.pos += p.speed * pedScale;
         if (p.pos > p.max) { p.pos = p.max; p.speed = -Math.abs(p.speed); }
         if (p.pos < p.min) { p.pos = p.min; p.speed =  Math.abs(p.speed); }
@@ -3299,6 +3841,15 @@
       if (typeof window.restartGame    === 'function') window.restartGame();
       overlay.setAttribute('hidden', '');
       if (typeof window.refreshHUD === 'function') window.refreshHUD();
+      // Show day briefing — but only if the tutorial won't intercept (already seen)
+      try {
+        if (localStorage.getItem('cityUnblocked_tutorialSeen')) {
+          setTimeout(() => window.showDayBriefing?.(), 200);
+        }
+        // First-time: tutorial shows first, its gotIt handler triggers the briefing
+      } catch (_) {
+        setTimeout(() => window.showDayBriefing?.(), 200);
+      }
     });
 
     // Keyboard: Enter/Space on overlay triggers Play
@@ -3308,6 +3859,175 @@
 
     // Set initial hint text
     selectDifficulty('normal');
+
+  })();
+  </script>
+
+  <!-- ── Tutorial overlay logic ───────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+    const STORAGE_KEY   = 'cityUnblocked_tutorialSeen';
+    const tutorialEl    = document.getElementById('tutorialOverlay');
+    const gotItBtn      = document.getElementById('tutorialGotIt');
+    const hudHelpBtn    = document.getElementById('hudHelp');
+    const landingPlayBtn = document.getElementById('landingPlay');
+
+    if (!tutorialEl) return;
+
+    function openTutorial() {
+      tutorialEl.removeAttribute('hidden');
+      gotItBtn && gotItBtn.focus();
+    }
+
+    function closeTutorial() {
+      tutorialEl.setAttribute('hidden', '');
+      try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
+    }
+
+    // Show once after the player clicks Play for the first time
+    landingPlayBtn && landingPlayBtn.addEventListener('click', function () {
+      try {
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          setTimeout(openTutorial, 220);
+        }
+      } catch (_) {}
+    });
+
+    // "Got it" dismisses, sets the flag, then shows the day briefing
+    gotItBtn && gotItBtn.addEventListener('click', function () {
+      closeTutorial();
+      setTimeout(function () { window.showDayBriefing?.(); }, 200);
+    });
+
+    // "?" in HUD reopens any time
+    hudHelpBtn && hudHelpBtn.addEventListener('click', openTutorial);
+
+    // Backdrop click closes
+    tutorialEl.addEventListener('click', function (e) {
+      if (e.target === tutorialEl) closeTutorial();
+    });
+
+    // Escape closes
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !tutorialEl.hidden) closeTutorial();
+    });
+  })();
+  </script>
+
+  <!-- ── Day Briefing logic ──────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    const BRIEFING_DURATION = 5000; // ms before auto-dismiss
+
+    const WEATHER_BRIEFINGS = {
+      sunny: {
+        title: "It's a Sunny Day",
+        tips: [
+          { icon: '✅', text: 'All actions perform at full strength — any strategy is viable today.' },
+          { icon: '🌳', text: 'Parks and bike lanes are at peak effectiveness. Great day for green investment.' },
+          { icon: '💡', text: 'Ideal conditions to establish a balanced transport network.' },
+        ],
+      },
+      rainy: {
+        title: "It's a Rainy Day",
+        tips: [
+          { icon: '🚌', text: 'Residents prefer transit in the rain — bus stops are 30% more effective.' },
+          { icon: '⚠️', text: 'Bike lanes and parks lose effectiveness in wet conditions.' },
+          { icon: '💡', text: 'Prioritise bus routes today; hold back on green space investment.' },
+        ],
+      },
+      overcast: {
+        title: "It's an Overcast Day",
+        tips: [
+          { icon: '☁️', text: 'Grey skies dampen spirits slightly — parks and bike lanes give a little less happiness.' },
+          { icon: '✅', text: 'Roads, parking, and bus stops are fully unaffected.' },
+          { icon: '💡', text: 'Favour transport infrastructure over green improvements today.' },
+        ],
+      },
+      snowy: {
+        title: "It's a Snowy Day",
+        tips: [
+          { icon: '🚌', text: 'Bus stops are critical today — residents rely on transit when roads are icy.' },
+          { icon: '❌', text: 'Bike lanes are nearly useless in snow (35% effectiveness). Avoid them.' },
+          { icon: '💡', text: 'Focus your entire budget on transit infrastructure.' },
+        ],
+      },
+      stormy: {
+        title: "It's a Stormy Day",
+        tips: [
+          { icon: '🚧', text: 'Only road widening and parking remain at full strength in severe weather.' },
+          { icon: '❌', text: 'Bike lanes and parks are heavily penalised — not worth the spend today.' },
+          { icon: '💡', text: 'Emergency infrastructure only. Green investments can wait for a better day.' },
+        ],
+      },
+    };
+
+    const briefingEl   = document.getElementById('briefingOverlay');
+    const briefingCard = document.getElementById('briefingCard');
+    const iconEl       = document.getElementById('briefingIcon');
+    const titleEl      = document.getElementById('briefingTitle');
+    const tipsEl       = document.getElementById('briefingTips');
+    const progressBar  = document.getElementById('briefingProgressBar');
+    const startBtn     = document.getElementById('briefingStart');
+
+    if (!briefingEl) return;
+
+    let dismissTimer = null;
+
+    function dismiss() {
+      clearTimeout(dismissTimer);
+      dismissTimer = null;
+      briefingEl.setAttribute('hidden', '');
+    }
+
+    window.showDayBriefing = function showDayBriefing() {
+      const weather = window.currentWeather || 'sunny';
+      const data    = WEATHER_BRIEFINGS[weather] || WEATHER_BRIEFINGS.sunny;
+      const meta    = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META && window.GAME_LOGIC.WEATHER_META[weather]) || {};
+
+      // Populate content
+      iconEl.textContent  = meta.emoji || '🌤️';
+      titleEl.textContent = data.title;
+      tipsEl.innerHTML    = data.tips.map(function (t) {
+        return '<li data-icon="' + t.icon + '">' + t.text + '</li>';
+      }).join('');
+
+      // Apply weather accent class
+      ['sunny','rainy','overcast','snowy','stormy'].forEach(function (w) {
+        briefingCard.classList.remove('briefing--' + w);
+      });
+      briefingCard.classList.add('briefing--' + weather);
+
+      // Reset + restart progress bar animation
+      if (progressBar) {
+        progressBar.style.animation = 'none';
+        progressBar.style.setProperty('--briefing-duration', (BRIEFING_DURATION / 1000) + 's');
+        void progressBar.offsetWidth;
+        progressBar.style.animation = '';
+      }
+
+      briefingEl.removeAttribute('hidden');
+      startBtn && startBtn.focus();
+
+      // Auto-dismiss
+      clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(dismiss, BRIEFING_DURATION);
+    };
+
+    startBtn && startBtn.addEventListener('click', dismiss);
+
+    // Tap backdrop to skip
+    briefingEl.addEventListener('click', function (e) {
+      if (e.target === briefingEl) dismiss();
+    });
+
+    // Escape to skip
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !briefingEl.hidden) dismiss();
+    });
 
   })();
   </script>

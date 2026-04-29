@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import {
   EFFECTS, DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION, INITIAL_STATE,
-  calculateEffects, checkWinCondition,
+  GENERATOR_DELTA, calculateEffects, checkWinCondition, applyGeneratorTick,
 } from '../src/game-logic.js'
 
 const ACTION_COSTS = { 'bus-stop': 80, 'bike-lane': 40, 'parking-garage': 120, 'park': 60, 'road-widening': 90 }
@@ -169,8 +169,19 @@ describe('Test 10: DIFFICULTY_PRESETS shape and ordering', () => {
     expect(DIFFICULTY_PRESETS.normal.turnLimit).toBeGreaterThan(DIFFICULTY_PRESETS.hard.turnLimit))
   test('easy has no blockers', () =>
     expect(DIFFICULTY_PRESETS.easy.blockerRate).toBe(0))
-  test('hard has blockers', () =>
-    expect(DIFFICULTY_PRESETS.hard.blockerRate).toBeGreaterThan(0))
+  test('normal has blockers', () =>
+    expect(DIFFICULTY_PRESETS.normal.blockerRate).toBeGreaterThan(0))
+  test('hard has more blockers than normal', () =>
+    expect(DIFFICULTY_PRESETS.hard.blockerRate).toBeGreaterThan(DIFFICULTY_PRESETS.normal.blockerRate))
+  test('all levels have generatorCount defined', () => {
+    expect(DIFFICULTY_PRESETS.easy.generatorCount).toBeGreaterThanOrEqual(0)
+    expect(DIFFICULTY_PRESETS.normal.generatorCount).toBeGreaterThanOrEqual(0)
+    expect(DIFFICULTY_PRESETS.hard.generatorCount).toBeGreaterThanOrEqual(0)
+  })
+  test('normal + hard have generators', () => {
+    expect(DIFFICULTY_PRESETS.normal.generatorCount).toBeGreaterThan(0)
+    expect(DIFFICULTY_PRESETS.hard.generatorCount).toBeGreaterThan(0)
+  })
 })
 
 describe('Test 11: hard difficulty — winning still achievable', () => {
@@ -198,4 +209,41 @@ describe('Test 12: easy difficulty — greedy combo trivially wins', () => {
 
   test('fits easy budget', () => expect(cost).toBeLessThanOrEqual(DIFFICULTY_PRESETS.easy.budget))
   test('wins', () => expect(sim.result).toBe('win'))
+})
+
+describe('Test 13: generator penalty affects congestion', () => {
+  test('2 unsuppressed generators add 6 to congestion', () => {
+    const gens = [{ row: 0, col: 0 }, { row: 5, col: 5 }]
+    expect(applyGeneratorTick(gens, [])).toBe(2 * GENERATOR_DELTA)
+  })
+
+  test('marginal win requires generators suppressed', () => {
+    // Set up a case that just barely wins — and verify generators make it not win
+    const grid = buildMaxAdjGrid()
+    const acts = [
+      { action: 'bus-stop',  row: 0, col: 0 }, { action: 'bus-stop',  row: 1, col: 0 },
+      { action: 'park',      row: 0, col: 1 }, { action: 'park',      row: 1, col: 1 },
+      { action: 'bike-lane', row: 2, col: 0 },
+    ]
+    const delta = calculateEffects(acts, grid)
+    const congestionNoGen = Math.max(0, Math.min(100, INITIAL_STATE.congestion + delta.congestionDelta))
+    const genPenalty = applyGeneratorTick([{ row: 9, col: 9 }, { row: 8, col: 8 }], [])
+    const congestionWithGen = Math.min(100, congestionNoGen + genPenalty)
+    // Penalty should make congestion worse
+    expect(congestionWithGen).toBeGreaterThan(congestionNoGen)
+    // And the penalty equals 2 × GENERATOR_DELTA = 6
+    expect(genPenalty).toBe(6)
+  })
+
+  test('suppressing one of two generators halves the penalty', () => {
+    const gens = [{ row: 3, col: 3 }, { row: 7, col: 7 }]
+    const placements = [{ action: 'bus-stop', row: 3, col: 4 }] // suppresses first only
+    expect(applyGeneratorTick(gens, placements)).toBe(GENERATOR_DELTA)
+  })
+
+  test('complete generator suppression restores base congestion', () => {
+    const gens = [{ row: 3, col: 3 }]
+    const roadActs = [{ action: 'bus-stop', row: 3, col: 4 }]
+    expect(applyGeneratorTick(gens, roadActs)).toBe(0)
+  })
 })

@@ -181,6 +181,7 @@ Live: https://idyllic-cannoli-358897.netlify.app/ (auto-deploys from `main`)
 
 - `/sync-check` — greps `src/game-logic.js` and `index.html` for key constants and flags any value mismatches
 - `/mobile-audit` — checks hardcoded px in animations, touch-action on interactive elements, media query breakpoint, dynamic --tile-size, tap target sizes
+- `/animation-audit` — checks the reactive animation system: car speed/stop-go from congestion, ped density/speed from happiness, generator --firing indicator, syncRoadCongestion wiring, weather ped multipliers
 
 ## Future scaling hooks
 

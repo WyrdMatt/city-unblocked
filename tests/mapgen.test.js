@@ -16,6 +16,7 @@ function makeRNG(seed) {
 const DEFAULT_CONFIG = {
   rows: 10, cols: 10, minRoads: 2, maxRoads: 3,
   minBlockSize: 2, emptyRate: 0.20, parkCount: 2,
+  blockerRate: 0, generatorCount: 0,
 }
 
 function nbValues(grid, r, c, rows, cols) {
@@ -118,6 +119,38 @@ function generateMap(userConfig) {
     parksPlaced++
   }
 
+  // Step 4 — Blocker tiles
+  if (cfg.blockerRate > 0) {
+    const blockerPool = []
+    for (let r = 0; r < cfg.rows; r++)
+      for (let c = 0; c < cfg.cols; c++)
+        if (grid[r][c] === 'B') blockerPool.push([r, c])
+    for (let i = blockerPool.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      const tmp = blockerPool[i]; blockerPool[i] = blockerPool[j]; blockerPool[j] = tmp
+    }
+    const blockerCount = Math.floor(blockerPool.length * cfg.blockerRate)
+    for (let i = 0; i < blockerCount; i++) grid[blockerPool[i][0]][blockerPool[i][1]] = 'X'
+  }
+
+  // Step 5 — Generator tiles
+  if (cfg.generatorCount > 0) {
+    const genPool = []
+    for (let r = 0; r < cfg.rows; r++) {
+      for (let c = 0; c < cfg.cols; c++) {
+        if (grid[r][c] !== 'B') continue
+        const adjRoad = nbValues(grid, r, c, cfg.rows, cfg.cols).filter(t => t === 'R').length
+        if (adjRoad > 0) genPool.push([r, c, adjRoad])
+      }
+    }
+    for (let i = genPool.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      const tmp = genPool[i]; genPool[i] = genPool[j]; genPool[j] = tmp
+    }
+    const toPlace = Math.min(cfg.generatorCount, genPool.length)
+    for (let i = 0; i < toPlace; i++) grid[genPool[i][0]][genPool[i][1]] = 'G'
+  }
+
   return { grid, seed, config: cfg, roadRows, roadCols }
 }
 
@@ -139,13 +172,15 @@ function validateMap(grid, cfg) {
   if ((counts.E || 0) < 4)  issues.push('Too few empty lots: '              + (counts.E || 0))
   if ((counts.R || 0) < 10) issues.push('Too few road tiles: '               + (counts.R || 0))
   if (emptyWithAdj < 3)     issues.push('Too few empty lots adj buildings: ' + emptyWithAdj)
+  if (cfg.generatorCount > 0 && (counts.G || 0) < cfg.generatorCount)
+    issues.push('Too few generator tiles: ' + (counts.G || 0) + ' / ' + cfg.generatorCount)
   return { counts, emptyWithAdj, valid: issues.length === 0, issues }
 }
 
 function runChecks(map) {
   const { grid, seed, config: cfg, roadRows, roadCols } = map
   const failures = []
-  const VALID = { R: true, B: true, E: true, P: true }
+  const VALID = { R: true, B: true, E: true, P: true, X: true, G: true }
 
   if (grid.length !== cfg.rows)
     failures.push(`grid has ${grid.length} rows, expected ${cfg.rows}`)
@@ -267,7 +302,7 @@ describe('specific seeds and invariants', () => {
     map.grid.forEach(row => expect(row.length).toBe(10))
   })
 
-  test('all tile codes are valid', () => {
+  test('all tile codes are valid (no blocker/gen by default)', () => {
     const map = generateMap({ seed: 200 })
     const VALID = new Set(['R', 'B', 'E', 'P'])
     map.grid.forEach(row => row.forEach(t => expect(VALID.has(t)).toBe(true)))
@@ -288,5 +323,91 @@ describe('specific seeds and invariants', () => {
       expect(map.roadRows.length, `seed=${seed} roadRows`).toBeGreaterThanOrEqual(cfg.minRoads)
       expect(map.roadCols.length, `seed=${seed} roadCols`).toBeGreaterThanOrEqual(cfg.minRoads)
     }
+  })
+})
+
+describe('blocker tiles (X)', () => {
+  test('no blockers when blockerRate = 0', () => {
+    const map = generateMap({ seed: 1, blockerRate: 0 })
+    const xs = map.grid.flat().filter(t => t === 'X')
+    expect(xs.length).toBe(0)
+  })
+
+  test('blockers appear with blockerRate > 0', () => {
+    const map = generateMap({ seed: 1, blockerRate: 0.10 })
+    const xs = map.grid.flat().filter(t => t === 'X')
+    expect(xs.length).toBeGreaterThan(0)
+  })
+
+  test('blockers are deterministic per seed', () => {
+    const a = generateMap({ seed: 77, blockerRate: 0.06 })
+    const b = generateMap({ seed: 77, blockerRate: 0.06 })
+    expect(a.grid).toEqual(b.grid)
+  })
+
+  test('blockers only placed on former building tiles (not roads)', () => {
+    const map = generateMap({ seed: 5, blockerRate: 0.15 })
+    const { grid, roadRows, roadCols } = map
+    const roadRowSet = new Set(roadRows), roadColSet = new Set(roadCols)
+    grid.forEach((row, r) => {
+      row.forEach((t, c) => {
+        if (t === 'X') {
+          expect(roadRowSet.has(r), `blocker at road row ${r}`).toBe(false)
+          expect(roadColSet.has(c), `blocker at road col ${c}`).toBe(false)
+        }
+      })
+    })
+  })
+
+  test('hard preset blockerRate 0.06 produces ≥1 blocker on most maps', () => {
+    let mapsWithBlockers = 0
+    for (let seed = 1; seed <= 50; seed++) {
+      const map = generateMap({ seed, blockerRate: 0.06 })
+      if (map.grid.flat().some(t => t === 'X')) mapsWithBlockers++
+    }
+    expect(mapsWithBlockers).toBeGreaterThan(40)
+  })
+})
+
+describe('generator tiles (G)', () => {
+  test('no generators when generatorCount = 0', () => {
+    const map = generateMap({ seed: 1, generatorCount: 0 })
+    expect(map.grid.flat().filter(t => t === 'G').length).toBe(0)
+  })
+
+  test('places requested number of generators', () => {
+    const map = generateMap({ seed: 1, generatorCount: 2 })
+    expect(map.grid.flat().filter(t => t === 'G').length).toBe(2)
+  })
+
+  test('generators are deterministic per seed', () => {
+    const a = generateMap({ seed: 42, generatorCount: 2 })
+    const b = generateMap({ seed: 42, generatorCount: 2 })
+    expect(a.grid).toEqual(b.grid)
+  })
+
+  test('generators are only on building tiles adjacent to roads', () => {
+    const map = generateMap({ seed: 3, generatorCount: 2 })
+    const { grid, roadRows, roadCols } = map
+    const roadRowSet = new Set(roadRows), roadColSet = new Set(roadCols)
+    grid.forEach((row, r) => {
+      row.forEach((t, c) => {
+        if (t !== 'G') return
+        expect(roadRowSet.has(r), `G at road row ${r}`).toBe(false)
+        expect(roadColSet.has(c), `G at road col ${c}`).toBe(false)
+        const adjRoad = [[-1,0],[1,0],[0,-1],[0,1]].some(([dr, dc]) => {
+          const nr = r + dr, nc = c + dc
+          return nr >= 0 && nr < map.config.rows && nc >= 0 && nc < map.config.cols
+            && (roadRowSet.has(nr) || roadColSet.has(nc))
+        })
+        expect(adjRoad, `G at (${r},${c}) not adjacent to road`).toBe(true)
+      })
+    })
+  })
+
+  test('generators and blockers can coexist', () => {
+    const map = generateMap({ seed: 10, blockerRate: 0.05, generatorCount: 2 })
+    expect(map.grid.flat().filter(t => t === 'G').length).toBe(2)
+    expect(map.grid.flat().filter(t => t === 'X').length).toBeGreaterThan(0)
   })
 })

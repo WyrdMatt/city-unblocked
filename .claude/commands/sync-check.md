@@ -10,11 +10,21 @@ Run these greps and compare the values found in each file:
    - WIN_CONGESTION
    - DEFAULT_TURN_LIMIT
 
-3. DIFFICULTY_PRESETS budgets and turnLimits:
+3. DIFFICULTY_PRESETS — budget, turnLimit, blockerRate, generatorCount:
    - easy, normal, hard
 
 4. WEATHER_MULTIPLIERS keys present:
    - sunny, rainy, overcast, snowy, stormy
+
+5. Puzzle-mechanic constants:
+   - ZONE_CAP
+   - GENERATOR_DELTA
+   - DEMOLISH_COST
+
+6. Puzzle-mechanic functions exist in both files:
+   - getBlockId
+   - checkZoneCap
+   - applyGeneratorTick
 
 For each item, show the value found in src/game-logic.js and the value found in index.html side by side. Flag any mismatch with ⚠️. If all values match, report ✅ in sync.
 
