@@ -1095,40 +1095,41 @@
     /* ── Tutorial overlay ────────────────────────────────────────── */
     .overlay--tutorial { background: rgba(7,8,13,0.93); backdrop-filter: blur(10px); z-index: 700; }
     .overlay__card--tutorial {
-      max-width: 580px; gap: 1.1rem;
+      max-width: 520px; width: 92vw; gap: 0;
       background: #0d1424; border: 1px solid rgba(255,255,255,.1);
+      padding: 0; overflow: hidden;
+    }
+    .tutorial-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.4rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,.07);
     }
     .tutorial__heading {
-      margin: 0; font-size: 1.4rem; font-weight: 900;
+      margin: 0; font-size: 1.1rem; font-weight: 900;
       letter-spacing: -0.02em; color: var(--c-text-hi);
     }
-    .tutorial__sub {
-      margin: 0; font-size: 0.8rem; color: var(--c-text-muted);
+    .tutorial-dots {
+      display: flex; gap: 6px; align-items: center;
     }
-    .tutorial-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 0.75rem; width: 100%; text-align: left;
+    .tutorial-dot {
+      width: 8px; height: 8px; border-radius: 50%; border: none; cursor: pointer; padding: 0;
+      background: rgba(255,255,255,.2); transition: background .2s, transform .15s;
     }
-    @media (max-width: 500px) { .tutorial-grid { grid-template-columns: 1fr; } }
-    .tutorial-section {
-      background: rgba(255,255,255,.04); border-radius: 10px;
-      padding: 0.75rem 0.9rem; border: 1px solid rgba(255,255,255,.06);
+    .tutorial-dot--active { background: #60a5fa; transform: scale(1.3); }
+    .tutorial-slide {
+      padding: 1.1rem 1.4rem; min-height: 220px;
+      display: flex; flex-direction: column; gap: 0.7rem;
     }
-    .tutorial-section__title {
-      margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800;
-      text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-label);
+    .tutorial-slide__title {
+      margin: 0; font-size: 0.68rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text-label);
     }
-    .tutorial-section p {
-      margin: 0; font-size: 0.77rem; color: var(--c-text-muted); line-height: 1.55;
-    }
-    .tutorial-section p b { color: var(--c-text); }
     .tutorial-tiles {
       margin: 0; padding: 0; list-style: none;
-      display: flex; flex-direction: column; gap: 0.35rem;
+      display: flex; flex-direction: column; gap: 0.4rem;
     }
     .tutorial-tiles li {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.75rem; color: var(--c-text-muted); line-height: 1.3;
+      display: flex; align-items: center; gap: 0.55rem;
+      font-size: 0.78rem; color: var(--c-text-muted); line-height: 1.35;
     }
     .tutorial-tiles li b { color: var(--c-text); }
     .tutorial-swatch {
@@ -1138,12 +1139,76 @@
     .tutorial-swatch--road     { background: #2e3240; border: 1px solid #4e5568; }
     .tutorial-swatch--building { background: #4e6882; }
     .tutorial-swatch--empty    { background: #3d5020; }
-    .tutorial__got-it {
-      background: #1d4ed8; color: #fff;
-      font-size: 0.95rem; padding: 0.7rem 2.2rem;
-      margin-top: 0.25rem;
+    .tutorial-actions {
+      display: flex; flex-direction: column; gap: 0.35rem;
     }
-    .tutorial__got-it:hover { filter: brightness(1.12); }
+    .tutorial-action {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,.04); border-radius: 8px;
+      padding: 0.4rem 0.6rem; border: 1px solid rgba(255,255,255,.06);
+    }
+    .tutorial-action__emoji { font-size: 1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+    .tutorial-action__name  { font-size: 0.78rem; font-weight: 700; color: var(--c-text); flex: 1; }
+    .tutorial-action__cost  { font-size: 0.7rem; font-weight: 700; color: var(--c-text-muted); flex-shrink: 0; }
+    .tutorial-action__fx    { font-size: 0.68rem; color: var(--c-text-label); flex-shrink: 0; text-align: right; min-width: 100px; }
+    .tutorial-combos {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;
+    }
+    @media (max-width: 440px) { .tutorial-combos { grid-template-columns: 1fr; } }
+    .tutorial-combo {
+      background: rgba(255,255,255,.04); border-radius: 8px;
+      padding: 0.45rem 0.65rem; border: 1px solid rgba(255,255,255,.06);
+    }
+    .tutorial-combo__pair  { font-size: 0.92rem; margin-bottom: 2px; }
+    .tutorial-combo__label { font-size: 0.7rem; font-weight: 700; color: var(--c-text); }
+    .tutorial-combo__bonus { font-size: 0.67rem; color: #86efac; }
+    .tutorial-combo__bonus--mixed { color: #fcd34d; }
+    .tutorial-weather {
+      display: flex; flex-direction: column; gap: 0.38rem;
+    }
+    .tutorial-weather__row {
+      display: flex; align-items: flex-start; gap: 0.55rem;
+      font-size: 0.76rem; color: var(--c-text-muted); line-height: 1.35;
+    }
+    .tutorial-weather__icon { font-size: 1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+    .tutorial-weather__name { font-weight: 700; color: var(--c-text); }
+    .tutorial-tips {
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .tutorial-tip {
+      display: flex; align-items: flex-start; gap: 0.55rem;
+      font-size: 0.78rem; color: var(--c-text-muted); line-height: 1.4;
+    }
+    .tutorial-tip__icon { flex-shrink: 0; font-size: 0.95rem; width: 1.4rem; text-align: center; margin-top: 1px; }
+    .tutorial-win {
+      display: flex; gap: 0.6rem; align-items: stretch;
+    }
+    .tutorial-win__card {
+      flex: 1; background: rgba(255,255,255,.04); border-radius: 8px;
+      padding: 0.6rem 0.75rem; border: 1px solid rgba(255,255,255,.06);
+      text-align: center;
+    }
+    .tutorial-win__icon { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+    .tutorial-win__label { font-size: 0.68rem; color: var(--c-text-label); text-transform: uppercase; letter-spacing: .08em; }
+    .tutorial-win__target { font-size: 1rem; font-weight: 900; color: var(--c-text-hi); }
+    .tutorial-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.1rem; border-top: 1px solid rgba(255,255,255,.07);
+      gap: 0.5rem;
+    }
+    .tutorial-nav__btn {
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+      color: var(--c-text-btn); border-radius: 8px; padding: 0.45rem 0.9rem;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit;
+      transition: background .15s, opacity .15s;
+    }
+    .tutorial-nav__btn:hover:not(:disabled) { background: rgba(255,255,255,.13); }
+    .tutorial-nav__btn:disabled { opacity: 0.3; cursor: default; }
+    .tutorial-nav__btn--finish {
+      background: #1d4ed8; color: #fff; border-color: transparent;
+    }
+    .tutorial-nav__btn--finish:hover { background: #2563eb; }
+    .tutorial-counter { font-size: 0.72rem; color: var(--c-text-muted); }
 
     /* Sidewalk strips ───────────────────────────────────────────── */
     .sw-strip {
@@ -1992,36 +2057,185 @@
   <div class="overlay overlay--tutorial" id="tutorialOverlay" hidden
        role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
     <div class="overlay__card overlay__card--tutorial">
-      <h2 class="tutorial__heading" id="tutorialTitle">🏙️ How to Play</h2>
-      <p class="tutorial__sub">One screen. Everything you need to know.</p>
 
-      <div class="tutorial-grid">
-        <div class="tutorial-section">
-          <h3 class="tutorial-section__title">🗺️ Tile Types</h3>
-          <ul class="tutorial-tiles">
-            <li><span class="tutorial-swatch tutorial-swatch--road"></span>     <b>Road</b> — Bus Stop, Bike Lane, Road Widening</li>
-            <li><span class="tutorial-swatch tutorial-swatch--building"></span> <b>Building</b> — Parking Garage</li>
-            <li><span class="tutorial-swatch tutorial-swatch--empty"></span>    <b>Empty Lot</b> — Park</li>
-          </ul>
-        </div>
-
-        <div class="tutorial-section">
-          <h3 class="tutorial-section__title">👆 Placing Actions</h3>
-          <p>Tap any tile to open the action fan menu. Tap an action to place it. Each action only works on its matching tile type — wrong tiles are greyed out.</p>
-        </div>
-
-        <div class="tutorial-section">
-          <h3 class="tutorial-section__title">🏆 How to Win</h3>
-          <p>Get <b>Congestion → 30</b> and <b>Happiness → 70</b> before your budget and turns run out. The coloured zones on the top bars show exactly where you need to be — aim for the green.</p>
-        </div>
-
-        <div class="tutorial-section">
-          <h3 class="tutorial-section__title">⭐ Combos &amp; Weather</h3>
-          <p>Place actions next to each other for bonus effects — <b>Bus Stop + Park</b> unlocks <em>Transit Hub</em>. Weather changes each game and boosts or weakens certain actions.</p>
+      <div class="tutorial-header">
+        <h2 class="tutorial__heading" id="tutorialTitle">🏙️ How to Play</h2>
+        <div class="tutorial-dots" id="tutorialDots">
+          <button class="tutorial-dot tutorial-dot--active" data-slide="0" aria-label="Slide 1 of 5" type="button"></button>
+          <button class="tutorial-dot" data-slide="1" aria-label="Slide 2 of 5" type="button"></button>
+          <button class="tutorial-dot" data-slide="2" aria-label="Slide 3 of 5" type="button"></button>
+          <button class="tutorial-dot" data-slide="3" aria-label="Slide 4 of 5" type="button"></button>
+          <button class="tutorial-dot" data-slide="4" aria-label="Slide 5 of 5" type="button"></button>
         </div>
       </div>
 
-      <button class="overlay__btn tutorial__got-it" id="tutorialGotIt" type="button">Got it, let's go! →</button>
+      <!-- Slide 1: Tile Types & Goal -->
+      <div class="tutorial-slide" data-slide="0">
+        <p class="tutorial-slide__title">🗺️ The Map</p>
+        <ul class="tutorial-tiles">
+          <li><span class="tutorial-swatch tutorial-swatch--road"></span><b>Road</b> — place Bus Stops, Bike Lanes, Road Widening</li>
+          <li><span class="tutorial-swatch tutorial-swatch--building"></span><b>Building</b> — place Parking Garages</li>
+          <li><span class="tutorial-swatch tutorial-swatch--empty"></span><b>Empty Lot</b> — place Parks</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏭</span><b>Generator</b> — raises congestion each turn unless you suppress it with an adjacent road action</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🚧</span><b>Blocker</b> — demolish for £50 to create a buildable empty lot</li>
+        </ul>
+        <p class="tutorial-slide__title" style="margin-top:0.3rem">🏆 Goal</p>
+        <div class="tutorial-win">
+          <div class="tutorial-win__card">
+            <span class="tutorial-win__icon">🚗</span>
+            <div class="tutorial-win__label">Congestion</div>
+            <div class="tutorial-win__target">≤ 30</div>
+          </div>
+          <div class="tutorial-win__card">
+            <span class="tutorial-win__icon">😊</span>
+            <div class="tutorial-win__label">Happiness</div>
+            <div class="tutorial-win__target">≥ 70</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Actions & Costs -->
+      <div class="tutorial-slide" data-slide="1" hidden>
+        <p class="tutorial-slide__title">🔧 Actions — tap a tile to open the menu</p>
+        <div class="tutorial-actions">
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🚌</span>
+            <span class="tutorial-action__name">Bus Stop</span>
+            <span class="tutorial-action__cost">£80 · Road</span>
+            <span class="tutorial-action__fx">−10 🚗  +6 😊</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🚲</span>
+            <span class="tutorial-action__name">Bike Lane</span>
+            <span class="tutorial-action__cost">£40 · Road</span>
+            <span class="tutorial-action__fx">−6 🚗  +8 😊</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🅿️</span>
+            <span class="tutorial-action__name">Parking Garage</span>
+            <span class="tutorial-action__cost">£120 · Building</span>
+            <span class="tutorial-action__fx">−8 🚗  +4 😊</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🌳</span>
+            <span class="tutorial-action__name">Park</span>
+            <span class="tutorial-action__cost">£60 · Empty Lot</span>
+            <span class="tutorial-action__fx">−4 🚗  +12 😊</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🚧</span>
+            <span class="tutorial-action__name">Road Widening</span>
+            <span class="tutorial-action__cost">£90 · Road</span>
+            <span class="tutorial-action__fx">−15 🚗  −5 😊</span>
+          </div>
+        </div>
+        <div class="tutorial-tip" style="margin-top:0.2rem">
+          <span class="tutorial-tip__icon">⚠️</span>
+          <span>Placing the same action repeatedly gives <b>diminishing returns</b> — mix up your choices for maximum effect.</span>
+        </div>
+      </div>
+
+      <!-- Slide 3: Combos -->
+      <div class="tutorial-slide" data-slide="2" hidden>
+        <p class="tutorial-slide__title">⭐ Combo Bonuses — place actions adjacent to each other</p>
+        <div class="tutorial-combos">
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🚌 + 🌳</div>
+            <div class="tutorial-combo__label">Transit Hub</div>
+            <div class="tutorial-combo__bonus">+5 😊</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🚲 + 🌳</div>
+            <div class="tutorial-combo__label">Green Corridor</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−2 🚗  +3 😊</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🚌 + 🚲</div>
+            <div class="tutorial-combo__label">Active Streets</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−3 🚗</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🌳 + 🌳</div>
+            <div class="tutorial-combo__label">Green Network</div>
+            <div class="tutorial-combo__bonus">+3 😊</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🅿️ + 🚌</div>
+            <div class="tutorial-combo__label">Park &amp; Ride</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−3 🚗</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🚧 + 🚌</div>
+            <div class="tutorial-combo__label">Express Lane</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−4 🚗</div>
+          </div>
+        </div>
+        <div class="tutorial-tip">
+          <span class="tutorial-tip__icon">💡</span>
+          <span>Diagonal placement also triggers combos — at <b>half the bonus</b>. Plan your layout to chain multiple combos at once.</span>
+        </div>
+      </div>
+
+      <!-- Slide 4: Weather -->
+      <div class="tutorial-slide" data-slide="3" hidden>
+        <p class="tutorial-slide__title">🌤️ Weather — changes every game, shown in the top bar</p>
+        <div class="tutorial-weather">
+          <div class="tutorial-weather__row">
+            <span class="tutorial-weather__icon">☀️</span>
+            <span><span class="tutorial-weather__name">Sunny</span> — all actions at full strength. Ideal for any strategy.</span>
+          </div>
+          <div class="tutorial-weather__row">
+            <span class="tutorial-weather__icon">🌧️</span>
+            <span><span class="tutorial-weather__name">Rainy</span> — bus stops 30% more effective. Bike lanes and parks lose effectiveness.</span>
+          </div>
+          <div class="tutorial-weather__row">
+            <span class="tutorial-weather__icon">☁️</span>
+            <span><span class="tutorial-weather__name">Overcast</span> — slight happiness penalty on green actions. Roads unaffected.</span>
+          </div>
+          <div class="tutorial-weather__row">
+            <span class="tutorial-weather__icon">❄️</span>
+            <span><span class="tutorial-weather__name">Snowy</span> — bus stops critical. Bike lanes nearly useless (35% effectiveness).</span>
+          </div>
+          <div class="tutorial-weather__row">
+            <span class="tutorial-weather__icon">⛈️</span>
+            <span><span class="tutorial-weather__name">Stormy</span> — only road widening and parking at full strength. Avoid green investment.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Pro Tips -->
+      <div class="tutorial-slide" data-slide="4" hidden>
+        <p class="tutorial-slide__title">💡 Pro Tips</p>
+        <div class="tutorial-tips">
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">👆</span>
+            <span>Tap any tile to open the action fan. <b>Wrong-tile actions are greyed out</b> — only valid placements are clickable.</span>
+          </div>
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">🏭</span>
+            <span><b>Suppress generators</b> by placing a bus stop, bike lane, or road widening on an adjacent road tile — stops them adding congestion.</span>
+          </div>
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">🚌</span>
+            <span><b>Space bus stops out</b> — stops placed far apart earn a Network Bonus for extra congestion reduction.</span>
+          </div>
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">↩️</span>
+            <span>You get <b>one undo</b> per placement (↩ button or Ctrl+Z). Use it when you accidentally break a combo.</span>
+          </div>
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">🏗️</span>
+            <span>Demolish blockers (🚧) for <b>£50</b> to unlock empty lots — sometimes the best park location is behind a blocker.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        <button class="tutorial-nav__btn" id="tutorialPrev" type="button" disabled>← Prev</button>
+        <span class="tutorial-counter" id="tutorialCounter">1 / 5</span>
+        <button class="tutorial-nav__btn" id="tutorialNext" type="button">Next →</button>
+      </div>
+
     </div>
   </div>
 
@@ -4715,23 +4929,69 @@
   <script>
   (function () {
     'use strict';
-    const STORAGE_KEY   = 'makeItLiveable_tutorialSeen';
-    const tutorialEl    = document.getElementById('tutorialOverlay');
-    const gotItBtn      = document.getElementById('tutorialGotIt');
-    const hudHelpBtn    = document.getElementById('hudHelp');
+    const STORAGE_KEY    = 'makeItLiveable_tutorialSeen';
+    const TOTAL_SLIDES   = 5;
+    const tutorialEl     = document.getElementById('tutorialOverlay');
+    const prevBtn        = document.getElementById('tutorialPrev');
+    const nextBtn        = document.getElementById('tutorialNext');
+    const counterEl      = document.getElementById('tutorialCounter');
+    const dotsEl         = document.getElementById('tutorialDots');
+    const hudHelpBtn     = document.getElementById('hudHelp');
     const landingPlayBtn = document.getElementById('landingPlay');
 
     if (!tutorialEl) return;
 
+    let currentSlide = 0;
+
+    function goToSlide(n) {
+      const slides = tutorialEl.querySelectorAll('.tutorial-slide');
+      const dots   = tutorialEl.querySelectorAll('.tutorial-dot');
+      slides.forEach(function (s, i) {
+        if (i === n) s.removeAttribute('hidden'); else s.setAttribute('hidden', '');
+      });
+      dots.forEach(function (d, i) {
+        d.classList.toggle('tutorial-dot--active', i === n);
+      });
+      currentSlide = n;
+      prevBtn.disabled = n === 0;
+      counterEl.textContent = (n + 1) + ' / ' + TOTAL_SLIDES;
+      if (n === TOTAL_SLIDES - 1) {
+        nextBtn.textContent = "Let's Play! →";
+        nextBtn.classList.add('tutorial-nav__btn--finish');
+      } else {
+        nextBtn.textContent = 'Next →';
+        nextBtn.classList.remove('tutorial-nav__btn--finish');
+      }
+    }
+
     function openTutorial() {
+      goToSlide(0);
       tutorialEl.removeAttribute('hidden');
-      gotItBtn && gotItBtn.focus();
+      nextBtn && nextBtn.focus();
     }
 
     function closeTutorial() {
       tutorialEl.setAttribute('hidden', '');
       try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
     }
+
+    prevBtn && prevBtn.addEventListener('click', function () {
+      if (currentSlide > 0) goToSlide(currentSlide - 1);
+    });
+
+    nextBtn && nextBtn.addEventListener('click', function () {
+      if (currentSlide < TOTAL_SLIDES - 1) {
+        goToSlide(currentSlide + 1);
+      } else {
+        closeTutorial();
+        setTimeout(function () { window.showDayBriefing?.(); }, 200);
+      }
+    });
+
+    dotsEl && dotsEl.addEventListener('click', function (e) {
+      const dot = e.target.closest('.tutorial-dot');
+      if (dot) goToSlide(parseInt(dot.dataset.slide, 10));
+    });
 
     // Show once after the player clicks Play for the first time
     landingPlayBtn && landingPlayBtn.addEventListener('click', function () {
@@ -4742,13 +5002,7 @@
       } catch (_) {}
     });
 
-    // "Got it" dismisses, sets the flag, then shows the day briefing
-    gotItBtn && gotItBtn.addEventListener('click', function () {
-      closeTutorial();
-      setTimeout(function () { window.showDayBriefing?.(); }, 200);
-    });
-
-    // "?" in HUD reopens any time
+    // "?" in HUD reopens from slide 1 any time
     hudHelpBtn && hudHelpBtn.addEventListener('click', openTutorial);
 
     // Backdrop click closes
@@ -4756,9 +5010,12 @@
       if (e.target === tutorialEl) closeTutorial();
     });
 
-    // Escape closes
+    // Arrow keys navigate, Escape closes
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !tutorialEl.hidden) closeTutorial();
+      if (tutorialEl.hidden) return;
+      if (e.key === 'ArrowRight' && currentSlide < TOTAL_SLIDES - 1) goToSlide(currentSlide + 1);
+      if (e.key === 'ArrowLeft'  && currentSlide > 0)                 goToSlide(currentSlide - 1);
+      if (e.key === 'Escape') closeTutorial();
     });
   })();
   </script>
