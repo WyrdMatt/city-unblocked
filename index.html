@@ -1097,7 +1097,7 @@
     .overlay__card--tutorial {
       max-width: 520px; width: 92vw; gap: 0;
       background: #0d1424; border: 1px solid rgba(255,255,255,.1);
-      padding: 0; overflow: hidden;
+      padding: 0; overflow: hidden; position: relative;
       max-height: 90vh; display: flex; flex-direction: column;
     }
     .tutorial-header {
@@ -1111,6 +1111,14 @@
     .tutorial-dots {
       display: flex; gap: 6px; align-items: center;
     }
+    .tutorial-close {
+      position: absolute; top: 0.75rem; right: 0.75rem;
+      width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06); color: var(--c-text-muted); cursor: pointer;
+      font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s; z-index: 1;
+    }
+    .tutorial-close:hover { background: rgba(255,255,255,.14); color: var(--c-text); }
     .tutorial-dot {
       width: 8px; height: 8px; border-radius: 50%; border: none; cursor: pointer; padding: 0;
       background: rgba(255,255,255,.2); transition: background .2s, transform .15s;
@@ -1838,17 +1846,22 @@
         <button class="diff-btn" data-difficulty="easy" type="button" aria-pressed="false">
           <span class="diff-btn__emoji" aria-hidden="true">🌱</span>
           <span class="diff-btn__label">Easy</span>
-          <span class="diff-btn__detail">£700 · 20 turns<br>open city</span>
+          <span class="diff-btn__detail">£900 · 25 turns<br>open city</span>
         </button>
         <button class="diff-btn diff-btn--selected" data-difficulty="normal" type="button" aria-pressed="true">
           <span class="diff-btn__emoji" aria-hidden="true">🏙️</span>
           <span class="diff-btn__label">Normal</span>
-          <span class="diff-btn__detail">£500 · 15 turns<br>open city</span>
+          <span class="diff-btn__detail">£650 · 20 turns<br>open city</span>
         </button>
         <button class="diff-btn" data-difficulty="hard" type="button" aria-pressed="false">
           <span class="diff-btn__emoji" aria-hidden="true">🔥</span>
           <span class="diff-btn__label">Hard</span>
-          <span class="diff-btn__detail">£350 · 12 turns<br>blocked routes</span>
+          <span class="diff-btn__detail">£480 · 15 turns<br>blocked routes</span>
+        </button>
+        <button class="diff-btn" data-difficulty="expert" type="button" aria-pressed="false">
+          <span class="diff-btn__emoji" aria-hidden="true">💀</span>
+          <span class="diff-btn__label">Expert</span>
+          <span class="diff-btn__detail">£300 · 10 turns<br>maximum pressure</span>
         </button>
       </div>
 
@@ -1860,7 +1873,7 @@
           <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — road, building, or empty lot</li>
           <li><span class="htp-icon" aria-hidden="true">🚌</span>Place an action: buses &amp; bike lanes on roads, parking on buildings, parks on empty lots</li>
           <li><span class="htp-icon" aria-hidden="true">📉</span>Each action cuts congestion and boosts happiness — but repeating the same type gives diminishing returns</li>
-          <li><span class="htp-icon" aria-hidden="true">⭐</span>Adjacent actions unlock combos — Bus Stop + Park = <em>Transit Hub</em>, Bike Lane + Park = <em>Green Corridor</em>, and more. Watch for the ★ popup!</li>
+          <li><span class="htp-icon" aria-hidden="true">⭐</span>Adjacent actions unlock combos — Bus Stop + Park = <em>Transit Hub</em>, Parking + Park = <em>Green Gateway</em>, and more. Watch for the ★ popup!</li>
           <li><span class="htp-icon" aria-hidden="true">🌦️</span>Weather changes each game and affects action strength — rain boosts bus stops, snow makes bike lanes nearly useless. Check the HUD badge.</li>
           <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by getting congestion ≤30 and happiness ≥70 before your budget and turns run out</li>
         </ol>
@@ -2079,6 +2092,7 @@
   <div class="overlay overlay--tutorial" id="tutorialOverlay" hidden
        role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
     <div class="overlay__card overlay__card--tutorial">
+      <button class="tutorial-close" id="tutorialClose" type="button" aria-label="Close tutorial">✕</button>
 
       <div class="tutorial-header">
         <h2 class="tutorial__heading" id="tutorialTitle">🏙️ How to Play</h2>
@@ -2168,8 +2182,8 @@
           </div>
           <div class="tutorial-combo">
             <div class="tutorial-combo__pair">🚲 + 🌳</div>
-            <div class="tutorial-combo__label">Green Corridor</div>
-            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−2 🚗  +3 😊</div>
+            <div class="tutorial-combo__label">Pedestrian Zone</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−1 🚗  +5 😊</div>
           </div>
           <div class="tutorial-combo">
             <div class="tutorial-combo__pair">🚌 + 🚲</div>
@@ -2190,6 +2204,21 @@
             <div class="tutorial-combo__pair">🚧 + 🚌</div>
             <div class="tutorial-combo__label">Express Lane</div>
             <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−4 🚗</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🅿️ + 🌳</div>
+            <div class="tutorial-combo__label">Green Gateway</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−2 🚗  +6 😊</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🅿️ + 🚲</div>
+            <div class="tutorial-combo__label">Commuter Link</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−3 🚗  +2 😊</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🚧 + 🅿️</div>
+            <div class="tutorial-combo__label">Industrial Bypass</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−5 🚗</div>
           </div>
         </div>
         <div class="tutorial-tip">
@@ -2853,12 +2882,15 @@
     };
 
     var COMBOS = [
-      { a: "bus-stop",       b: "park",          congestion:  0, happiness: +5, label: "Transit Hub"    },
-      { a: "bike-lane",      b: "park",          congestion: -2, happiness: +3, label: "Green Corridor" },
-      { a: "bus-stop",       b: "bike-lane",     congestion: -3, happiness:  0, label: "Active Streets" },
-      { a: "park",           b: "park",          congestion:  0, happiness: +3, label: "Green Network"  },
-      { a: "parking-garage", b: "bus-stop",      congestion: -3, happiness:  0, label: "Park & Ride"   },
-      { a: "road-widening",  b: "bus-stop",      congestion: -4, happiness:  0, label: "Express Lane"  },
+      { a: "bus-stop",       b: "park",           congestion:  0, happiness: +5, label: "Transit Hub"       },
+      { a: "bike-lane",      b: "park",           congestion: -1, happiness: +5, label: "Pedestrian Zone"   },
+      { a: "bus-stop",       b: "bike-lane",      congestion: -3, happiness:  0, label: "Active Streets"    },
+      { a: "park",           b: "park",           congestion:  0, happiness: +3, label: "Green Network"     },
+      { a: "parking-garage", b: "bus-stop",       congestion: -3, happiness:  0, label: "Park & Ride"      },
+      { a: "road-widening",  b: "bus-stop",       congestion: -4, happiness:  0, label: "Express Lane"     },
+      { a: "parking-garage", b: "park",           congestion: -2, happiness: +6, label: "Green Gateway"    },
+      { a: "parking-garage", b: "bike-lane",      congestion: -3, happiness: +2, label: "Commuter Link"    },
+      { a: "road-widening",  b: "parking-garage", congestion: -5, happiness:  0, label: "Industrial Bypass"},
     ];
 
     function getGridNeighbours(row, col, grid) {
@@ -2899,18 +2931,30 @@
         congestionDelta += cDelta;
         happinessDelta  += hDelta;
       });
-      // Combo bonuses
+      // Bus stop network bonus
+      var busStops = placements.filter(function (p) { return p.action === "bus-stop"; });
+      if (busStops.length >= 2) {
+        busStops.forEach(function (bs) {
+          var hasNear = busStops.some(function (other) {
+            return other !== bs && Math.max(Math.abs(other.row - bs.row), Math.abs(other.col - bs.col)) < 3;
+          });
+          if (!hasNear) congestionDelta -= 3;
+        });
+      }
+      // Combo bonuses (orthogonal = full, diagonal = 50% truncated)
       for (var i = 0; i < placements.length; i++) {
         for (var j = i + 1; j < placements.length; j++) {
           var pi = placements[i], pj = placements[j];
           var adj = (pi.row === pj.row && Math.abs(pi.col - pj.col) === 1) ||
                     (pi.col === pj.col && Math.abs(pi.row - pj.row) === 1);
-          if (!adj) continue;
+          var diag = Math.abs(pi.row - pj.row) === 1 && Math.abs(pi.col - pj.col) === 1;
+          if (!adj && !diag) continue;
+          var mult = adj ? 1 : 0.5;
           var ai = pi.action, aj = pj.action;
           COMBOS.forEach(function (combo) {
             if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
-              congestionDelta += combo.congestion;
-              happinessDelta  += combo.happiness;
+              congestionDelta += Math.trunc(combo.congestion * mult);
+              happinessDelta  += Math.trunc(combo.happiness  * mult);
             }
           });
         }
@@ -2929,9 +2973,10 @@
     // Expose for test harness (test-effects.js loads this via jsdom or similar)
     // ── Difficulty presets ────────────────────────────────────────────────
     var DIFFICULTY_PRESETS = {
-      easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
-      normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
-      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
+      easy:   { budget: 900, turnLimit: 25, blockerRate: 0,    generatorCount: 1 },
+      normal: { budget: 650, turnLimit: 20, blockerRate: 0.03, generatorCount: 2 },
+      hard:   { budget: 480, turnLimit: 15, blockerRate: 0.06, generatorCount: 2 },
+      expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
     };
 
     // ── Puzzle-mechanic constants ─────────────────────────────────────────
@@ -5026,6 +5071,10 @@
 
     // "?" in HUD reopens from slide 1 any time
     hudHelpBtn && hudHelpBtn.addEventListener('click', openTutorial);
+
+    // Close button
+    var closeBtn = document.getElementById('tutorialClose');
+    closeBtn && closeBtn.addEventListener('click', closeTutorial);
 
     // Backdrop click closes
     tutorialEl.addEventListener('click', function (e) {
