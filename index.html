@@ -1095,6 +1095,18 @@
       padding: 2px 6px; border-radius: 8px;
       background: rgba(255,255,255,0.15); color: #fff;
     }
+    .radial-btn__preview {
+      font-size: 9px; color: rgba(255,255,255,0.65); text-align: center; line-height: 1.2;
+      white-space: nowrap;
+    }
+    .radial-btn__preview:empty { display: none; }
+    .radial-btn__combo {
+      font-size: 9px; font-weight: 700;
+      color: #fde68a; background: rgba(161,107,0,.50);
+      border-radius: 6px; padding: 1px 4px;
+      white-space: nowrap; text-align: center;
+    }
+    .radial-btn__combo:empty { display: none; }
 
     .radial-btn--wrong-tile {
       opacity: 0.32 !important;
@@ -1398,26 +1410,36 @@
       <span class="radial-btn__emoji">🚌</span>
       <span class="radial-btn__name">Bus Stop</span>
       <span class="radial-btn__cost" style="background:rgba(245,158,11,0.3);color:#fcd34d;">£80</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-bike-lane" data-action="bike-lane" type="button" aria-label="Bike Lane £40" touch-action="manipulation">
       <span class="radial-btn__emoji">🚲</span>
       <span class="radial-btn__name">Bike Lane</span>
       <span class="radial-btn__cost" style="background:rgba(34,197,94,0.3);color:#86efac;">£40</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-parking-garage" data-action="parking-garage" type="button" aria-label="Parking £120" touch-action="manipulation">
       <span class="radial-btn__emoji">🅿️</span>
       <span class="radial-btn__name">Parking</span>
       <span class="radial-btn__cost" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">£120</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-park" data-action="park" type="button" aria-label="Park £60" touch-action="manipulation">
       <span class="radial-btn__emoji">🌳</span>
       <span class="radial-btn__name">Park</span>
       <span class="radial-btn__cost" style="background:rgba(134,239,172,0.3);color:#bbf7d0;">£60</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
     <button class="radial-btn" id="radialBtn-road-widening" data-action="road-widening" type="button" aria-label="Road Widening £90" touch-action="manipulation">
       <span class="radial-btn__emoji">🚧</span>
       <span class="radial-btn__name">Road Widening</span>
       <span class="radial-btn__cost" style="background:rgba(249,115,22,0.3);color:#fed7aa;">£90</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
     </button>
   </div>
 
@@ -2680,6 +2702,31 @@
         });
       }
 
+      // Preview + combo context
+      const glEffects = (window.GAME_LOGIC && window.GAME_LOGIC.EFFECTS) || {};
+      const glCombos  = (window.GAME_LOGIC && window.GAME_LOGIC.COMBOS)  || [];
+      const weather   = window.currentWeather || 'sunny';
+      const wMults    = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_MULTIPLIERS && window.GAME_LOGIC.WEATHER_MULTIPLIERS[weather]) || {};
+      // Count already-placed actions
+      const placedCounts = {};
+      if (Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (a) placedCounts[a] = (placedCounts[a] || 0) + 1;
+        });
+      }
+      // Adjacent placed tiles for combo detection
+      const adjPlacedActions = [];
+      if (cgTile && Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (!a) return;
+          const ar = (t.row === cgTile.row && Math.abs(t.col - cgTile.col) === 1);
+          const ac = (t.col === cgTile.col && Math.abs(t.row - cgTile.row) === 1);
+          if (ar || ac) adjPlacedActions.push(a);
+        });
+      }
+
       // Show only buttons valid for this tile type; hide the rest entirely
       const visibleBtns = [];
       radialBtns.forEach(function (btn) {
@@ -2702,6 +2749,38 @@
             if (window.GAME_LOGIC.checkZoneCap(capsPlcm, blockId, meta.action, validInBlock)) {
               btn.classList.add('radial-btn--zone-capped');
             }
+          }
+          // Effect preview
+          const previewEl = btn.querySelector('.radial-btn__preview');
+          if (previewEl) {
+            const effect = glEffects[meta.action];
+            if (effect) {
+              const nth     = (placedCounts[meta.action] || 0) + 1;
+              const diminish = Math.pow(0.85, nth - 1);
+              const wm      = wMults[meta.action] || {};
+              const cVal    = Math.round(effect.congestion * diminish * (wm.cong != null ? wm.cong : 1));
+              const hVal    = Math.round(effect.happiness  * diminish * (wm.hap  != null ? wm.hap  : 1));
+              const parts   = [];
+              if (cVal !== 0) parts.push('🚗 ' + (cVal > 0 ? '+' : '') + cVal);
+              if (hVal !== 0) parts.push(hVal >= 0 ? '😊 +' + hVal : '😞 ' + hVal);
+              previewEl.textContent = parts.join(' ');
+            } else {
+              previewEl.textContent = '';
+            }
+          }
+          // Combo hint
+          const comboEl = btn.querySelector('.radial-btn__combo');
+          if (comboEl) {
+            var comboHint = null;
+            for (var ai = 0; ai < adjPlacedActions.length; ai++) {
+              var adjAct = adjPlacedActions[ai];
+              var found  = glCombos.find(function (c) {
+                return (c.a === meta.action && c.b === adjAct) ||
+                       (c.b === meta.action && c.a === adjAct);
+              });
+              if (found) { comboHint = found.label; break; }
+            }
+            comboEl.textContent = comboHint ? '★ ' + comboHint : '';
           }
           visibleBtns.push(btn);
         }
