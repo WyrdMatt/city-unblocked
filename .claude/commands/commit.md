@@ -1,4 +1,10 @@
-Commit the current work on the City Unblocked project. Follow these steps exactly:
+Commit the current work on the Make It Liveable project. Follow these steps exactly:
+
+0. **Definition of Done check** — before committing, verify:
+   - CLAUDE.md is accurate (test count, globals, mechanics, constants)
+   - README.md reflects any player-facing rule or mechanic changes
+   - Skill files in .claude/commands/ are updated if their grep targets changed
+   - New pure logic is in src/ with tests if it can be unit-tested
 
 1. Run `npm test`. If any suite fails, report the failures and STOP — do not commit.
 2. Run `git status` and `git diff --stat` to see what has changed.
