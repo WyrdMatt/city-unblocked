@@ -1158,6 +1158,25 @@
       display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;
     }
     @media (max-width: 440px) { .tutorial-combos { grid-template-columns: 1fr; } }
+
+    @media (max-width: 640px) {
+      .overlay__card--tutorial { max-height: 92vh; }
+      .tutorial-header { padding: 0.75rem 1rem 0.6rem; }
+      .tutorial__heading { font-size: 0.95rem; }
+      .tutorial-slide { padding: 0.75rem 1rem; gap: 0.5rem; }
+      .tutorial-slide__title { font-size: 0.65rem; }
+      .tutorial-footer { padding: 0.55rem 0.75rem; }
+      /* Action row: wrap effects onto a second line on narrow screens */
+      .tutorial-action { flex-wrap: wrap; gap: 0.15rem 0.5rem; }
+      .tutorial-action__fx {
+        min-width: 0; width: 100%;
+        text-align: left; padding-left: 1.9rem;
+      }
+      /* Win cards: reduce internal padding */
+      .tutorial-win__card { padding: 0.45rem 0.5rem; }
+      .tutorial-win__icon { font-size: 1.1rem; }
+      .tutorial-win__target { font-size: 0.9rem; }
+    }
     .tutorial-combo {
       background: rgba(255,255,255,.04); border-radius: 8px;
       padding: 0.45rem 0.65rem; border: 1px solid rgba(255,255,255,.06);
