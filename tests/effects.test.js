@@ -196,12 +196,159 @@ test('no combo: non-adjacent bus-stop+park = sum of individual effects', () => {
 })
 
 describe('COMBOS constant', () => {
-  test('at least 5 combo definitions', () =>
-    expect(COMBOS.length).toBeGreaterThanOrEqual(5))
+  test('at least 9 combo definitions', () =>
+    expect(COMBOS.length).toBeGreaterThanOrEqual(9))
   test('Transit Hub defined', () =>
     expect(COMBOS.some(c => c.a === 'bus-stop' && c.b === 'park' && c.happiness === 5)).toBe(true))
   test('Green Network defined', () =>
     expect(COMBOS.some(c => c.a === 'park' && c.b === 'park')).toBe(true))
+  test('Pedestrian Zone defined (bike+park)', () =>
+    expect(COMBOS.some(c => c.a === 'bike-lane' && c.b === 'park' && c.congestion === -1 && c.happiness === 5)).toBe(true))
+  test('Green Gateway defined (parking+park)', () =>
+    expect(COMBOS.some(c => c.a === 'parking-garage' && c.b === 'park' && c.congestion === -2 && c.happiness === 6)).toBe(true))
+  test('Commuter Link defined (parking+bike)', () =>
+    expect(COMBOS.some(c => c.a === 'parking-garage' && c.b === 'bike-lane' && c.congestion === -3)).toBe(true))
+  test('Industrial Bypass defined (road-widening+parking)', () =>
+    expect(COMBOS.some(c => c.a === 'road-widening' && c.b === 'parking-garage' && c.congestion === -5)).toBe(true))
+})
+
+// ── New combo effects ──────────────────────────────────────────────────────
+
+function isolatedGrid(placements) {
+  const grid = []
+  for (let r = 0; r < 10; r++)
+    for (let c = 0; c < 10; c++)
+      grid.push({ row: r, col: c, type: 'road' })
+  return grid
+}
+
+test('Pedestrian Zone (bike-lane adj park): −1 cong, +5 hap combo bonus', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'bike-lane', row: 5, col: 5 },
+    { action: 'park',      row: 5, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'bike-lane', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'park',      row: 5, col: 6 }], grid)
+  expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 1, 0.01)).toBe(true)
+  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 5, 0.01)).toBe(true)
+})
+
+test('Green Gateway (parking-garage adj park): −2 cong, +6 hap combo bonus', () => {
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'building' },
+    { row: 5, col: 6, type: 'empty' },
+  ])
+  const dCombo = calculateEffects([
+    { action: 'parking-garage', row: 5, col: 5 },
+    { action: 'park',           row: 5, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'parking-garage', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'park',           row: 5, col: 6 }], grid)
+  expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 2, 0.01)).toBe(true)
+  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 6, 0.01)).toBe(true)
+})
+
+test('Commuter Link (parking-garage adj bike-lane): −3 cong, +2 hap combo bonus', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'parking-garage', row: 5, col: 5 },
+    { action: 'bike-lane',      row: 5, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'parking-garage', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'bike-lane',      row: 5, col: 6 }], grid)
+  expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 3, 0.01)).toBe(true)
+  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 2, 0.01)).toBe(true)
+})
+
+test('Industrial Bypass (road-widening adj parking-garage): −5 cong combo bonus', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'road-widening',  row: 5, col: 5 },
+    { action: 'parking-garage', row: 5, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'road-widening',  row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'parking-garage', row: 5, col: 6 }], grid)
+  expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 5, 0.01)).toBe(true)
+  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta,       0.01)).toBe(true)
+})
+
+// ── Diagonal combos ────────────────────────────────────────────────────────
+
+test('diagonal combo fires at 50% (truncated): Transit Hub diagonal gives +2 hap', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+    { action: 'park',     row: 6, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'park',     row: 6, col: 6 }], grid)
+  // Transit Hub: happiness +5 → floor(5×0.5)=2
+  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 2, 0.01)).toBe(true)
+})
+
+test('diagonal combo does not fire at distance 2', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+    { action: 'park',     row: 7, col: 7 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'park',     row: 7, col: 7 }], grid)
+  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta, 0.01)).toBe(true)
+})
+
+test('orthogonal combo still fires at 100% (diagonal logic does not break it)', () => {
+  const grid = isolatedGrid()
+  const dCombo = calculateEffects([
+    { action: 'bus-stop', row: 5, col: 5 },
+    { action: 'park',     row: 5, col: 6 },
+  ], grid)
+  const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
+  const d2 = calculateEffects([{ action: 'park',     row: 5, col: 6 }], grid)
+  // Transit Hub: happiness +5 at full
+  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 5, 0.01)).toBe(true)
+})
+
+// ── Bus stop spacing bonus ─────────────────────────────────────────────────
+
+test('bus stop spacing bonus: two stops ≥3 apart each get −3 congestion', () => {
+  const grid = isolatedGrid()
+  const dSpaced = calculateEffects([
+    { action: 'bus-stop', row: 0, col: 0 },
+    { action: 'bus-stop', row: 0, col: 4 },
+  ], grid)
+  const dClose = calculateEffects([
+    { action: 'bus-stop', row: 0, col: 0 },
+    { action: 'bus-stop', row: 0, col: 2 },
+  ], grid)
+  // spaced: each gets −3 bonus = −6 total more than close
+  expect(approx(dSpaced.congestionDelta, dClose.congestionDelta - 6, 0.01)).toBe(true)
+})
+
+test('bus stop spacing bonus absent when stops are adjacent (Chebyshev < 3)', () => {
+  const grid = isolatedGrid()
+  const dClose = calculateEffects([
+    { action: 'bus-stop', row: 0, col: 0 },
+    { action: 'bus-stop', row: 0, col: 1 },
+  ], grid)
+  const dEach = calculateEffects([{ action: 'bus-stop', row: 0, col: 0 }], grid)
+            .congestionDelta
+        + calculateEffects([{ action: 'bus-stop', row: 0, col: 1 }], grid)
+            .congestionDelta
+  // no bonus — close stops give sum of individual effects only (minus diminishing)
+  // both stops have diminishing returns so we can't use simple sum, just verify no −3 bonus
+  expect(dClose.congestionDelta).toBeGreaterThan(dEach - 6)
+})
+
+test('single bus stop: no spacing bonus applied', () => {
+  const grid = buildGrid([
+    { row: 5, col: 5, type: 'road' }, { row: 4, col: 5, type: 'road' },
+    { row: 6, col: 5, type: 'road' }, { row: 5, col: 4, type: 'road' },
+    { row: 5, col: 6, type: 'road' },
+  ])
+  const d = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
+  expect(approx(d.congestionDelta, -10)).toBe(true)
 })
 
 test('unknown action: no effect', () => {
