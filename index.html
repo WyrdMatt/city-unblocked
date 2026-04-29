@@ -1098,6 +1098,7 @@
       max-width: 520px; width: 92vw; gap: 0;
       background: #0d1424; border: 1px solid rgba(255,255,255,.1);
       padding: 0; overflow: hidden;
+      max-height: 90vh; display: flex; flex-direction: column;
     }
     .tutorial-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -1116,9 +1117,11 @@
     }
     .tutorial-dot--active { background: #60a5fa; transform: scale(1.3); }
     .tutorial-slide {
-      padding: 1.1rem 1.4rem; min-height: 220px;
+      padding: 1.1rem 1.4rem; min-height: 0;
       display: flex; flex-direction: column; gap: 0.7rem;
+      overflow-y: auto; flex: 1;
     }
+    .tutorial-slide[hidden] { display: none; }
     .tutorial-slide__title {
       margin: 0; font-size: 0.68rem; font-weight: 800;
       text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text-label);
