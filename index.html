@@ -555,7 +555,73 @@
     }
     .hud__music-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
 
-    /* ── Sidewalk strips ───────────────────────────────────────────── */
+    /* ── Help (?) button ─────────────────────────────────────────── */
+    .hud__help-btn {
+      flex-shrink: 0;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px; color: var(--c-text-muted);
+      font-size: 0.85rem; font-weight: 800;
+      cursor: pointer; padding: 0.25rem 0.55rem;
+      line-height: 1; font-family: inherit;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__help-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+
+    /* ── Tutorial overlay ────────────────────────────────────────── */
+    .overlay--tutorial { background: rgba(7,8,13,0.93); backdrop-filter: blur(10px); z-index: 700; }
+    .overlay__card--tutorial {
+      max-width: 580px; gap: 1.1rem;
+      background: #0d1424; border: 1px solid rgba(255,255,255,.1);
+    }
+    .tutorial__heading {
+      margin: 0; font-size: 1.4rem; font-weight: 900;
+      letter-spacing: -0.02em; color: var(--c-text-hi);
+    }
+    .tutorial__sub {
+      margin: 0; font-size: 0.8rem; color: var(--c-text-muted);
+    }
+    .tutorial-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; width: 100%; text-align: left;
+    }
+    @media (max-width: 500px) { .tutorial-grid { grid-template-columns: 1fr; } }
+    .tutorial-section {
+      background: rgba(255,255,255,.04); border-radius: 10px;
+      padding: 0.75rem 0.9rem; border: 1px solid rgba(255,255,255,.06);
+    }
+    .tutorial-section__title {
+      margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-label);
+    }
+    .tutorial-section p {
+      margin: 0; font-size: 0.77rem; color: var(--c-text-muted); line-height: 1.55;
+    }
+    .tutorial-section p b { color: var(--c-text); }
+    .tutorial-tiles {
+      margin: 0; padding: 0; list-style: none;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .tutorial-tiles li {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.75rem; color: var(--c-text-muted); line-height: 1.3;
+    }
+    .tutorial-tiles li b { color: var(--c-text); }
+    .tutorial-swatch {
+      width: 14px; height: 14px; border-radius: 3px;
+      flex-shrink: 0; display: inline-block;
+    }
+    .tutorial-swatch--road     { background: #2e3240; border: 1px solid #4e5568; }
+    .tutorial-swatch--building { background: #4e6882; }
+    .tutorial-swatch--empty    { background: #3d5020; }
+    .tutorial__got-it {
+      background: #1d4ed8; color: #fff;
+      font-size: 0.95rem; padding: 0.7rem 2.2rem;
+      margin-top: 0.25rem;
+    }
+    .tutorial__got-it:hover { filter: brightness(1.12); }
+
+    /* Sidewalk strips ───────────────────────────────────────────── */
     .sw-strip {
       position: absolute;
       background: rgba(195, 188, 178, 0.26);
@@ -887,7 +953,7 @@
     .mas-card__hap--sad { color: #f87171; }
 
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
-    .tile, .action-btn, .reset-btn, .hud__music-btn,
+    .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__help-btn,
     .overlay__btn, .hud-meter__track { touch-action: manipulation; }
 
     /* ── Small-screen overlay ────────────────────────────────────── */
@@ -1067,7 +1133,8 @@
 
       /* Music + reset at far right */
       .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
-      .hud__reset-mobile { order: 7; }
+      .hud__help-btn  { order: 7; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 8; }
     }
   </style>
 </head>
@@ -1173,6 +1240,7 @@
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
+    <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
   </header>
 
@@ -1208,6 +1276,43 @@
         <ul class="overlay__built-list" id="gameOverBuiltList"><li>Nothing was built.</li></ul>
       </div>
       <button class="overlay__btn overlay__btn--gameover" id="gameOverRestart" type="button">Try Again</button>
+    </div>
+  </div>
+
+  <!-- ── Tutorial overlay (first-time, Option B cheat sheet) ────────── -->
+  <div class="overlay overlay--tutorial" id="tutorialOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+    <div class="overlay__card overlay__card--tutorial">
+      <h2 class="tutorial__heading" id="tutorialTitle">🏙️ How to Play</h2>
+      <p class="tutorial__sub">One screen. Everything you need to know.</p>
+
+      <div class="tutorial-grid">
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">🗺️ Tile Types</h3>
+          <ul class="tutorial-tiles">
+            <li><span class="tutorial-swatch tutorial-swatch--road"></span>     <b>Road</b> — Bus Stop, Bike Lane, Road Widening</li>
+            <li><span class="tutorial-swatch tutorial-swatch--building"></span> <b>Building</b> — Parking Garage</li>
+            <li><span class="tutorial-swatch tutorial-swatch--empty"></span>    <b>Empty Lot</b> — Park</li>
+          </ul>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">👆 Placing Actions</h3>
+          <p>Tap any tile to open the action fan menu. Tap an action to place it. Each action only works on its matching tile type — wrong tiles are greyed out.</p>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">🏆 How to Win</h3>
+          <p>Get <b>Congestion → 30</b> and <b>Happiness → 70</b> before your budget and turns run out. The coloured zones on the top bars show exactly where you need to be — aim for the green.</p>
+        </div>
+
+        <div class="tutorial-section">
+          <h3 class="tutorial-section__title">⭐ Combos &amp; Weather</h3>
+          <p>Place actions next to each other for bonus effects — <b>Bus Stop + Park</b> unlocks <em>Transit Hub</em>. Weather changes each game and boosts or weakens certain actions.</p>
+        </div>
+      </div>
+
+      <button class="overlay__btn tutorial__got-it" id="tutorialGotIt" type="button">Got it, let's go! →</button>
     </div>
   </div>
 
@@ -3323,6 +3428,55 @@
     // Set initial hint text
     selectDifficulty('normal');
 
+  })();
+  </script>
+
+  <!-- ── Tutorial overlay logic ───────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+    const STORAGE_KEY   = 'cityUnblocked_tutorialSeen';
+    const tutorialEl    = document.getElementById('tutorialOverlay');
+    const gotItBtn      = document.getElementById('tutorialGotIt');
+    const hudHelpBtn    = document.getElementById('hudHelp');
+    const landingPlayBtn = document.getElementById('landingPlay');
+
+    if (!tutorialEl) return;
+
+    function openTutorial() {
+      tutorialEl.removeAttribute('hidden');
+      gotItBtn && gotItBtn.focus();
+    }
+
+    function closeTutorial() {
+      tutorialEl.setAttribute('hidden', '');
+      try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
+    }
+
+    // Show once after the player clicks Play for the first time
+    landingPlayBtn && landingPlayBtn.addEventListener('click', function () {
+      try {
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          setTimeout(openTutorial, 220);
+        }
+      } catch (_) {}
+    });
+
+    // "Got it" dismisses and sets the flag
+    gotItBtn && gotItBtn.addEventListener('click', closeTutorial);
+
+    // "?" in HUD reopens any time
+    hudHelpBtn && hudHelpBtn.addEventListener('click', openTutorial);
+
+    // Backdrop click closes
+    tutorialEl.addEventListener('click', function (e) {
+      if (e.target === tutorialEl) closeTutorial();
+    });
+
+    // Escape closes
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !tutorialEl.hidden) closeTutorial();
+    });
   })();
   </script>
 
