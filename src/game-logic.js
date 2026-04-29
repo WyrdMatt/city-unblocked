@@ -65,9 +65,10 @@ export const CITY_PROFILES = {
 
 // ── Puzzle-mechanic constants ──────────────────────────────────────────────
 
-export const ZONE_CAP        = 2;   // max of same action type per block zone
-export const GENERATOR_DELTA = 3;   // congestion added per unsuppressed generator per recalc
-export const DEMOLISH_COST   = 50;  // budget cost to clear a blocker tile
+export const ZONE_CAP               = 2;   // max of same action type per block zone
+export const GENERATOR_DELTA        = 3;   // congestion added per unsuppressed generator per recalc
+export const GENERATOR_CARBON_DELTA = 2;   // carbon added per unsuppressed generator per recalc
+export const DEMOLISH_COST          = 50;  // budget cost to clear a blocker tile
 
 // ── Puzzle-mechanic helpers ────────────────────────────────────────────────
 
@@ -83,18 +84,22 @@ export function checkZoneCap(placements, blockId, action, validTilesInBlock) {
   return count >= cap;
 }
 
-export function applyGeneratorTick(generatorTiles, placements) {
+export function applyGeneratorTickFull(generatorTiles, placements) {
   const ROAD_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening']);
-  let delta = 0;
+  let congestion = 0, carbon = 0;
   generatorTiles.forEach(gen => {
     const suppressed = placements.some(p => {
       if (!ROAD_ACTIONS.has(p.action)) return false;
       return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
              (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
     });
-    if (!suppressed) delta += GENERATOR_DELTA;
+    if (!suppressed) { congestion += GENERATOR_DELTA; carbon += GENERATOR_CARBON_DELTA; }
   });
-  return delta;
+  return { congestion, carbon };
+}
+
+export function applyGeneratorTick(generatorTiles, placements) {
+  return applyGeneratorTickFull(generatorTiles, placements).congestion;
 }
 
 // ── Weather system ─────────────────────────────────────────────────────────
@@ -188,8 +193,11 @@ export function calculateEffects(placements, grid, weather) {
     let hDelta   = effect.happiness  * diminish;
     let cbnDelta = (effect.carbon || 0) * diminish;
 
-    const neighbours   = getGridNeighbours(p.row, p.col, grid);
-    const adjBuildings = neighbours.filter(n => n.type === 'building').length;
+    const neighbours    = getGridNeighbours(p.row, p.col, grid);
+    const isBldg        = n => n.type === 'building' || n.type === 'commercial' || n.type === 'arena';
+    const adjBuildings  = neighbours.filter(isBldg).length;
+    const adjCommercial = neighbours.filter(n => n.type === 'commercial').length;
+    const adjArena      = neighbours.filter(n => n.type === 'arena').length;
 
     if (p.action === 'park')     hDelta += adjBuildings * 3;
     if (p.action === 'bus-stop') cDelta -= adjBuildings * 2;
@@ -198,6 +206,11 @@ export function calculateEffects(placements, grid, weather) {
       cDelta *= 1.25;
       hDelta *= 1.25;
     }
+
+    // Building sub-type bonuses
+    if (p.action === 'bus-stop' && adjCommercial > 0) cDelta *= 1.25;
+    if (p.action === 'park'     && adjArena > 0)      hDelta += adjArena * 6;
+    if (p.action === 'bus-stop' && adjArena > 0)      cDelta -= adjArena * 5;
 
     if (weather && WEATHER_MULTIPLIERS[weather]) {
       const wm = WEATHER_MULTIPLIERS[weather][p.action] || {};

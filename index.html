@@ -921,6 +921,31 @@
       animation: gen-pulse 1.4s ease-in-out infinite;
     }
 
+    /* ── Commercial tiles (🏪) ──────────────────────────────────────── */
+    .tile.commercial {
+      background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+      box-shadow: inset 0 0 0 1px rgba(251,191,36,.20);
+    }
+    .tile.commercial::after {
+      content: '🏪'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 26px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.6));
+    }
+
+    /* ── Arena tiles (🏟️) ────────────────────────────────────────────── */
+    .tile.arena {
+      background: linear-gradient(180deg, #4338ca 0%, #1e1b4b 100%);
+      box-shadow: inset 0 0 0 2px rgba(167,139,250,.25),
+                  inset 0 0 14px rgba(167,139,250,.10);
+    }
+    .tile.arena::after {
+      content: '🏟️'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 26px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.6));
+    }
+
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -3038,13 +3063,19 @@
         var hDelta   = effect.happiness  * diminish;
         var cbnDelta = (effect.carbon || 0) * diminish;
         var neighbours = getGridNeighbours(p.row, p.col, grid);
-        var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
+        var isBldg = function (n) { return n.type === "building" || n.type === "commercial" || n.type === "arena"; };
+        var adjBuildings  = neighbours.filter(isBldg).length;
+        var adjCommercial = neighbours.filter(function (n) { return n.type === "commercial"; }).length;
+        var adjArena      = neighbours.filter(function (n) { return n.type === "arena"; }).length;
         if (p.action === "park")     hDelta += adjBuildings * 3;
         if (p.action === "bus-stop") cDelta -= adjBuildings * 2;
         if (adjBuildings >= 3 && (p.action === "bus-stop" || p.action === "bike-lane")) {
           cDelta *= 1.25;
           hDelta *= 1.25;
         }
+        if (p.action === "bus-stop" && adjCommercial > 0) cDelta *= 1.25;
+        if (p.action === "park"     && adjArena > 0)      hDelta += adjArena * 6;
+        if (p.action === "bus-stop" && adjArena > 0)      cDelta -= adjArena * 5;
         if (weather && WEATHER_MULTIPLIERS[weather]) {
           var wm = WEATHER_MULTIPLIERS[weather][p.action] || {};
           if (wm.cong != null) cDelta *= wm.cong;
@@ -3128,9 +3159,10 @@
     };
 
     // ── Puzzle-mechanic constants ─────────────────────────────────────────
-    var ZONE_CAP        = 2;
-    var GENERATOR_DELTA = 3;
-    var DEMOLISH_COST   = 50;
+    var ZONE_CAP               = 2;
+    var GENERATOR_DELTA        = 3;
+    var GENERATOR_CARBON_DELTA = 2;
+    var DEMOLISH_COST          = 50;
 
     function getBlockId(row, col, roadRows, roadCols) {
       var rowBand = roadRows.filter(function (r) { return r < row; }).length;
@@ -3144,18 +3176,22 @@
       return count >= cap;
     }
 
-    function applyGeneratorTick(generatorTiles, placements) {
+    function applyGeneratorTickFull(generatorTiles, placements) {
       var ROAD_ACTIONS = ['bus-stop', 'bike-lane', 'road-widening'];
-      var delta = 0;
+      var congestion = 0, carbon = 0;
       generatorTiles.forEach(function (gen) {
         var suppressed = placements.some(function (p) {
           if (ROAD_ACTIONS.indexOf(p.action) === -1) return false;
           return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
                  (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
         });
-        if (!suppressed) delta += GENERATOR_DELTA;
+        if (!suppressed) { congestion += GENERATOR_DELTA; carbon += GENERATOR_CARBON_DELTA; }
       });
-      return delta;
+      return { congestion: congestion, carbon: carbon };
+    }
+
+    function applyGeneratorTick(generatorTiles, placements) {
+      return applyGeneratorTickFull(generatorTiles, placements).congestion;
     }
     var DECAY_RATES    = { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
     var LOSE_THRESHOLDS = { congestion: 100, happiness: 0, carbon: 100 };
@@ -3181,9 +3217,9 @@
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
                           DIFFICULTY_PRESETS, CITY_PROFILES, DECAY_RATES, LOSE_THRESHOLDS,
                           WIN_HAPPINESS, WIN_CONGESTION,
-                          ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
+                          ZONE_CAP, GENERATOR_DELTA, GENERATOR_CARBON_DELTA, DEMOLISH_COST,
                           calculateEffects, checkWinCondition, getGridNeighbours,
-                          getBlockId, checkZoneCap, applyGeneratorTick };
+                          getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: 15 };
@@ -3227,17 +3263,17 @@
         return { row: t.row, col: t.col, type: t.type };
       });
 
-      var delta      = calculateEffects(placements, gridData, window.currentWeather || null);
-      var genPenalty = applyGeneratorTick(generatorTiles, placements);
+      var delta   = calculateEffects(placements, gridData, window.currentWeather || null);
+      var genTick = applyGeneratorTickFull(generatorTiles, placements);
 
       var gs   = window.gameState;
       var turn = gs.turn;  // turns elapsed before this recalc
       gs.congestion = Math.max(0, Math.min(100,
-        INITIAL.congestion + (turn * DECAY_RATES.congestion) + delta.congestionDelta + genPenalty));
+        INITIAL.congestion + (turn * DECAY_RATES.congestion) + delta.congestionDelta + genTick.congestion));
       gs.happiness  = Math.max(0, Math.min(100,
         INITIAL.happiness  + (turn * DECAY_RATES.happiness)  + delta.happinessDelta));
       gs.carbon     = Math.max(0, Math.min(100,
-        INITIAL.carbon     + (turn * DECAY_RATES.carbon)     + (delta.carbonDelta || 0)));
+        INITIAL.carbon     + (turn * DECAY_RATES.carbon)     + (delta.carbonDelta || 0) + genTick.carbon));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
       // Update generator tile firing visual
@@ -3366,6 +3402,7 @@
       parkCount:      2,    // decorative (pre-existing) park tiles per map
       blockerRate:    0,    // fraction of building tiles → impassable blocker (0 = none)
       generatorCount: 0,    // number of traffic-generator tiles placed adjacent to roads
+      commercialRate: 0.10, // fraction of remaining building tiles → commercial 🏪
     };
 
     /* ── Neighbour helper ────────────────────────────────────────── */
@@ -3535,6 +3572,38 @@
         }
       }
 
+      // Step 6 — Commercial tiles: convert ~10% of remaining building tiles to commercial
+      if (cfg.commercialRate > 0) {
+        var commercialPool = [];
+        for (var r = 0; r < cfg.rows; r++)
+          for (var c = 0; c < cfg.cols; c++)
+            if (grid[r][c] === 'B') commercialPool.push([r, c]);
+        for (var i = commercialPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = commercialPool[i]; commercialPool[i] = commercialPool[j]; commercialPool[j] = tmp;
+        }
+        var commercialCount = Math.floor(commercialPool.length * cfg.commercialRate);
+        for (var i = 0; i < commercialCount; i++) grid[commercialPool[i][0]][commercialPool[i][1]] = 'C';
+      }
+
+      // Step 7 — Arena tiles: place 1–2 arenas on high-adjacency building cells
+      var arenaCandidates = [];
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          if (grid[r][c] !== 'B') continue;
+          var adjBldg = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                         .filter(function (t) { return t === 'B' || t === 'C'; }).length;
+          if (adjBldg >= 2) arenaCandidates.push([r, c, adjBldg]);
+        }
+      }
+      arenaCandidates.sort(function (a, b) { return (b[2] - a[2]) + (rng() - 0.5) * 0.6; });
+      var arenaCount = 1 + Math.floor(rng() * 2); // 1 or 2
+      var arenaPlaced = 0;
+      for (var i = 0; i < arenaCandidates.length && arenaPlaced < arenaCount; i++) {
+        grid[arenaCandidates[i][0]][arenaCandidates[i][1]] = 'A';
+        arenaPlaced++;
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -3549,7 +3618,7 @@
           counts[t] = (counts[t] || 0) + 1;
           if (t === 'E') {
             var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
-                         .filter(function (n) { return n === 'B' || n === 'P'; }).length;
+                         .filter(function (n) { return n === 'B' || n === 'P' || n === 'C' || n === 'A'; }).length;
             if (adjB > 0) emptyWithAdj++;
           }
         }
@@ -3573,7 +3642,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker', G:'generator' };
+    const TYPE_MAP = { R:'road', B:'building', C:'commercial', A:'arena', P:'park', E:'empty', X:'blocker', G:'generator' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -3608,7 +3677,7 @@
             hotspot = [[-1,0],[1,0],[0,-1],[0,1]].filter(([dr,dc]) => {
               const nr = r+dr, nc = c+dc;
               return nr >= 0 && nr < layout.length && nc >= 0 && nc < layout[0].length &&
-                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P');
+                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P' || layout[nr][nc] === 'C' || layout[nr][nc] === 'A');
             }).length;
             if (hotspot >= 1) el.dataset.hotspot = hotspot;
           }
@@ -3762,7 +3831,7 @@
     const RADIAL_ACTIONS = [
       { action: 'bus-stop',       cost: 80,  color: '#f59e0b', emoji: '🚌', validTiles: ['road'] },
       { action: 'bike-lane',      cost: 40,  color: '#22c55e', emoji: '🚲', validTiles: ['road'] },
-      { action: 'parking-garage', cost: 120, color: '#6366f1', emoji: '🅿️', validTiles: ['building'] },
+      { action: 'parking-garage', cost: 120, color: '#6366f1', emoji: '🅿️', validTiles: ['building', 'commercial', 'arena'] },
       { action: 'park',           cost: 60,  color: '#86efac', emoji: '🌳', validTiles: ['empty'] },
       { action: 'road-widening',  cost: 90,  color: '#f97316', emoji: '🚧', validTiles: ['road'] },
     ];
@@ -3803,7 +3872,7 @@
       radialCloseTimer = null;
       if (typeof window.playSFX === 'function') window.playSFX('tick');
 
-      const TILE_TYPES = ['road', 'building', 'park', 'empty'];
+      const TILE_TYPES = ['road', 'building', 'commercial', 'arena', 'park', 'empty'];
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
       const budget     = window.gameState?.budget ?? 0;
 

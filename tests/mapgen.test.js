@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
   rows: 12, cols: 12, minRoads: 2, maxRoads: 4,
   minBlockSize: 2, emptyRate: 0.20, parkCount: 2,
   blockerRate: 0, generatorCount: 0,
+  commercialRate: 0.10,
 }
 
 function nbValues(grid, r, c, rows, cols) {
@@ -151,6 +152,38 @@ function generateMap(userConfig) {
     for (let i = 0; i < toPlace; i++) grid[genPool[i][0]][genPool[i][1]] = 'G'
   }
 
+  // Step 6 — Commercial tiles: convert ~10% of remaining building tiles to commercial
+  if (cfg.commercialRate > 0) {
+    const commercialPool = []
+    for (let r = 0; r < cfg.rows; r++)
+      for (let c = 0; c < cfg.cols; c++)
+        if (grid[r][c] === 'B') commercialPool.push([r, c])
+    for (let i = commercialPool.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      const tmp = commercialPool[i]; commercialPool[i] = commercialPool[j]; commercialPool[j] = tmp
+    }
+    const commercialCount = Math.floor(commercialPool.length * cfg.commercialRate)
+    for (let i = 0; i < commercialCount; i++) grid[commercialPool[i][0]][commercialPool[i][1]] = 'C'
+  }
+
+  // Step 7 — Arena tiles: place 1–2 arenas on high-adjacency building cells
+  const arenaCandidates = []
+  for (let r = 0; r < cfg.rows; r++) {
+    for (let c = 0; c < cfg.cols; c++) {
+      if (grid[r][c] !== 'B') continue
+      const adjBldg = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                       .filter(t => t === 'B' || t === 'C').length
+      if (adjBldg >= 2) arenaCandidates.push([r, c, adjBldg])
+    }
+  }
+  arenaCandidates.sort((a, b) => (b[2] - a[2]) + (rng() - 0.5) * 0.6)
+  const arenaCount = 1 + Math.floor(rng() * 2) // 1 or 2
+  let arenaPlaced = 0
+  for (let i = 0; i < arenaCandidates.length && arenaPlaced < arenaCount; i++) {
+    grid[arenaCandidates[i][0]][arenaCandidates[i][1]] = 'A'
+    arenaPlaced++
+  }
+
   return { grid, seed, config: cfg, roadRows, roadCols }
 }
 
@@ -163,7 +196,7 @@ function validateMap(grid, cfg) {
       counts[t] = (counts[t] || 0) + 1
       if (t === 'E') {
         const adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
-          .filter(n => n === 'B' || n === 'P').length
+          .filter(n => n === 'B' || n === 'P' || n === 'C' || n === 'A').length
         if (adjB > 0) emptyWithAdj++
       }
     }
@@ -180,7 +213,7 @@ function validateMap(grid, cfg) {
 function runChecks(map) {
   const { grid, seed, config: cfg, roadRows, roadCols } = map
   const failures = []
-  const VALID = { R: true, B: true, E: true, P: true, X: true, G: true }
+  const VALID = { R: true, B: true, C: true, A: true, E: true, P: true, X: true, G: true }
 
   if (grid.length !== cfg.rows)
     failures.push(`grid has ${grid.length} rows, expected ${cfg.rows}`)
@@ -227,7 +260,8 @@ function runChecks(map) {
   grid.forEach((row, r) => {
     row.forEach((t, c) => {
       if (t !== 'E') return
-      const adjB = nbValues(grid, r, c, cfg.rows, cfg.cols).filter(n => n === 'B' || n === 'P').length
+      const adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+        .filter(n => n === 'B' || n === 'P' || n === 'C' || n === 'A').length
       if (adjB === 0) failures.push(`empty lot at (${r},${c}) has no adjacent building`)
     })
   })
@@ -235,7 +269,8 @@ function runChecks(map) {
   grid.forEach((row, r) => {
     row.forEach((t, c) => {
       if (t !== 'P') return
-      const adjB = nbValues(grid, r, c, cfg.rows, cfg.cols).filter(n => n === 'B').length
+      const adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
+        .filter(n => n === 'B' || n === 'C' || n === 'A').length
       if (adjB < 2) failures.push(`park at (${r},${c}) has only ${adjB} building neighbour(s), need ≥2`)
     })
   })
@@ -304,7 +339,7 @@ describe('specific seeds and invariants', () => {
 
   test('all tile codes are valid (no blocker/gen by default)', () => {
     const map = generateMap({ seed: 200 })
-    const VALID = new Set(['R', 'B', 'E', 'P'])
+    const VALID = new Set(['R', 'B', 'C', 'A', 'E', 'P'])
     map.grid.forEach(row => row.forEach(t => expect(VALID.has(t)).toBe(true)))
   })
 
@@ -409,5 +444,106 @@ describe('generator tiles (G)', () => {
     const map = generateMap({ seed: 10, blockerRate: 0.05, generatorCount: 2 })
     expect(map.grid.flat().filter(t => t === 'G').length).toBe(2)
     expect(map.grid.flat().filter(t => t === 'X').length).toBeGreaterThan(0)
+  })
+})
+
+describe('commercial tiles (C)', () => {
+  test('no commercial when commercialRate = 0', () => {
+    const map = generateMap({ seed: 1, commercialRate: 0 })
+    expect(map.grid.flat().filter(t => t === 'C').length).toBe(0)
+  })
+
+  test('commercial tiles appear with default commercialRate 0.10', () => {
+    const map = generateMap({ seed: 1 })
+    expect(map.grid.flat().filter(t => t === 'C').length).toBeGreaterThan(0)
+  })
+
+  test('commercial tiles are deterministic per seed', () => {
+    const a = generateMap({ seed: 55 })
+    const b = generateMap({ seed: 55 })
+    expect(a.grid).toEqual(b.grid)
+  })
+
+  test('commercial tiles are never on road tiles', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const { grid, roadRows, roadCols } = generateMap({ seed })
+      const roadRowSet = new Set(roadRows), roadColSet = new Set(roadCols)
+      grid.forEach((row, r) => row.forEach((t, c) => {
+        if (t === 'C') {
+          expect(roadRowSet.has(r), `C at road row ${r} seed=${seed}`).toBe(false)
+          expect(roadColSet.has(c), `C at road col ${c} seed=${seed}`).toBe(false)
+        }
+      }))
+    }
+  })
+
+  test('higher commercialRate produces more commercial tiles', () => {
+    const low  = generateMap({ seed: 7, commercialRate: 0.05 }).grid.flat().filter(t => t === 'C').length
+    const high = generateMap({ seed: 7, commercialRate: 0.30 }).grid.flat().filter(t => t === 'C').length
+    expect(high).toBeGreaterThan(low)
+  })
+
+  test('5000 random seeds all pass checks with commercialRate=0.10', () => {
+    const failedSeeds = []
+    for (let i = 0; i < 200; i++) {
+      const map = generateMap({ commercialRate: 0.10 })
+      const failures = runChecks(map)
+      if (failures.length > 0) failedSeeds.push({ seed: map.seed, failures })
+    }
+    expect(failedSeeds.map(f => `seed=${f.seed}: ${f.failures[0]}`)).toEqual([])
+  })
+})
+
+describe('arena tiles (A)', () => {
+  test('arena tiles appear by default (1 or 2 per map)', () => {
+    let mapsWithArena = 0
+    for (let seed = 1; seed <= 50; seed++) {
+      const map = generateMap({ seed })
+      const count = map.grid.flat().filter(t => t === 'A').length
+      if (count > 0) mapsWithArena++
+      expect(count, `seed=${seed} arena count`).toBeLessThanOrEqual(2)
+    }
+    expect(mapsWithArena, 'most maps should have arenas').toBeGreaterThan(40)
+  })
+
+  test('arena tiles are deterministic per seed', () => {
+    const a = generateMap({ seed: 123 })
+    const b = generateMap({ seed: 123 })
+    expect(a.grid).toEqual(b.grid)
+  })
+
+  test('arena tiles are never on road tiles', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const { grid, roadRows, roadCols } = generateMap({ seed })
+      const roadRowSet = new Set(roadRows), roadColSet = new Set(roadCols)
+      grid.forEach((row, r) => row.forEach((t, c) => {
+        if (t === 'A') {
+          expect(roadRowSet.has(r), `A at road row ${r} seed=${seed}`).toBe(false)
+          expect(roadColSet.has(c), `A at road col ${c} seed=${seed}`).toBe(false)
+        }
+      }))
+    }
+  })
+
+  test('arena tiles have ≥2 adjacent building/commercial neighbours', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const { grid, config: cfg } = generateMap({ seed })
+      grid.forEach((row, r) => row.forEach((t, c) => {
+        if (t !== 'A') return
+        const adjBldg = nbValues(grid, r, c, cfg.rows, cfg.cols)
+          .filter(n => n === 'B' || n === 'C' || n === 'A').length
+        expect(adjBldg, `A at (${r},${c}) seed=${seed}`).toBeGreaterThanOrEqual(2)
+      }))
+    }
+  })
+
+  test('200 random seeds all pass checks with arenas enabled', () => {
+    const failedSeeds = []
+    for (let i = 0; i < 200; i++) {
+      const map = generateMap()
+      const failures = runChecks(map)
+      if (failures.length > 0) failedSeeds.push({ seed: map.seed, failures })
+    }
+    expect(failedSeeds.map(f => `seed=${f.seed}: ${f.failures[0]}`)).toEqual([])
   })
 })
