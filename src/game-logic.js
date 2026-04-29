@@ -5,11 +5,11 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export const EFFECTS = {
-  'bus-stop':       { congestion: -10, happiness:  +6 },
-  'bike-lane':      { congestion:  -6, happiness:  +8 },
-  'parking-garage': { congestion:  -8, happiness:  +4 },
-  'park':           { congestion:  -4, happiness: +12 },
-  'road-widening':  { congestion: -15, happiness:  -5 },
+  'bus-stop':       { congestion: -10, happiness:  +6, carbon:  -3 },
+  'bike-lane':      { congestion:  -6, happiness:  +8, carbon:  -5 },
+  'parking-garage': { congestion:  -8, happiness:  +4, carbon:  +4 },
+  'park':           { congestion:  -4, happiness: +12, carbon:  -6 },
+  'road-widening':  { congestion: -15, happiness:  -5, carbon:  +8 },
 };
 
 export const WIN_HAPPINESS  = 70;
@@ -146,6 +146,7 @@ export function calculateEffects(placements, grid, weather) {
   const remaining = { ...placedCount };
   let congestionDelta = 0;
   let happinessDelta  = 0;
+  let carbonDelta     = 0;
 
   placements.forEach(p => {
     const effect = EFFECTS[p.action];
@@ -155,8 +156,9 @@ export function calculateEffects(placements, grid, weather) {
     remaining[p.action]--;
     const diminish = Math.pow(0.85, nth - 1);
 
-    let cDelta = effect.congestion * diminish;
-    let hDelta = effect.happiness  * diminish;
+    let cDelta   = effect.congestion * diminish;
+    let hDelta   = effect.happiness  * diminish;
+    let cbnDelta = (effect.carbon || 0) * diminish;
 
     const neighbours   = getGridNeighbours(p.row, p.col, grid);
     const adjBuildings = neighbours.filter(n => n.type === 'building').length;
@@ -177,6 +179,7 @@ export function calculateEffects(placements, grid, weather) {
 
     congestionDelta += cDelta;
     happinessDelta  += hDelta;
+    carbonDelta     += cbnDelta;
   });
 
   // Bus stop network bonus: each stop ≥3 Chebyshev from every other stop gets −3 congestion
@@ -208,7 +211,7 @@ export function calculateEffects(placements, grid, weather) {
     }
   }
 
-  return { congestionDelta, happinessDelta };
+  return { congestionDelta, happinessDelta, carbonDelta };
 }
 
 // ── checkWinCondition ──────────────────────────────────────────────────────
@@ -216,6 +219,7 @@ export function calculateEffects(placements, grid, weather) {
 export function checkWinCondition(state) {
   const happiness     = state.happiness     || 0;
   const congestion    = state.congestion    || 0;
+  const carbon        = state.carbon        ?? 0;
   const budget        = state.budget        || 0;
   const minActionCost = state.minActionCost || 0;
   const turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
@@ -223,6 +227,7 @@ export function checkWinCondition(state) {
   if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
   if (congestion >= LOSE_THRESHOLDS.congestion) return 'lose';
   if (happiness <= LOSE_THRESHOLDS.happiness) return 'lose';
+  if (carbon >= LOSE_THRESHOLDS.carbon) return 'lose';
   if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return 'lose';
   if (turnsLeft <= 0) return 'lose';
   return 'playing';

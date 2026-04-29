@@ -48,6 +48,8 @@
       --c-happy-2:      #34d399;
       --c-cong-1:       #dc2626;
       --c-cong-2:       #f87171;
+      --c-carbon-1:     #15803d;
+      --c-carbon-2:     #4ade80;
 
       /* Road */
       --c-road:         #2e3240;
@@ -170,13 +172,20 @@
         rgba(251,146,60,.20) 30%, rgba(251,146,60,.20) 50%,
         rgba(220,38,38,.20)  50%, rgba(220,38,38,.20)  100%);
     }
+    .hud-meter--carbon .hud-meter__track {
+      background: linear-gradient(90deg,
+        rgba(16,185,129,.20) 0%,  rgba(16,185,129,.20) 40%,
+        rgba(251,146,60,.20) 40%, rgba(251,146,60,.20) 70%,
+        rgba(220,38,38,.20)  70%, rgba(220,38,38,.20)  100%);
+    }
     .hud-meter__fill {
       position: absolute; inset: 0 auto 0 0; width: 0%;
       border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
       clip-path: inset(0 round 999px);
     }
-    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
+    .hud-meter--happiness .hud-meter__fill  { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
     .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg, var(--c-cong-1), var(--c-cong-2)); }
+    .hud-meter--carbon .hud-meter__fill     { background: linear-gradient(90deg, var(--c-carbon-1), var(--c-carbon-2)); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
     .hud-meter__mobile-stat {
       font-size: 0.75rem; font-weight: 800; color: var(--c-text);
@@ -1924,6 +1933,16 @@
         <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
         <span class="hud-meter__mobile-stat" id="congestionMobileStat" aria-hidden="true"></span>
       </div>
+      <div class="hud-meter hud-meter--carbon">
+        <span class="hud-meter__label"><span aria-hidden="true">🌿</span> Carbon <span class="hud-meter__decay" id="carbonDecay" aria-hidden="true"></span></span>
+        <div class="hud-meter__track" role="progressbar" aria-label="Carbon emissions"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="carbonBar">
+          <div class="hud-meter__fill" id="carbonFill"></div>
+        </div>
+        <span class="hud-meter__value" id="carbonValue">0</span>
+        <span class="hud-meter__delta" id="carbonDelta" aria-live="polite"></span>
+        <span class="hud-meter__mobile-stat" id="carbonMobileStat" aria-hidden="true"></span>
+      </div>
     </div>
     <div class="hud__turns" aria-label="Turns remaining">
       <span class="hud__turns-label">Turns</span>
@@ -2539,6 +2558,12 @@
     const congestionMobileStat = document.getElementById("congestionMobileStat");
     const happinessDecayEl  = document.getElementById("happinessDecay");
     const congestionDecayEl = document.getElementById("congestionDecay");
+    const carbonFill        = document.getElementById("carbonFill");
+    const carbonBar         = document.getElementById("carbonBar");
+    const carbonValue       = document.getElementById("carbonValue");
+    const carbonDeltaEl     = document.getElementById("carbonDelta");
+    const carbonDecayEl     = document.getElementById("carbonDecay");
+    const carbonMobileStat  = document.getElementById("carbonMobileStat");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl   = document.getElementById("weatherBadge");
     const weatherIconEl    = document.getElementById("weatherIcon");
@@ -2610,9 +2635,21 @@
         congestionMobileStat.classList.toggle("hud-meter__value--close", congClose);
       }
 
-      const DR = (window.DECAY_RATES) || { congestion: 1.5, happiness: -1.5 };
+      const carbon = clamp(gs.carbon ?? 0, 0, 100);
+      if (carbonFill) {
+        carbonFill.style.width = carbon + "%";
+        carbonBar.setAttribute("aria-valuenow", Math.round(carbon));
+        carbonFill.classList.toggle("hud-meter__fill--critical", carbon > 80);
+        updateDelta(carbonDeltaEl, carbon, 100, true);
+        const cbnDone = false; // no universal win target — profile-dependent
+        carbonValue.textContent = Math.round(carbon) + "/100";
+        if (carbonMobileStat) carbonMobileStat.textContent = Math.round(carbon) + "/100";
+      }
+
+      const DR = (window.DECAY_RATES) || { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
       if (happinessDecayEl)  happinessDecayEl.textContent  = DR.happiness + "/t";
       if (congestionDecayEl) congestionDecayEl.textContent = "+" + DR.congestion + "/t";
+      if (carbonDecayEl)     carbonDecayEl.textContent     = "+" + DR.carbon + "/t";
 
       const turnsLeft = turnLimit - turn;
       turnsValueEl.textContent = turn + " / " + turnLimit;
@@ -2848,11 +2885,11 @@
     // For Node testing use game-logic.js directly.
 
     var EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness:  +6 },
-      "bike-lane":      { congestion:  -6, happiness:  +8 },
-      "parking-garage": { congestion:  -8, happiness:  +4 },
-      "park":           { congestion:  -4, happiness: +12 },
-      "road-widening":  { congestion: -15, happiness:  -5 },
+      "bus-stop":       { congestion: -10, happiness:  +6, carbon:  -3 },
+      "bike-lane":      { congestion:  -6, happiness:  +8, carbon:  -5 },
+      "parking-garage": { congestion:  -8, happiness:  +4, carbon:  +4 },
+      "park":           { congestion:  -4, happiness: +12, carbon:  -6 },
+      "road-widening":  { congestion: -15, happiness:  -5, carbon:  +8 },
     };
 
     var WIN_HAPPINESS  = 70;
@@ -2919,15 +2956,16 @@
         placedCount[p.action] = (placedCount[p.action] || 0) + 1;
       });
       var remaining = Object.assign({}, placedCount);
-      var congestionDelta = 0, happinessDelta = 0;
+      var congestionDelta = 0, happinessDelta = 0, carbonDelta = 0;
       placements.forEach(function (p) {
         var effect = EFFECTS[p.action];
         if (!effect) return;
         var nth = remaining[p.action];
         remaining[p.action]--;
         var diminish = Math.pow(0.85, nth - 1);
-        var cDelta = effect.congestion * diminish;
-        var hDelta = effect.happiness  * diminish;
+        var cDelta   = effect.congestion * diminish;
+        var hDelta   = effect.happiness  * diminish;
+        var cbnDelta = (effect.carbon || 0) * diminish;
         var neighbours = getGridNeighbours(p.row, p.col, grid);
         var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
         if (p.action === "park")     hDelta += adjBuildings * 3;
@@ -2943,6 +2981,7 @@
         }
         congestionDelta += cDelta;
         happinessDelta  += hDelta;
+        carbonDelta     += cbnDelta;
       });
       // Bus stop network bonus
       var busStops = placements.filter(function (p) { return p.action === "bus-stop"; });
@@ -2972,7 +3011,7 @@
           });
         }
       }
-      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta };
+      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta, carbonDelta: carbonDelta };
     }
 
     function checkWinCondition(state) {
@@ -3146,6 +3185,7 @@
         var loseReason = turnsLeft <= 0 ? "turns"
           : gs.congestion >= LOSE_THRESHOLDS.congestion ? "congestion"
           : gs.happiness  <= LOSE_THRESHOLDS.happiness  ? "happiness"
+          : gs.carbon     >= LOSE_THRESHOLDS.carbon     ? "carbon"
           : "budget";
         if (typeof window.showGameOverScreen === "function") window.showGameOverScreen(loseReason);
       }

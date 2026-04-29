@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import {
   DECAY_RATES, LOSE_THRESHOLDS, INITIAL_STATE, WIN_HAPPINESS, WIN_CONGESTION,
-  checkWinCondition,
+  checkWinCondition, calculateEffects,
 } from '../src/game-logic.js'
 
 // ── DECAY_RATES ────────────────────────────────────────────────────────────
@@ -93,4 +93,15 @@ test('decay is additive with placement effects (not multiplicative)', () => {
   const expected = INITIAL_STATE.congestion + (turn * DECAY_RATES.congestion) + placementCongDelta
   // formula: INITIAL + (turn × rate) + effects  — simple addition, no multiplier
   expect(expected).toBeCloseTo(55 + 7.5 - 10, 5)
+})
+
+test('carbon decay is additive with placement effects (park reduces carbon)', () => {
+  const roadGrid = Array.from({ length: 100 }, (_, i) => ({
+    row: Math.floor(i / 10), col: i % 10, type: 'building',
+  }))
+  const turn = 10
+  const delta = calculateEffects([{ action: 'park', row: 0, col: 0 }], roadGrid)
+  const carbon = INITIAL_STATE.carbon + (turn * DECAY_RATES.carbon) + delta.carbonDelta
+  // 35 + 10 - 6 = 39
+  expect(carbon).toBeCloseTo(39, 5)
 })

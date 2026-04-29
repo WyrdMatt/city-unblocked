@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest'
 import {
   EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
   WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
+  LOSE_THRESHOLDS,
   getGridNeighbours, hotspotScore, calculateEffects, checkWinCondition,
 } from '../src/game-logic.js'
 
@@ -453,4 +454,67 @@ describe('calculateEffects with weather', () => {
     const dNull = calculateEffects(p, grid, null)
     expect(approx(dNone.happinessDelta, dNull.happinessDelta, 0.01)).toBe(true)
   })
+})
+
+// ── Carbon effects ─────────────────────────────────────────────────────────
+
+describe('EFFECTS carbon values', () => {
+  test('bus-stop has carbon -3',       () => expect(EFFECTS['bus-stop'].carbon).toBe(-3))
+  test('bike-lane has carbon -5',      () => expect(EFFECTS['bike-lane'].carbon).toBe(-5))
+  test('parking-garage has carbon +4', () => expect(EFFECTS['parking-garage'].carbon).toBe(4))
+  test('park has carbon -6',           () => expect(EFFECTS['park'].carbon).toBe(-6))
+  test('road-widening has carbon +8',  () => expect(EFFECTS['road-widening'].carbon).toBe(8))
+})
+
+describe('calculateEffects returns carbonDelta', () => {
+  const roadGrid = () => buildGrid(
+    Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+  )
+
+  test('single park: carbonDelta = -6', () => {
+    const d = calculateEffects([{ action: 'park', row: 5, col: 5 }], buildGrid())
+    expect(approx(d.carbonDelta, -6, 0.001)).toBe(true)
+  })
+
+  test('single road-widening: carbonDelta = +8', () => {
+    const d = calculateEffects([{ action: 'road-widening', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.carbonDelta, 8, 0.001)).toBe(true)
+  })
+
+  test('single bus-stop: carbonDelta = -3', () => {
+    const d = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.carbonDelta, -3, 0.001)).toBe(true)
+  })
+
+  test('carbon diminishing returns: 2× park = -6 + (-6×0.85) = -11.1', () => {
+    const d = calculateEffects(
+      [{ action: 'park', row: 0, col: 0 }, { action: 'park', row: 5, col: 5 }],
+      buildGrid()
+    )
+    expect(approx(d.carbonDelta, -6 + (-6 * 0.85), 0.01)).toBe(true)
+  })
+
+  test('mixed actions: park + road-widening carbon sums correctly', () => {
+    const d = calculateEffects(
+      [{ action: 'park', row: 0, col: 0 }, { action: 'road-widening', row: 5, col: 5 }],
+      buildGrid([{ row: 5, col: 5, type: 'road' }])
+    )
+    expect(approx(d.carbonDelta, -6 + 8, 0.01)).toBe(true)
+  })
+})
+
+describe('checkWinCondition: carbon lose threshold', () => {
+  test('carbon = 100 → lose', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, carbon: 100, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('lose'))
+
+  test('carbon = 99 → playing', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, carbon: 99, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('playing'))
+
+  test('carbon omitted (undefined) → no lose triggered', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('playing'))
+
+  test('win takes priority over high carbon', () =>
+    expect(checkWinCondition({ happiness: WIN_HAPPINESS, congestion: WIN_CONGESTION, carbon: 100, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('win'))
+
+  test('LOSE_THRESHOLDS.carbon is 100', () => expect(LOSE_THRESHOLDS.carbon).toBe(100))
 })
