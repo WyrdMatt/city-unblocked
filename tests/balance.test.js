@@ -247,3 +247,36 @@ describe('Test 13: generator penalty affects congestion', () => {
     expect(applyGeneratorTick(gens, roadActs)).toBe(0)
   })
 })
+
+describe('Test 14: difficulty preset values', () => {
+  test('easy budget is £900', () => expect(DIFFICULTY_PRESETS.easy.budget).toBe(900))
+  test('normal budget is £650', () => expect(DIFFICULTY_PRESETS.normal.budget).toBe(650))
+  test('hard budget is £480', () => expect(DIFFICULTY_PRESETS.hard.budget).toBe(480))
+  test('easy turn limit is 25', () => expect(DIFFICULTY_PRESETS.easy.turnLimit).toBe(25))
+  test('normal turn limit is 20', () => expect(DIFFICULTY_PRESETS.normal.turnLimit).toBe(20))
+  test('hard turn limit is 15', () => expect(DIFFICULTY_PRESETS.hard.turnLimit).toBe(15))
+  test('expert tier exists', () => expect(DIFFICULTY_PRESETS.expert).toBeDefined())
+  test('expert budget is £300', () => expect(DIFFICULTY_PRESETS.expert.budget).toBe(300))
+  test('expert turn limit is 10', () => expect(DIFFICULTY_PRESETS.expert.turnLimit).toBe(10))
+  test('expert has more blockers than hard', () =>
+    expect(DIFFICULTY_PRESETS.expert.blockerRate).toBeGreaterThan(DIFFICULTY_PRESETS.hard.blockerRate))
+  test('expert has more generators than hard', () =>
+    expect(DIFFICULTY_PRESETS.expert.generatorCount).toBeGreaterThan(DIFFICULTY_PRESETS.hard.generatorCount))
+})
+
+describe('Test 15: expert difficulty — actions still make meaningful progress', () => {
+  // Expert starts with tougher INITIAL_STATE in PR2 (cong 55, hap 45).
+  // From current INITIAL_STATE (80/20), budget £300 cannot reach both win thresholds
+  // in a small sim — that is by design. We verify actions reduce congestion significantly.
+  test('road-widening + bus-stop + bus-stop within budget cuts congestion by ≥ 40', () => {
+    const acts = [
+      { action: 'road-widening', row: 0, col: 1 },
+      { action: 'bus-stop',      row: 1, col: 1 },
+      { action: 'bus-stop',      row: 2, col: 1 },
+    ]
+    const cost  = acts.reduce((s, a) => s + actionCost(a.action), 0)
+    const delta = calculateEffects(acts, buildMaxAdjGrid())
+    expect(cost).toBeLessThanOrEqual(DIFFICULTY_PRESETS.expert.budget)
+    expect(delta.congestionDelta).toBeLessThan(-40)
+  })
+})

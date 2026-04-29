@@ -14,7 +14,7 @@ function makeRNG(seed) {
 }
 
 const DEFAULT_CONFIG = {
-  rows: 10, cols: 10, minRoads: 2, maxRoads: 3,
+  rows: 12, cols: 12, minRoads: 2, maxRoads: 4,
   minBlockSize: 2, emptyRate: 0.20, parkCount: 2,
   blockerRate: 0, generatorCount: 0,
 }
@@ -273,7 +273,7 @@ test(`map generation: ${RUNS} random seeds all pass all structural checks`, () =
 })
 
 describe('specific seeds and invariants', () => {
-  test('seed 1 generates a valid 10×10 map', () => {
+  test('seed 1 generates a valid 12×12 map', () => {
     const map = generateMap({ seed: 1 })
     expect(runChecks(map)).toEqual([])
   })
@@ -298,8 +298,8 @@ describe('specific seeds and invariants', () => {
 
   test('grid dimensions match default config', () => {
     const map = generateMap({ seed: 100 })
-    expect(map.grid.length).toBe(10)
-    map.grid.forEach(row => expect(row.length).toBe(10))
+    expect(map.grid.length).toBe(12)
+    map.grid.forEach(row => expect(row.length).toBe(12))
   })
 
   test('all tile codes are valid (no blocker/gen by default)', () => {

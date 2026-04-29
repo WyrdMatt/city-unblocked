@@ -19,9 +19,10 @@ export const DEFAULT_TURN_LIMIT = 15;
 export const INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
 export const DIFFICULTY_PRESETS = {
-  easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
-  normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
-  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
+  easy:   { budget: 900, turnLimit: 25, blockerRate: 0,    generatorCount: 1 },
+  normal: { budget: 650, turnLimit: 20, blockerRate: 0.03, generatorCount: 2 },
+  hard:   { budget: 480, turnLimit: 15, blockerRate: 0.06, generatorCount: 2 },
+  expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
 };
 
 // ── Puzzle-mechanic constants ──────────────────────────────────────────────
@@ -100,11 +101,14 @@ export const WEATHER_MULTIPLIERS = {
 
 export const COMBOS = [
   { a: 'bus-stop',       b: 'park',           congestion:  0, happiness: +5, label: 'Transit Hub' },
-  { a: 'bike-lane',      b: 'park',           congestion: -2, happiness: +3, label: 'Green Corridor' },
+  { a: 'bike-lane',      b: 'park',           congestion: -1, happiness: +5, label: 'Pedestrian Zone' },
   { a: 'bus-stop',       b: 'bike-lane',      congestion: -3, happiness:  0, label: 'Active Streets' },
   { a: 'park',           b: 'park',           congestion:  0, happiness: +3, label: 'Green Network' },
   { a: 'parking-garage', b: 'bus-stop',       congestion: -3, happiness:  0, label: 'Park & Ride' },
   { a: 'road-widening',  b: 'bus-stop',       congestion: -4, happiness:  0, label: 'Express Lane' },
+  { a: 'parking-garage', b: 'park',           congestion: -2, happiness: +6, label: 'Green Gateway' },
+  { a: 'parking-garage', b: 'bike-lane',      congestion: -3, happiness: +2, label: 'Commuter Link' },
+  { a: 'road-widening',  b: 'parking-garage', congestion: -5, happiness:  0, label: 'Industrial Bypass' },
 ];
 
 // ── Helper: grid neighbours ────────────────────────────────────────────────
@@ -165,17 +169,30 @@ export function calculateEffects(placements, grid, weather) {
     happinessDelta  += hDelta;
   });
 
+  // Bus stop network bonus: each stop ≥3 Chebyshev from every other stop gets −3 congestion
+  const busStops = placements.filter(p => p.action === 'bus-stop');
+  if (busStops.length >= 2) {
+    busStops.forEach(bs => {
+      const hasNearNeighbour = busStops.some(other =>
+        other !== bs && Math.max(Math.abs(other.row - bs.row), Math.abs(other.col - bs.col)) < 3
+      );
+      if (!hasNearNeighbour) congestionDelta -= 3;
+    });
+  }
+
   for (let i = 0; i < placements.length; i++) {
     for (let j = i + 1; j < placements.length; j++) {
       const pi = placements[i], pj = placements[j];
       const adjacent = (pi.row === pj.row && Math.abs(pi.col - pj.col) === 1) ||
                        (pi.col === pj.col && Math.abs(pi.row - pj.row) === 1);
-      if (!adjacent) continue;
+      const diagonal = Math.abs(pi.row - pj.row) === 1 && Math.abs(pi.col - pj.col) === 1;
+      if (!adjacent && !diagonal) continue;
+      const multiplier = adjacent ? 1 : 0.5;
       const ai = pi.action, aj = pj.action;
       COMBOS.forEach(combo => {
         if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
-          congestionDelta += combo.congestion;
-          happinessDelta  += combo.happiness;
+          congestionDelta += Math.trunc(combo.congestion * multiplier);
+          happinessDelta  += Math.trunc(combo.happiness  * multiplier);
         }
       });
     }
