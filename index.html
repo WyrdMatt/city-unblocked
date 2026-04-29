@@ -625,6 +625,57 @@
     .hud__undo-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
     .hud__undo-btn[hidden] { display: none; }
 
+    /* ── Day Briefing overlay ────────────────────────────────────── */
+    .overlay--briefing { background: rgba(7,8,13,0.92); backdrop-filter: blur(10px); z-index: 750; }
+    .overlay__card--briefing {
+      max-width: 400px; gap: 0; padding: 0; overflow: hidden;
+      border: 1.5px solid var(--briefing-accent, rgba(255,255,255,.15));
+      box-shadow: 0 0 40px var(--briefing-glow, rgba(255,255,255,.05));
+    }
+    .briefing__label {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      color: var(--briefing-accent, rgba(255,255,255,.5));
+      text-align: center; padding: 14px 24px 0;
+    }
+    .briefing__weather-icon {
+      font-size: clamp(52px, 10vw, 72px); line-height: 1; text-align: center;
+      padding: 10px 0 6px; filter: drop-shadow(0 2px 12px var(--briefing-glow, rgba(0,0,0,.3)));
+    }
+    .briefing__title {
+      font-size: clamp(1.15rem, 3vw, 1.5rem); font-weight: 800;
+      text-align: center; color: #fff; padding: 0 24px; margin: 0;
+    }
+    .briefing__tips {
+      list-style: none; padding: 18px 24px 0; margin: 0; display: flex; flex-direction: column; gap: 10px;
+    }
+    .briefing__tips li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: .875rem; color: rgba(255,255,255,.82); line-height: 1.4;
+    }
+    .briefing__tips li::before { content: attr(data-icon); flex-shrink: 0; font-size: 1.1em; }
+    .briefing__progress {
+      height: 3px; background: rgba(255,255,255,.10); margin: 18px 0 0; overflow: hidden;
+    }
+    .briefing__progress-bar {
+      height: 100%; background: var(--briefing-accent, rgba(255,255,255,.4));
+      width: 100%; transform-origin: left;
+      animation: briefing-drain var(--briefing-duration, 5s) linear forwards;
+    }
+    @keyframes briefing-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    .briefing__start-btn {
+      border-radius: 0 0 16px 16px; margin: 0; width: 100%;
+      background: var(--briefing-accent, rgba(255,255,255,.15));
+      color: #fff; font-size: .95rem;
+    }
+    .briefing__start-btn:hover { filter: brightness(1.15); }
+
+    /* Accent colours per weather */
+    .briefing--sunny   { --briefing-accent: rgba(251,191,36,.8);  --briefing-glow: rgba(251,191,36,.15); }
+    .briefing--rainy   { --briefing-accent: rgba(96,165,250,.8);  --briefing-glow: rgba(96,165,250,.15); }
+    .briefing--overcast{ --briefing-accent: rgba(148,163,184,.8); --briefing-glow: rgba(148,163,184,.12); }
+    .briefing--snowy   { --briefing-accent: rgba(186,230,253,.9); --briefing-glow: rgba(186,230,253,.18); }
+    .briefing--stormy  { --briefing-accent: rgba(167,139,250,.8); --briefing-glow: rgba(167,139,250,.18); }
+
     /* ── Tutorial overlay ────────────────────────────────────────── */
     .overlay--tutorial { background: rgba(7,8,13,0.93); backdrop-filter: blur(10px); z-index: 700; }
     .overlay__card--tutorial {
@@ -1367,6 +1418,21 @@
   </div>
 
   <!-- ── Tutorial overlay (first-time, Option B cheat sheet) ────────── -->
+  <!-- ── Day Briefing overlay ─────────────────────────────────────────── -->
+  <div class="overlay overlay--briefing" id="briefingOverlay" hidden
+       role="dialog" aria-modal="true" aria-labelledby="briefingTitle">
+    <div class="overlay__card overlay__card--briefing" id="briefingCard">
+      <div class="briefing__label">TODAY'S CONDITIONS</div>
+      <div class="briefing__weather-icon" id="briefingIcon" aria-hidden="true"></div>
+      <h2 class="briefing__title" id="briefingTitle"></h2>
+      <ul class="briefing__tips" id="briefingTips"></ul>
+      <div class="briefing__progress" id="briefingProgress">
+        <div class="briefing__progress-bar" id="briefingProgressBar"></div>
+      </div>
+      <button class="overlay__btn briefing__start-btn" id="briefingStart" type="button">Start Planning →</button>
+    </div>
+  </div>
+
   <div class="overlay overlay--tutorial" id="tutorialOverlay" hidden
        role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
     <div class="overlay__card overlay__card--tutorial">
@@ -3111,6 +3177,7 @@
 
     document.getElementById("resetBtn").addEventListener("click", function () {
       if (typeof window.restartGame === "function") window.restartGame();
+      setTimeout(function () { window.showDayBriefing?.(); }, 150);
     });
   })();
   </script>
@@ -3774,6 +3841,15 @@
       if (typeof window.restartGame    === 'function') window.restartGame();
       overlay.setAttribute('hidden', '');
       if (typeof window.refreshHUD === 'function') window.refreshHUD();
+      // Show day briefing — but only if the tutorial won't intercept (already seen)
+      try {
+        if (localStorage.getItem('cityUnblocked_tutorialSeen')) {
+          setTimeout(() => window.showDayBriefing?.(), 200);
+        }
+        // First-time: tutorial shows first, its gotIt handler triggers the briefing
+      } catch (_) {
+        setTimeout(() => window.showDayBriefing?.(), 200);
+      }
     });
 
     // Keyboard: Enter/Space on overlay triggers Play
@@ -3818,8 +3894,11 @@
       } catch (_) {}
     });
 
-    // "Got it" dismisses and sets the flag
-    gotItBtn && gotItBtn.addEventListener('click', closeTutorial);
+    // "Got it" dismisses, sets the flag, then shows the day briefing
+    gotItBtn && gotItBtn.addEventListener('click', function () {
+      closeTutorial();
+      setTimeout(function () { window.showDayBriefing?.(); }, 200);
+    });
 
     // "?" in HUD reopens any time
     hudHelpBtn && hudHelpBtn.addEventListener('click', openTutorial);
@@ -3833,6 +3912,123 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !tutorialEl.hidden) closeTutorial();
     });
+  })();
+  </script>
+
+  <!-- ── Day Briefing logic ──────────────────────────────────────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    const BRIEFING_DURATION = 5000; // ms before auto-dismiss
+
+    const WEATHER_BRIEFINGS = {
+      sunny: {
+        title: "It's a Sunny Day",
+        tips: [
+          { icon: '✅', text: 'All actions perform at full strength — any strategy is viable today.' },
+          { icon: '🌳', text: 'Parks and bike lanes are at peak effectiveness. Great day for green investment.' },
+          { icon: '💡', text: 'Ideal conditions to establish a balanced transport network.' },
+        ],
+      },
+      rainy: {
+        title: "It's a Rainy Day",
+        tips: [
+          { icon: '🚌', text: 'Residents prefer transit in the rain — bus stops are 30% more effective.' },
+          { icon: '⚠️', text: 'Bike lanes and parks lose effectiveness in wet conditions.' },
+          { icon: '💡', text: 'Prioritise bus routes today; hold back on green space investment.' },
+        ],
+      },
+      overcast: {
+        title: "It's an Overcast Day",
+        tips: [
+          { icon: '☁️', text: 'Grey skies dampen spirits slightly — parks and bike lanes give a little less happiness.' },
+          { icon: '✅', text: 'Roads, parking, and bus stops are fully unaffected.' },
+          { icon: '💡', text: 'Favour transport infrastructure over green improvements today.' },
+        ],
+      },
+      snowy: {
+        title: "It's a Snowy Day",
+        tips: [
+          { icon: '🚌', text: 'Bus stops are critical today — residents rely on transit when roads are icy.' },
+          { icon: '❌', text: 'Bike lanes are nearly useless in snow (35% effectiveness). Avoid them.' },
+          { icon: '💡', text: 'Focus your entire budget on transit infrastructure.' },
+        ],
+      },
+      stormy: {
+        title: "It's a Stormy Day",
+        tips: [
+          { icon: '🚧', text: 'Only road widening and parking remain at full strength in severe weather.' },
+          { icon: '❌', text: 'Bike lanes and parks are heavily penalised — not worth the spend today.' },
+          { icon: '💡', text: 'Emergency infrastructure only. Green investments can wait for a better day.' },
+        ],
+      },
+    };
+
+    const briefingEl   = document.getElementById('briefingOverlay');
+    const briefingCard = document.getElementById('briefingCard');
+    const iconEl       = document.getElementById('briefingIcon');
+    const titleEl      = document.getElementById('briefingTitle');
+    const tipsEl       = document.getElementById('briefingTips');
+    const progressBar  = document.getElementById('briefingProgressBar');
+    const startBtn     = document.getElementById('briefingStart');
+
+    if (!briefingEl) return;
+
+    let dismissTimer = null;
+
+    function dismiss() {
+      clearTimeout(dismissTimer);
+      dismissTimer = null;
+      briefingEl.setAttribute('hidden', '');
+    }
+
+    window.showDayBriefing = function showDayBriefing() {
+      const weather = window.currentWeather || 'sunny';
+      const data    = WEATHER_BRIEFINGS[weather] || WEATHER_BRIEFINGS.sunny;
+      const meta    = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META && window.GAME_LOGIC.WEATHER_META[weather]) || {};
+
+      // Populate content
+      iconEl.textContent  = meta.emoji || '🌤️';
+      titleEl.textContent = data.title;
+      tipsEl.innerHTML    = data.tips.map(function (t) {
+        return '<li data-icon="' + t.icon + '">' + t.text + '</li>';
+      }).join('');
+
+      // Apply weather accent class
+      ['sunny','rainy','overcast','snowy','stormy'].forEach(function (w) {
+        briefingCard.classList.remove('briefing--' + w);
+      });
+      briefingCard.classList.add('briefing--' + weather);
+
+      // Reset + restart progress bar animation
+      if (progressBar) {
+        progressBar.style.animation = 'none';
+        progressBar.style.setProperty('--briefing-duration', (BRIEFING_DURATION / 1000) + 's');
+        void progressBar.offsetWidth;
+        progressBar.style.animation = '';
+      }
+
+      briefingEl.removeAttribute('hidden');
+      startBtn && startBtn.focus();
+
+      // Auto-dismiss
+      clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(dismiss, BRIEFING_DURATION);
+    };
+
+    startBtn && startBtn.addEventListener('click', dismiss);
+
+    // Tap backdrop to skip
+    briefingEl.addEventListener('click', function (e) {
+      if (e.target === briefingEl) dismiss();
+    });
+
+    // Escape to skip
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !briefingEl.hidden) dismiss();
+    });
+
   })();
   </script>
 
