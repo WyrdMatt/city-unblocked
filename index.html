@@ -11,9 +11,9 @@
      * Weather variants override specific tokens via [data-weather] on body.
      * ─────────────────────────────────────────────────────────────────── */
     :root {
-      /* Geometry — tile-size scales so the 10-col grid always fits the viewport */
-      --tile-size:  clamp(30px, min(calc((100vw - 52px) / 10), calc((100vh - 184px) / 10)), 80px);
-      --grid-gap:   4px;
+      /* Geometry — tile-size scales so the 12-col grid always fits the viewport */
+      --tile-size:  clamp(26px, min(calc((100vw - 52px) / 12), calc((100vh - 184px) / 12)), 80px);
+      --grid-gap:   2px;
       --grid-pad:   4px;
 
       /* Base palette */
@@ -710,8 +710,8 @@
     /* ── city-map styles ─────────────────────────────────────────────── */
     #city-grid {
       display: grid;
-      grid-template-columns: repeat(10, var(--tile-size));
-      grid-template-rows: repeat(10, var(--tile-size));
+      grid-template-columns: repeat(12, var(--tile-size));
+      grid-template-rows: repeat(12, var(--tile-size));
       gap: var(--grid-gap);
       background: var(--c-road);
       padding: var(--grid-pad);
@@ -2907,10 +2907,10 @@
 
     /* ── Default config — override any field via generateMap(overrides) ─ */
     var DEFAULT_CONFIG = {
-      rows:           10,
-      cols:           10,
+      rows:           12,
+      cols:           12,
       minRoads:       2,    // min road lines per axis
-      maxRoads:       3,    // max road lines per axis (raise for larger grids)
+      maxRoads:       4,    // max road lines per axis (raised for 12×12 grid)
       minBlockSize:   2,    // min non-road tiles between parallel roads
       emptyRate:      0.20, // fraction of eligible building tiles → empty lots
       parkCount:      2,    // decorative (pre-existing) park tiles per map
