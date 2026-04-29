@@ -67,7 +67,7 @@ EFFECTS = {
   "bike-lane":      { congestion:  -6, happiness: +8  },
   "parking-garage": { congestion:  -8, happiness: +4  },
   "park":           { congestion:  -4, happiness: +12 },
-  "road-widening":  { congestion: -12, happiness: +3  },
+  "road-widening":  { congestion: -15, happiness: -5  },
 }
 ```
 
@@ -86,13 +86,13 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 
 ## Actions
 
-| Key | Emoji | Label | Cost | Valid tile |
-|---|---|---|---|---|
-| `bus-stop` | 🚌 | Bus Stop | £80 | road |
-| `bike-lane` | 🚲 | Bike Lane | £40 | road |
-| `parking-garage` | 🅿️ | Parking | £120 | building |
-| `park` | 🌳 | Park | £60 | empty |
-| `road-widening` | 🚧 | Road Widening | £90 | road |
+| Key | Emoji | Label | Cost | Valid tile | Effect |
+|---|---|---|---|---|---|
+| `bus-stop` | 🚌 | Bus Stop | £80 | road | –10 congestion, +6 happiness |
+| `bike-lane` | 🚲 | Bike Lane | £40 | road | –6 congestion, +8 happiness |
+| `parking-garage` | 🅿️ | Parking | £120 | building | –8 congestion, +4 happiness |
+| `park` | 🌳 | Park | £60 | empty | –4 congestion, +12 happiness |
+| `road-widening` | 🚧 | Road Widening | £90 | road | –15 congestion, –5 happiness |
 
 ## Mechanics
 

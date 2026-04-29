@@ -605,6 +605,13 @@
       padding: 0.45rem 1.4rem; margin-top: -0.2rem;
     }
     .overlay__btn--menu:hover { background: rgba(255,255,255,.07); color: var(--c-text); border-color: rgba(255,255,255,.3); }
+    .overlay__btn--share {
+      background: transparent; color: #60a5fa;
+      border: 1px solid rgba(96,165,250,.35); font-size: 0.8rem;
+      padding: 0.45rem 1.4rem; margin-top: -0.2rem;
+    }
+    .overlay__btn--share:hover { background: rgba(96,165,250,.08); border-color: rgba(96,165,250,.6); }
+    .overlay__btn--share.copied { color: #4ade80; border-color: rgba(74,222,128,.5); }
 
     /* ── Left info panel (weather + combos) ─────────────────────────── */
     .info-panel--left {
@@ -1833,6 +1840,7 @@
       </p>
       <div class="overlay__context" id="winContext" aria-label="Game context"></div>
       <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
+      <button class="overlay__btn overlay__btn--share" id="winShare" type="button">📋 Copy Score</button>
       <button class="overlay__btn overlay__btn--menu" id="winMenu" type="button">↩ Main Menu</button>
     </div>
   </div>
@@ -2359,6 +2367,7 @@
     }
 
     window.showWinScreen = function showWinScreen() {
+      if (typeof window.playSFX === 'function') window.playSFX('win');
       const gs = window.gameState ?? {};
       if (winTurns)      winTurns.textContent      = gs.turn ?? "—";
       if (winHappiness)  winHappiness.textContent  = Math.round(clamp(gs.happiness  ?? 0, 0, 100));
@@ -2381,6 +2390,7 @@
     };
 
     window.showGameOverScreen = function showGameOverScreen(reason) {
+      if (typeof window.playSFX === 'function') window.playSFX('lose');
       // reason: "budget" | "turns" (optional, defaults to "budget")
       const gs = window.gameState ?? {};
       const turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
@@ -2458,12 +2468,34 @@
     document.getElementById("gameOverMenu")?.addEventListener("click", onGoToMenu);
     document.getElementById("hudReset")?.addEventListener("click", onRestart);
 
+    document.getElementById("winShare")?.addEventListener("click", function () {
+      const gs    = window.gameState ?? {};
+      const budget = Math.round(gs.budget ?? 0);
+      const stars  = budget >= 200 ? '⭐⭐⭐' : budget >= 80 ? '⭐⭐' : '⭐';
+      const seed   = window.currentMap?.seed ?? '?';
+      const diff   = (window.currentDifficulty || 'normal')[0].toUpperCase() +
+                     (window.currentDifficulty || 'normal').slice(1);
+      const text   =
+        `🏙️ Make It Liveable — ${stars}\n` +
+        `😊 Happiness: ${Math.round(gs.happiness ?? 0)}  🚗 Congestion: ${Math.round(gs.congestion ?? 0)}\n` +
+        `💰 Budget left: £${budget}  |  ${diff} mode  |  Seed: ${seed}\n` +
+        `https://idyllic-cannoli-358897.netlify.app/`;
+      const btn = document.getElementById("winShare");
+      navigator.clipboard?.writeText(text).then(() => {
+        if (btn) { btn.textContent = '✓ Copied!'; btn.classList.add('copied'); }
+        setTimeout(() => { if (btn) { btn.textContent = '📋 Copy Score'; btn.classList.remove('copied'); } }, 2500);
+      }).catch(() => {
+        if (btn) { btn.textContent = '📋 Copy Score'; }
+      });
+    });
+
     // ── Undo last placement ──────────────────────────────────────────
     const hudUndoBtn = document.getElementById("hudUndo");
 
     function doUndo() {
       const snap = window.lastPlacement;
       if (!snap) return;
+      if (typeof window.playSFX === 'function') window.playSFX('undo');
       const tile = snap.element;
       // Reverse the placeTile() call
       delete tile.dataset.placedAction;
@@ -3213,6 +3245,7 @@
           return;
         }
         window.gameState.budget -= demolishCost;
+        if (typeof window.playSFX === 'function') window.playSFX('demolish');
         tile.classList.remove('blocker');
         tile.classList.add('empty');
         // Sync cityGrid + currentMap grid
@@ -3295,6 +3328,7 @@
     function openRadial(tile) {
       clearTimeout(radialCloseTimer);
       radialCloseTimer = null;
+      if (typeof window.playSFX === 'function') window.playSFX('tick');
 
       const TILE_TYPES = ['road', 'building', 'park', 'empty'];
       const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
@@ -3465,6 +3499,7 @@
       const budget = window.gameState?.budget ?? 0;
       if (budget < meta.cost) { showBudgetError(); return; }
 
+      if (typeof window.playSFX === 'function') window.playSFX('place');
       placeTile(tile, meta);
       const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
       showPlacementPopup(tile, meta, cgTile);
@@ -4335,6 +4370,102 @@
       musicBtn.textContent = musicOn ? '🔊' : '🔇';
       musicBtn.title = musicOn ? 'Music on — click to mute' : 'Music off — click to play';
     });
+
+    /* ── Sound effects (SFX) ─────────────────────────────────────────── */
+    let sfxCtx = null;
+    function getSFXCtx() {
+      if (!sfxCtx || sfxCtx.state === 'closed') {
+        sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (sfxCtx.state === 'suspended') sfxCtx.resume();
+      return sfxCtx;
+    }
+
+    window.playSFX = function playSFX(type) {
+      try {
+        const ctx = getSFXCtx();
+        const out = ctx.createGain();
+        out.gain.value = 0.7;
+        out.connect(ctx.destination);
+
+        if (type === 'place') {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(360, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(720, ctx.currentTime + 0.07);
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0.28, ctx.currentTime);
+          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+          osc.connect(env); env.connect(out);
+          osc.start(); osc.stop(ctx.currentTime + 0.18);
+
+        } else if (type === 'undo') {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.18);
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0.22, ctx.currentTime);
+          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+          osc.connect(env); env.connect(out);
+          osc.start(); osc.stop(ctx.currentTime + 0.22);
+
+        } else if (type === 'demolish') {
+          const bufLen = Math.floor(ctx.sampleRate * 0.18);
+          const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < bufLen; i++)
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 1.4);
+          const noise = ctx.createBufferSource();
+          noise.buffer = buf;
+          const filt = ctx.createBiquadFilter();
+          filt.type = 'lowpass'; filt.frequency.value = 220;
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0.7, ctx.currentTime);
+          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+          noise.connect(filt); filt.connect(env); env.connect(out);
+          noise.start(); noise.stop(ctx.currentTime + 0.18);
+
+        } else if (type === 'win') {
+          [523, 659, 784, 1047].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const env = ctx.createGain();
+            const t = ctx.currentTime + i * 0.13;
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(0.24, t + 0.06);
+            env.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+            osc.connect(env); env.connect(out);
+            osc.start(t); osc.stop(t + 0.55);
+          });
+
+        } else if (type === 'lose') {
+          [330, 262, 196].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            const env = ctx.createGain();
+            const t = ctx.currentTime + i * 0.2;
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(0.20, t + 0.06);
+            env.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+            osc.connect(env); env.connect(out);
+            osc.start(t); osc.stop(t + 0.6);
+          });
+
+        } else if (type === 'tick') {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = 900;
+          const env = ctx.createGain();
+          env.gain.setValueAtTime(0.07, ctx.currentTime);
+          env.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
+          osc.connect(env); env.connect(out);
+          osc.start(); osc.stop(ctx.currentTime + 0.045);
+        }
+      } catch (e) { /* audio unavailable — silently skip */ }
+    };
 
     // Rebuild animations on resize (e.g. phone rotation changes --tile-size)
     let resizeTimer = null;
