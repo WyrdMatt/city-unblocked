@@ -178,12 +178,13 @@
     .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
     .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg, var(--c-cong-1), var(--c-cong-2)); }
     .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
-    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
-    .hud-meter__value {
+    .hud-meter__mobile-stat {
       font-size: 0.75rem; font-weight: 800; color: var(--c-text);
-      min-width: 5ch; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums;
-      white-space: nowrap;
+      min-width: 10ch; text-align: right; flex-shrink: 0;
+      font-variant-numeric: tabular-nums; white-space: nowrap;
     }
+    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    .hud-meter__value { display: none; }
     .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
     .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
     .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: var(--c-text-hi); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
@@ -1656,29 +1657,31 @@
       /* Mobile reset button visible */
       .hud__reset-mobile { display: flex; align-items: center; }
 
-      /* HUD: single compact row, explicit order so budget is never cut off */
+      /* HUD: row 1 = brand/stats/buttons, row 2 = meters full-width */
       .hud {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 0.35rem;
-        padding: 0.35rem 0.5rem;
+        padding: 0.35rem 0.5rem 0.25rem;
       }
 
       .hud__brand { flex: 0 0 auto; order: 1; }
       .hud__brand-name { display: none; }
       .hud__brand-icon { font-size: 1.1rem; }
 
-      /* Meters take remaining space between brand and stats */
+      /* Meters: full-width second row below all buttons */
       .hud__meters {
-        flex: 1 1 0;
+        flex: 0 0 100%;
         min-width: 0;
-        gap: 0.3rem;
-        order: 2;
+        gap: 0.75rem;
+        order: 12;
+        padding: 0.15rem 0 0.2rem;
+        border-top: 1px solid rgba(255,255,255,0.10);
       }
-      .hud-meter__label { display: none; }
-      .hud-meter__delta { font-size: 0.55rem; min-width: 2.8ch; }
-      .hud-meter__track { min-width: 36px; height: 10px; padding-bottom: 0; margin-bottom: 0; }
-      .hud-meter__goal::after { display: none; }
-      .hud-meter__value { font-size: 0.65rem; min-width: 4ch; }
+      .hud-meter__label { display: inline-flex; font-size: 0.62rem; color: var(--c-text-muted); }
+      /* Replace bar with compact numeric stat on mobile */
+      .hud-meter__track { display: none; }
+      .hud-meter__delta { display: none; }
+      .hud-meter__mobile-stat { font-size: 0.85rem; min-width: 0; }
 
       /* Budget always visible, right of meters */
       .hud__budget { order: 3; flex-shrink: 0; }
@@ -1810,6 +1813,7 @@
         </div>
         <span class="hud-meter__value" id="happinessValue">0</span>
         <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
+        <span class="hud-meter__mobile-stat" id="happinessMobileStat" aria-hidden="true"></span>
       </div>
       <div class="hud-meter hud-meter--congestion">
         <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
@@ -1820,6 +1824,7 @@
         </div>
         <span class="hud-meter__value" id="congestionValue">0</span>
         <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
+        <span class="hud-meter__mobile-stat" id="congestionMobileStat" aria-hidden="true"></span>
       </div>
     </div>
     <div class="hud__turns" aria-label="Turns remaining">
@@ -2265,11 +2270,13 @@
     const happinessValue = document.getElementById("happinessValue");
     const happinessDelta = document.getElementById("happinessDelta");
     const happinessGoal  = document.getElementById("happinessGoal");
+    const happinessMobileStat = document.getElementById("happinessMobileStat");
     const congestionFill  = document.getElementById("congestionFill");
     const congestionBar   = document.getElementById("congestionBar");
     const congestionValue = document.getElementById("congestionValue");
     const congestionDelta = document.getElementById("congestionDelta");
     const congestionGoal  = document.getElementById("congestionGoal");
+    const congestionMobileStat = document.getElementById("congestionMobileStat");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl   = document.getElementById("weatherBadge");
     const weatherIconEl    = document.getElementById("weatherIcon");
@@ -2319,6 +2326,11 @@
       happinessValue.classList.toggle("hud-meter__value--good",  hapDone);
       happinessValue.classList.toggle("hud-meter__value--close", hapClose);
       if (happinessGoal) happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
+      if (happinessMobileStat) {
+        happinessMobileStat.textContent = hapDone ? "✓ 70/100" : Math.round(happiness) + "/100 (70)";
+        happinessMobileStat.classList.toggle("hud-meter__value--good",  hapDone);
+        happinessMobileStat.classList.toggle("hud-meter__value--close", hapClose);
+      }
 
       congestionFill.style.width = congestion + "%";
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
@@ -2330,6 +2342,11 @@
       congestionValue.classList.toggle("hud-meter__value--good",  congDone);
       congestionValue.classList.toggle("hud-meter__value--close", congClose);
       if (congestionGoal) congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
+      if (congestionMobileStat) {
+        congestionMobileStat.textContent = congDone ? "✓ 30/100" : Math.round(congestion) + "/100 (30)";
+        congestionMobileStat.classList.toggle("hud-meter__value--good",  congDone);
+        congestionMobileStat.classList.toggle("hud-meter__value--close", congClose);
+      }
 
       const turnsLeft = turnLimit - turn;
       turnsValueEl.textContent = turn + " / " + turnLimit;
