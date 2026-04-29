@@ -19,10 +19,44 @@ export const DEFAULT_TURN_LIMIT = 15;
 export const INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
 export const DIFFICULTY_PRESETS = {
-  easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
-  normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
-  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+  easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
+  normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
+  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
 };
+
+// ── Puzzle-mechanic constants ──────────────────────────────────────────────
+
+export const ZONE_CAP        = 2;   // max of same action type per block zone
+export const GENERATOR_DELTA = 3;   // congestion added per unsuppressed generator per recalc
+export const DEMOLISH_COST   = 50;  // budget cost to clear a blocker tile
+
+// ── Puzzle-mechanic helpers ────────────────────────────────────────────────
+
+export function getBlockId(row, col, roadRows, roadCols) {
+  const rowBand = roadRows.filter(r => r < row).length;
+  const colBand = roadCols.filter(c => c < col).length;
+  return rowBand + ':' + colBand;
+}
+
+export function checkZoneCap(placements, blockId, action, validTilesInBlock) {
+  const cap   = Math.max(ZONE_CAP, Math.floor((validTilesInBlock || 0) / 2));
+  const count = placements.filter(p => p.blockId === blockId && p.action === action).length;
+  return count >= cap;
+}
+
+export function applyGeneratorTick(generatorTiles, placements) {
+  const ROAD_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening']);
+  let delta = 0;
+  generatorTiles.forEach(gen => {
+    const suppressed = placements.some(p => {
+      if (!ROAD_ACTIONS.has(p.action)) return false;
+      return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
+             (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
+    });
+    if (!suppressed) delta += GENERATOR_DELTA;
+  });
+  return delta;
+}
 
 // ── Weather system ─────────────────────────────────────────────────────────
 

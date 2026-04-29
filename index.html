@@ -539,6 +539,24 @@
       filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
     }
 
+    /* Generator — traffic source that raises congestion each turn unless suppressed */
+    .tile.generator {
+      background: repeating-linear-gradient(
+        135deg,
+        #1a0a00 0px, #1a0a00 5px,
+        #3b1400 5px, #3b1400 10px
+      );
+      box-shadow: inset 0 0 0 2px rgba(239,68,68,.5),
+                  inset 0 0 14px rgba(239,68,68,.15);
+    }
+    .tile.generator:hover { filter: brightness(1.25); }
+    .tile.generator::after {
+      content: '🏭'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.50), 24px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.8));
+    }
+
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -1963,10 +1981,41 @@
     // Expose for test harness (test-effects.js loads this via jsdom or similar)
     // ── Difficulty presets ────────────────────────────────────────────────
     var DIFFICULTY_PRESETS = {
-      easy:   { budget: 700, turnLimit: 20, blockerRate: 0    },
-      normal: { budget: 500, turnLimit: 15, blockerRate: 0    },
-      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06 },
+      easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
+      normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
+      hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
     };
+
+    // ── Puzzle-mechanic constants ─────────────────────────────────────────
+    var ZONE_CAP        = 2;
+    var GENERATOR_DELTA = 3;
+    var DEMOLISH_COST   = 50;
+
+    function getBlockId(row, col, roadRows, roadCols) {
+      var rowBand = roadRows.filter(function (r) { return r < row; }).length;
+      var colBand = roadCols.filter(function (c) { return c < col; }).length;
+      return rowBand + ':' + colBand;
+    }
+
+    function checkZoneCap(placements, blockId, action, validTilesInBlock) {
+      var cap   = Math.max(ZONE_CAP, Math.floor((validTilesInBlock || 0) / 2));
+      var count = placements.filter(function (p) { return p.blockId === blockId && p.action === action; }).length;
+      return count >= cap;
+    }
+
+    function applyGeneratorTick(generatorTiles, placements) {
+      var ROAD_ACTIONS = ['bus-stop', 'bike-lane', 'road-widening'];
+      var delta = 0;
+      generatorTiles.forEach(function (gen) {
+        var suppressed = placements.some(function (p) {
+          if (ROAD_ACTIONS.indexOf(p.action) === -1) return false;
+          return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
+                 (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
+        });
+        if (!suppressed) delta += GENERATOR_DELTA;
+      });
+      return delta;
+    }
     window.currentDifficulty   = window.currentDifficulty   || 'normal';
     window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
 
@@ -1982,7 +2031,9 @@
 
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
                           DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
-                          calculateEffects, checkWinCondition, getGridNeighbours };
+                          ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
+                          calculateEffects, checkWinCondition, getGridNeighbours,
+                          getBlockId, checkZoneCap, applyGeneratorTick };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
@@ -1995,22 +2046,42 @@
     window.updateMeters = function updateMeters() {
       if (!Array.isArray(window.cityGrid)) return;
 
-      // Extract placement data from DOM tiles
+      var map = window.currentMap;
+      var roadRows = (map && map.roadRows) || [];
+      var roadCols = (map && map.roadCols) || [];
+
+      // Extract placement data from DOM tiles (with blockId for zone-cap checks)
       var placements = [];
       window.cityGrid.forEach(function (tile) {
         var action = tile.element && tile.element.dataset.placedAction;
-        if (action) placements.push({ action: action, row: tile.row, col: tile.col });
+        if (action) placements.push({
+          action:  action,
+          row:     tile.row,
+          col:     tile.col,
+          blockId: getBlockId(tile.row, tile.col, roadRows, roadCols),
+        });
       });
+
+      // Collect generator tiles from current map grid
+      var generatorTiles = [];
+      if (map && map.grid) {
+        map.grid.forEach(function (row, r) {
+          row.forEach(function (cell, c) {
+            if (cell === 'G') generatorTiles.push({ row: r, col: c });
+          });
+        });
+      }
 
       // Flatten grid to plain objects for the pure function
       var gridData = window.cityGrid.map(function (t) {
         return { row: t.row, col: t.col, type: t.type };
       });
 
-      var delta = calculateEffects(placements, gridData, window.currentWeather || null);
+      var delta      = calculateEffects(placements, gridData, window.currentWeather || null);
+      var genPenalty = applyGeneratorTick(generatorTiles, placements);
 
       var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta));
+      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta + genPenalty));
       gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
@@ -2060,7 +2131,7 @@
       // Generate a fresh random map and rebuild the grid
       var preset  = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
       var newMap = (typeof window.generateMap === "function")
-        ? window.generateMap({ blockerRate: preset.blockerRate })
+        ? window.generateMap({ blockerRate: preset.blockerRate, generatorCount: preset.generatorCount || 0 })
         : null;
       if (newMap && typeof window.buildCityGrid === "function") {
         window.currentMap = newMap;
@@ -2109,16 +2180,15 @@
 
     /* ── Default config — override any field via generateMap(overrides) ─ */
     var DEFAULT_CONFIG = {
-      rows:         10,
-      cols:         10,
-      minRoads:     2,    // min road lines per axis
-      maxRoads:     3,    // max road lines per axis (raise for larger grids)
-      minBlockSize: 2,    // min non-road tiles between parallel roads
-      emptyRate:    0.20, // fraction of eligible building tiles → empty lots
-      parkCount:    2,    // decorative (pre-existing) park tiles per map
-      blockerRate:  0,    // fraction of building tiles → impassable blocker (0 = none)
-      // Future hooks (not yet used):
-      //   weatherZones: [],   // [{r,c,radius,type}] applied after generation
+      rows:           10,
+      cols:           10,
+      minRoads:       2,    // min road lines per axis
+      maxRoads:       3,    // max road lines per axis (raise for larger grids)
+      minBlockSize:   2,    // min non-road tiles between parallel roads
+      emptyRate:      0.20, // fraction of eligible building tiles → empty lots
+      parkCount:      2,    // decorative (pre-existing) park tiles per map
+      blockerRate:    0,    // fraction of building tiles → impassable blocker (0 = none)
+      generatorCount: 0,    // number of traffic-generator tiles placed adjacent to roads
     };
 
     /* ── Neighbour helper ────────────────────────────────────────── */
@@ -2266,6 +2336,28 @@
         }
       }
 
+      // Step 5 — Generator tiles: place traffic-generator tiles on building cells adjacent to roads
+      if (cfg.generatorCount > 0) {
+        var genPool = [];
+        for (var r = 0; r < cfg.rows; r++) {
+          for (var c = 0; c < cfg.cols; c++) {
+            if (grid[r][c] !== 'B') continue;
+            var adjRoad = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                            .filter(function (t) { return t === 'R'; }).length;
+            if (adjRoad > 0) genPool.push([r, c, adjRoad]);
+          }
+        }
+        // Shuffle with seeded RNG
+        for (var i = genPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = genPool[i]; genPool[i] = genPool[j]; genPool[j] = tmp;
+        }
+        var toPlace = Math.min(cfg.generatorCount, genPool.length);
+        for (var i = 0; i < toPlace; i++) {
+          grid[genPool[i][0]][genPool[i][1]] = 'G';
+        }
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -2289,6 +2381,9 @@
       if ((counts.E || 0) < 4)  issues.push('Too few empty lots: '           + (counts.E || 0));
       if ((counts.R || 0) < 10) issues.push('Too few road tiles: '            + (counts.R || 0));
       if (emptyWithAdj < 3)     issues.push('Too few empty lots adj buildings: ' + emptyWithAdj);
+      if (cfg.generatorCount > 0 && (counts.G || 0) < cfg.generatorCount) {
+        issues.push('Too few generator tiles: ' + (counts.G || 0) + ' / ' + cfg.generatorCount);
+      }
       return { counts: counts, emptyWithAdj: emptyWithAdj, valid: issues.length === 0, issues: issues };
     }
 
@@ -2301,7 +2396,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker' };
+    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker', G:'generator' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -2381,9 +2476,9 @@
       window.refreshTile(tile);
     };
 
-    // Generate initial map and build grid (respects current difficulty's blockerRate)
+    // Generate initial map and build grid (respects current difficulty's blockerRate + generatorCount)
     var _initPreset = (window.DIFFICULTY_PRESETS || {})[window.currentDifficulty || 'normal'] || {};
-    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0 });
+    window.currentMap = window.generateMap({ blockerRate: _initPreset.blockerRate || 0, generatorCount: _initPreset.generatorCount || 0 });
     window.buildCityGrid(window.currentMap.grid);
     infoBar.textContent = 'Seed: ' + window.currentMap.seed + '  |  ' + window.currentMap.roadRows.length + '×' + window.currentMap.roadCols.length + ' road grid';
     if (typeof window.refreshHUD === 'function') window.refreshHUD();
