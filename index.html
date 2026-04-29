@@ -1787,7 +1787,7 @@
 
       <div class="landing__audio-row">
         <button class="landing__sound-btn" id="landingMusic" type="button" aria-pressed="false">🔇 Music Off</button>
-        <button class="landing__sound-btn" id="landingSFX"   type="button" aria-pressed="false">🔕 SFX Off</button>
+        <button class="landing__sound-btn" id="landingSFX"   type="button" aria-pressed="true">🔔 SFX On</button>
       </div>
 
       <button class="overlay__btn overlay__btn--play" id="landingPlay" type="button">Play</button>
@@ -1836,7 +1836,7 @@
     </div>
     <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
-    <button class="hud__sfx-btn"   id="sfxToggle"   type="button" title="SFX off — click to enable" aria-label="Sound effects off" aria-pressed="false">🔕</button>
+    <button class="hud__sfx-btn"   id="sfxToggle"   type="button" title="SFX on — click to mute" aria-label="Sound effects on" aria-pressed="true">🔔</button>
     <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
     <button class="hud__menu-btn"  id="hudMenu"     type="button" title="Menu" aria-label="Open menu" aria-expanded="false">☰</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
@@ -4325,7 +4325,7 @@
       const nDat = nBuf.getChannelData(0);
       for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
 
-      // Note frequency table (C major + passing tones)
+      // Note frequency table (C major pentatonic + passing tones)
       const N = {
         _: 0,
         C3: 131, F3: 175, G3: 196,
@@ -4333,20 +4333,31 @@
         C5: 523, D5: 587, E5: 659, G5: 784, A5: 880,
       };
 
-      // 32-step (2-bar) sequences, one entry per 16th note
-      const MEL = [
-        'C5','_','E5','G5','_','E5','C5','_', 'A4','C5','E5','_','G4','A4','_','_',
-        'G5','_','A5','_','G5','E5','_','D5', 'E5','_','C5','E5','G5','_','_','_',
+      // Three 32-step melody variations — same harmonic skeleton, different phrasing
+      const MELS = [
+        // A: flowing 16th-note runs
+        ['C5','_','E5','G5','_','E5','C5','_','A4','C5','E5','_','G4','A4','_','_',
+         'G5','_','A5','_','G5','E5','_','D5','E5','_','C5','E5','G5','_','_','_'],
+        // B: syncopated / offbeat phrasing
+        ['_','C5','_','E5','G5','_','_','E5','C5','_','_','A4','_','C5','E5','_',
+         'G5','_','_','A5','_','G5','_','E5','_','D5','E5','_','C5','_','_','G4'],
+        // C: sparse high-register stabs
+        ['C5','_','_','_','E5','_','G5','_','_','A5','_','_','G5','E5','_','_',
+         'D5','_','E5','_','_','G5','_','_','A5','_','G5','_','E5','_','_','C5'],
       ];
+
       const BASS = [
-        'C3','_','_','_','G3','_','_','_', 'F3','_','_','_','G3','_','_','_',
-        'C3','_','_','_','G3','_','_','_', 'F3','_','_','_','G3','_','_','_',
+        'C3','_','_','_','G3','_','_','_','F3','_','_','_','G3','_','_','_',
+        'C3','_','_','_','G3','_','_','_','F3','_','_','_','G3','_','_','_',
       ];
-      // 1=kick  2=snare  3=hi-hat
-      const PERC = [
-        1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0,
-        1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0,
+
+      // 1=kick  2=snare  3=hi-hat — two perc patterns (steady + fill)
+      const PERCS = [
+        [1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,0],
+        [1,0,0,3, 2,0,3,0, 1,0,0,3, 2,0,3,3, 1,0,0,3, 2,0,3,0, 1,3,0,3, 2,3,2,3],
       ];
+
+      let melIdx = 0, percIdx = 0;
 
       function playPerc(type, time) {
         if (type === 1) {  // kick — pitch-drop sine
@@ -4384,6 +4395,16 @@
         while (nextBeat < audioCtx.currentTime + 0.2) {
           const t  = nextBeat;
           const st = step % 32;
+
+          // Rotate to a different melody (and occasionally a fill perc) each loop
+          if (st === 0 && step > 0) {
+            const others = [0, 1, 2].filter(i => i !== melIdx);
+            melIdx = others[Math.floor(Math.random() * others.length)];
+            percIdx = Math.random() < 0.33 ? 1 : 0;
+          }
+
+          const MEL  = MELS[melIdx];
+          const PERC = PERCS[percIdx];
 
           // Melody — square wave, staccato envelope
           const mf = N[MEL[st]];
@@ -4465,7 +4486,7 @@
 
     /* ── Sound effects (SFX) ─────────────────────────────────────────── */
     let sfxCtx = null;
-    window.sfxEnabled = false;
+    window.sfxEnabled = true;
 
     const sfxHudBtn = document.getElementById('sfxToggle');
 
@@ -4584,6 +4605,15 @@
         }
       } catch (e) { /* audio unavailable — silently skip */ }
     };
+
+    // Play UI click sound on every button — skip radial-btn (plays 'place') and undo (plays 'undo')
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.classList.contains('radial-btn')) return;
+      if (btn.id === 'hudUndo') return;
+      window.playSFX('tick');
+    }, { passive: true });
 
     // Rebuild animations on resize (e.g. phone rotation changes --tile-size)
     let resizeTimer = null;

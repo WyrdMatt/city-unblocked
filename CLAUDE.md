@@ -143,19 +143,19 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 
 ## Audio system (animations block)
 
-**Ambient music** (`window.toggleMusic`) — 4-layer city soundscape, default OFF:
-- Layer 1: lowpass noise at 85 Hz — distant traffic rumble with ebb/flow LFO
-- Layer 2: lowpass noise at 160 Hz — mid-distance city texture
-- Layer 3: 60 Hz + 120 Hz sine hum with slow LFO swell
-- Layer 4: sparse A-minor-pentatonic sine melody through reverb
+**Ambient music** (`window.toggleMusic`) — retro 90s arcade chiptune, default OFF:
+- 140 BPM scheduler loop; 32-step patterns cycle through 3 melody variations (A: flowing runs, B: syncopated, C: sparse stabs) — never the same phrase twice in a row
+- Square-wave melody + filtered sawtooth bass (lowpass 300 Hz) + kick/snare/hi-hat percussion
+- Percussion alternates between steady groove and fill pattern (~33% fill chance per loop)
+- DynamicsCompressor tames square-wave peaks; master gain 0.20
 
-**SFX** (`window.playSFX(type)`) — default OFF, gated by `window.sfxEnabled`:
+**SFX** (`window.playSFX(type)`) — default ON, gated by `window.sfxEnabled`:
 - `place` — marimba plonk (C5 + G5 triangles)
 - `undo` — descending A4→E4 slide
 - `demolish` — low sine pitch-drop (floor tom)
 - `win` — ascending C-E-G-C arpeggio
 - `lose` — descending E4-Db4-A3 minor chord
-- `tick` — subtle 880 Hz click on radial open
+- `tick` — subtle 880 Hz click; fired on ALL button clicks via delegated listener (except radial-btn which fires 'place', and #hudUndo which fires 'undo')
 
 Both use a shared `sfxCtx` (separate from `audioCtx`). SFX always awaits `ctx.resume()` before scheduling to avoid static on first use.
 
