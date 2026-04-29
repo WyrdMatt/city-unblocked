@@ -1452,6 +1452,13 @@
     .hud__weather-label { font-size: 0.52rem; font-weight: 700; text-transform: uppercase;
                           letter-spacing: 0.08em; color: var(--c-text-dim); white-space: nowrap; }
 
+    /* ── Per-turn decay badge ─────────────────────────────────── */
+    .hud-meter__decay {
+      font-size: 0.58rem; font-weight: 700; color: rgba(220,38,38,.8);
+      background: rgba(220,38,38,.10); border-radius: 3px; padding: 1px 4px;
+      white-space: nowrap; flex-shrink: 0; letter-spacing: 0;
+    }
+
     /* ── Distance-to-win delta label ────────────────────────────── */
     .hud-meter__delta {
       font-size: 0.68rem; font-weight: 700; color: var(--c-text-muted);
@@ -1896,7 +1903,7 @@
     </div>
     <div class="hud__meters" role="group" aria-label="City meters">
       <div class="hud-meter hud-meter--happiness">
-        <span class="hud-meter__label"><span aria-hidden="true">😊</span> Happiness</span>
+        <span class="hud-meter__label"><span aria-hidden="true">😊</span> Happiness <span class="hud-meter__decay" id="happinessDecay" aria-hidden="true"></span></span>
         <div class="hud-meter__track" role="progressbar" aria-label="Happiness"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="happinessBar">
           <div class="hud-meter__fill" id="happinessFill"></div>
@@ -1907,7 +1914,7 @@
         <span class="hud-meter__mobile-stat" id="happinessMobileStat" aria-hidden="true"></span>
       </div>
       <div class="hud-meter hud-meter--congestion">
-        <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
+        <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion <span class="hud-meter__decay" id="congestionDecay" aria-hidden="true"></span></span>
         <div class="hud-meter__track" role="progressbar" aria-label="Congestion"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="congestionBar">
           <div class="hud-meter__fill" id="congestionFill"></div>
@@ -2530,6 +2537,8 @@
     const congestionDelta = document.getElementById("congestionDelta");
     const congestionGoal  = document.getElementById("congestionGoal");
     const congestionMobileStat = document.getElementById("congestionMobileStat");
+    const happinessDecayEl  = document.getElementById("happinessDecay");
+    const congestionDecayEl = document.getElementById("congestionDecay");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl   = document.getElementById("weatherBadge");
     const weatherIconEl    = document.getElementById("weatherIcon");
@@ -2600,6 +2609,10 @@
         congestionMobileStat.classList.toggle("hud-meter__value--good",  congDone);
         congestionMobileStat.classList.toggle("hud-meter__value--close", congClose);
       }
+
+      const DR = (window.DECAY_RATES) || { congestion: 1.5, happiness: -1.5 };
+      if (happinessDecayEl)  happinessDecayEl.textContent  = DR.happiness + "/t";
+      if (congestionDecayEl) congestionDecayEl.textContent = "+" + DR.congestion + "/t";
 
       const turnsLeft = turnLimit - turn;
       turnsValueEl.textContent = turn + " / " + turnLimit;
@@ -3009,12 +3022,17 @@
       });
       return delta;
     }
-    window.currentDifficulty   = window.currentDifficulty   || 'normal';
-    window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
+    var DECAY_RATES    = { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
+    var LOSE_THRESHOLDS = { congestion: 100, happiness: 0, carbon: 100 };
+
+    window.currentDifficulty  = window.currentDifficulty  || 'normal';
+    window.DIFFICULTY_PRESETS = DIFFICULTY_PRESETS;
+    window.DECAY_RATES        = DECAY_RATES;
+    window.LOSE_THRESHOLDS    = LOSE_THRESHOLDS;
 
     function makeInitialState() {
       var p = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
-      return { congestion: 80, happiness: 20, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
+      return { congestion: 55, happiness: 45, carbon: 35, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
     }
 
     window.setDifficulty = function setDifficulty(level) {
@@ -3023,13 +3041,14 @@
     };
 
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
-                          DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
+                          DIFFICULTY_PRESETS, DECAY_RATES, LOSE_THRESHOLDS,
+                          WIN_HAPPINESS, WIN_CONGESTION,
                           ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
                           calculateEffects, checkWinCondition, getGridNeighbours,
                           getBlockId, checkZoneCap, applyGeneratorTick };
 
     // ── Game state ────────────────────────────────────────────────────────
-    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
+    const INITIAL = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: 15 };
 
     window.gameState = Object.assign({}, makeInitialState());
 
@@ -3073,9 +3092,14 @@
       var delta      = calculateEffects(placements, gridData, window.currentWeather || null);
       var genPenalty = applyGeneratorTick(generatorTiles, placements);
 
-      var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta + genPenalty));
-      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
+      var gs   = window.gameState;
+      var turn = gs.turn;  // turns elapsed before this recalc
+      gs.congestion = Math.max(0, Math.min(100,
+        INITIAL.congestion + (turn * DECAY_RATES.congestion) + delta.congestionDelta + genPenalty));
+      gs.happiness  = Math.max(0, Math.min(100,
+        INITIAL.happiness  + (turn * DECAY_RATES.happiness)  + delta.happinessDelta));
+      gs.carbon     = Math.max(0, Math.min(100,
+        INITIAL.carbon     + (turn * DECAY_RATES.carbon)     + (delta.carbonDelta || 0)));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
       // Update generator tile firing visual
@@ -3119,7 +3143,10 @@
         gs.won = true;
         if (typeof window.showWinScreen === "function") window.showWinScreen();
       } else if (result === "lose") {
-        const loseReason = turnsLeft <= 0 ? "turns" : "budget";
+        var loseReason = turnsLeft <= 0 ? "turns"
+          : gs.congestion >= LOSE_THRESHOLDS.congestion ? "congestion"
+          : gs.happiness  <= LOSE_THRESHOLDS.happiness  ? "happiness"
+          : "budget";
         if (typeof window.showGameOverScreen === "function") window.showGameOverScreen(loseReason);
       }
       return result;

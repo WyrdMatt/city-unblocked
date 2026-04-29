@@ -51,8 +51,9 @@ describe('win / initial constants', () => {
   test('WIN_CONGESTION = 30', () => expect(WIN_CONGESTION).toBe(30))
   test('DEFAULT_TURN_LIMIT = 15', () => expect(DEFAULT_TURN_LIMIT).toBe(15))
   test('INITIAL_STATE shape', () => {
-    expect(INITIAL_STATE.congestion).toBe(80)
-    expect(INITIAL_STATE.happiness).toBe(20)
+    expect(INITIAL_STATE.congestion).toBe(55)
+    expect(INITIAL_STATE.happiness).toBe(45)
+    expect(INITIAL_STATE.carbon).toBe(35)
     expect(INITIAL_STATE.budget).toBe(500)
     expect(INITIAL_STATE.turnLimit).toBe(15)
   })

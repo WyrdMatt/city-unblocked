@@ -16,7 +16,17 @@ export const WIN_HAPPINESS  = 70;
 export const WIN_CONGESTION = 30;
 export const DEFAULT_TURN_LIMIT = 15;
 
-export const INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
+// Passive decay applied per turn in updateMeters()
+export const DECAY_RATES = {
+  congestion: 1.5,   // +1.5 cong/turn  → hits 100 in ~30 turns with no mitigation
+  happiness:  -1.5,  // −1.5 hap/turn   → hits 0   in ~30 turns with no mitigation
+  carbon:     1.0,   // +1.0 carbon/turn → hits 100 in ~65 turns (slower pressure)
+};
+
+// Automatic loss when any meter crosses these thresholds
+export const LOSE_THRESHOLDS = { congestion: 100, happiness: 0, carbon: 100 };
+
+export const INITIAL_STATE = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
 export const DIFFICULTY_PRESETS = {
   easy:   { budget: 900, turnLimit: 25, blockerRate: 0,    generatorCount: 1 },
@@ -211,6 +221,8 @@ export function checkWinCondition(state) {
   const turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
 
   if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
+  if (congestion >= LOSE_THRESHOLDS.congestion) return 'lose';
+  if (happiness <= LOSE_THRESHOLDS.happiness) return 'lose';
   if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return 'lose';
   if (turnsLeft <= 0) return 'lose';
   return 'playing';

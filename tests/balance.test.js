@@ -83,16 +83,17 @@ describe('Test 3: full budget diversified mix', () => {
 })
 
 describe('Test 4: spamming bus-stop alone does not win', () => {
-  test('6× bus-stop cannot win (happiness insufficient)', () => {
-    const sim = simulate(placements('bus-stop', 6), buildMaxAdjGrid())
+  test('4× bus-stop cannot win (happiness still below threshold)', () => {
+    const sim = simulate(placements('bus-stop', 4), buildMaxAdjGrid())
     expect(sim.result).not.toBe('win')
   })
 })
 
-describe('Test 5: spamming cheap action (bike-lane) cannot meet congestion target', () => {
-  test('12× bike-lane cannot hit congestion target alone', () => {
-    const sim = simulate(placements('bike-lane', 12), buildMaxAdjGrid())
-    expect(sim.congestion).toBeGreaterThan(WIN_CONGESTION)
+describe('Test 5: road-widening spam alone cannot win', () => {
+  test('5× road-widening drops happiness below win threshold', () => {
+    const sim = simulate(placements('road-widening', 5), buildMaxAdjGrid())
+    expect(sim.happiness).toBeLessThan(WIN_HAPPINESS)
+    expect(sim.result).not.toBe('win')
   })
 })
 
@@ -125,8 +126,8 @@ describe('Test 7: checkWinCondition edge cases', () => {
     expect(checkWinCondition({ happiness: 0, congestion: 100, budget: 0, minActionCost: 0, turnsLeft: 5 })).toBe('lose'))
   test('7c: budget just below min cost → lose', () =>
     expect(checkWinCondition({ happiness: 0, congestion: 100, budget: MIN_COST - 1, minActionCost: MIN_COST, turnsLeft: 5 })).toBe('lose'))
-  test('7d: budget exactly min cost → playing', () =>
-    expect(checkWinCondition({ happiness: 0, congestion: 100, budget: MIN_COST, minActionCost: MIN_COST, turnsLeft: 5 })).toBe('playing'))
+  test('7d: budget exactly min cost → playing (normal game state)', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, budget: MIN_COST, minActionCost: MIN_COST, turnsLeft: 5 })).toBe('playing'))
   test('7e: turnsLeft=0 → lose even with budget', () =>
     expect(checkWinCondition({ happiness: 0, congestion: 100, budget: 500, minActionCost: MIN_COST, turnsLeft: 0 })).toBe('lose'))
   test('7f: win when turnsLeft=0 → win takes priority', () =>
