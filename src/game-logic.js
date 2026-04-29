@@ -35,6 +35,34 @@ export const DIFFICULTY_PRESETS = {
   expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
 };
 
+export const CITY_PROFILES = {
+  standard: {
+    label: 'Standard', emoji: '🏙️',
+    description: 'Reduce congestion and improve quality of life.',
+    win: { happiness: 75, congestion: 25 },
+  },
+  green: {
+    label: 'Green City', emoji: '🌿',
+    description: 'Build a sustainable, low-carbon city.',
+    win: { happiness: 65, congestion: 35, carbon: 30 },
+  },
+  transit: {
+    label: 'Transit Hub', emoji: '🚌',
+    description: 'Create a world-class public transport network.',
+    win: { happiness: 60, congestion: 20 },
+  },
+  vibrant: {
+    label: 'Vibrant City', emoji: '🎉',
+    description: 'Create a joyful, people-first city.',
+    win: { happiness: 85, congestion: 40 },
+  },
+  eco: {
+    label: 'Eco Warriors', emoji: '♻️',
+    description: 'Slash carbon emissions to save the planet.',
+    win: { happiness: 70, carbon: 20 },
+  },
+};
+
 // ── Puzzle-mechanic constants ──────────────────────────────────────────────
 
 export const ZONE_CAP        = 2;   // max of same action type per block zone
@@ -216,7 +244,7 @@ export function calculateEffects(placements, grid, weather) {
 
 // ── checkWinCondition ──────────────────────────────────────────────────────
 
-export function checkWinCondition(state) {
+export function checkWinCondition(state, profileKey) {
   const happiness     = state.happiness     || 0;
   const congestion    = state.congestion    || 0;
   const carbon        = state.carbon        ?? 0;
@@ -224,7 +252,19 @@ export function checkWinCondition(state) {
   const minActionCost = state.minActionCost || 0;
   const turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
 
-  if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
+  // Win check — use profile thresholds when specified, else default constants
+  const profile = profileKey ? CITY_PROFILES[profileKey] : null;
+  if (profile) {
+    const w = profile.win;
+    const hapWon  = w.happiness  == null || happiness  >= w.happiness;
+    const congWon = w.congestion == null || congestion <= w.congestion;
+    const cbnWon  = w.carbon     == null || carbon     <= w.carbon;
+    if (hapWon && congWon && cbnWon) return 'win';
+  } else {
+    if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
+  }
+
+  // Universal lose checks
   if (congestion >= LOSE_THRESHOLDS.congestion) return 'lose';
   if (happiness <= LOSE_THRESHOLDS.happiness) return 'lose';
   if (carbon >= LOSE_THRESHOLDS.carbon) return 'lose';

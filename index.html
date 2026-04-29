@@ -1483,6 +1483,12 @@
     .hud__turns-value { font-size: 1rem; font-weight: 900; color: var(--c-text-muted); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
     .hud__turns-value--urgent { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
 
+    /* ── Profile badge ───────────────────────────────────────────── */
+    .hud__profile { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__profile-icon  { font-size: 1rem; line-height: 1; }
+    .hud__profile-label { font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.06em; color: var(--c-text-dim); white-space: nowrap; }
+
     /* ── Hotspot road tile glow ──────────────────────────────────── */
     .tile.road[data-hotspot="1"] { box-shadow: inset 0 0 5px rgba(251,146,60,.12); }
     .tile.road[data-hotspot="2"] { box-shadow: inset 0 0 7px rgba(251,146,60,.22); }
@@ -1938,6 +1944,7 @@
         <div class="hud-meter__track" role="progressbar" aria-label="Carbon emissions"
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="carbonBar">
           <div class="hud-meter__fill" id="carbonFill"></div>
+          <div class="hud-meter__goal" id="carbonGoal" style="left:30%" title="Goal: get below 30" data-win-label="≤30 WIN" hidden></div>
         </div>
         <span class="hud-meter__value" id="carbonValue">0</span>
         <span class="hud-meter__delta" id="carbonDelta" aria-live="polite"></span>
@@ -1947,6 +1954,10 @@
     <div class="hud__turns" aria-label="Turns remaining">
       <span class="hud__turns-label">Turns</span>
       <span class="hud__turns-value" id="turnsValue">0 / 15</span>
+    </div>
+    <div class="hud__profile" id="profileBadge" title="" aria-label="City profile">
+      <span class="hud__profile-icon"  id="profileIcon">🏙️</span>
+      <span class="hud__profile-label" id="profileLabel">Standard</span>
     </div>
     <div class="hud__weather" id="weatherBadge" aria-label="Current weather" title="">
       <span class="hud__weather-icon"  id="weatherIcon">☀️</span>
@@ -2564,6 +2575,10 @@
     const carbonDeltaEl     = document.getElementById("carbonDelta");
     const carbonDecayEl     = document.getElementById("carbonDecay");
     const carbonMobileStat  = document.getElementById("carbonMobileStat");
+    const carbonGoal        = document.getElementById("carbonGoal");
+    const profileBadgeEl    = document.getElementById("profileBadge");
+    const profileIconEl     = document.getElementById("profileIcon");
+    const profileLabelEl    = document.getElementById("profileLabel");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl   = document.getElementById("weatherBadge");
     const weatherIconEl    = document.getElementById("weatherIcon");
@@ -2585,9 +2600,15 @@
     function formatBudget(n) { return "£" + Math.round(n).toLocaleString("en-GB"); }
 
     function updateDelta(el, value, target, isLower) {
+      if (!el) return;
+      if (target == null) {
+        el.textContent = '';
+        el.classList.remove("hud-meter__delta--done", "hud-meter__delta--close");
+        return;
+      }
       // isLower = true means we want value ≤ target (congestion); false = value ≥ target (happiness)
-      const done = isLower ? value <= target : value >= target;
-      const gap  = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
+      const done  = isLower ? value <= target : value >= target;
+      const gap   = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
       const close = !done && gap <= 10;
       el.textContent = done ? "✓" : (isLower ? "−" + gap : "+" + gap);
       el.classList.toggle("hud-meter__delta--done",  done);
@@ -2603,18 +2624,36 @@
       const turn       = gs.turn   ?? 0;
       const turnLimit  = gs.turnLimit ?? 15;
 
+      // Profile-aware win targets
+      const CPROFILES    = window.CITY_PROFILES || {};
+      const activeProfile = CPROFILES[window.currentProfile] || CPROFILES.standard || {};
+      const pWin         = activeProfile.win || {};
+      const hapTarget    = pWin.happiness  != null ? pWin.happiness  : 70;
+      const congTarget   = pWin.congestion != null ? pWin.congestion : null;
+      const cbnTarget    = pWin.carbon     != null ? pWin.carbon     : null;
+
+      // Profile badge
+      if (profileIconEl)  profileIconEl.textContent  = activeProfile.emoji || '🏙️';
+      if (profileLabelEl) profileLabelEl.textContent = activeProfile.label || 'Standard';
+      if (profileBadgeEl) profileBadgeEl.title        = activeProfile.description || '';
+
       happinessFill.style.width = happiness + "%";
       happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
       happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
-      updateDelta(happinessDelta, happiness, 70, false);
-      const hapDone  = happiness >= 70;
-      const hapClose = !hapDone && happiness >= 60;
-      happinessValue.textContent = hapDone ? "✓" : Math.round(happiness) + "→70";
+      updateDelta(happinessDelta, happiness, hapTarget, false);
+      const hapDone  = happiness >= hapTarget;
+      const hapClose = !hapDone && happiness >= hapTarget - 10;
+      happinessValue.textContent = hapDone ? "✓" : Math.round(happiness) + "→" + hapTarget;
       happinessValue.classList.toggle("hud-meter__value--good",  hapDone);
       happinessValue.classList.toggle("hud-meter__value--close", hapClose);
-      if (happinessGoal) happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
+      if (happinessGoal) {
+        happinessGoal.style.left      = hapTarget + '%';
+        happinessGoal.title           = 'Goal: reach ' + hapTarget;
+        happinessGoal.dataset.winLabel = '≥' + hapTarget + ' WIN';
+        happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
+      }
       if (happinessMobileStat) {
-        happinessMobileStat.textContent = hapDone ? "✓ 70/100" : Math.round(happiness) + "/100 (70)";
+        happinessMobileStat.textContent = hapDone ? "✓ " + hapTarget + "/100" : Math.round(happiness) + "/100 (" + hapTarget + ")";
         happinessMobileStat.classList.toggle("hud-meter__value--good",  hapDone);
         happinessMobileStat.classList.toggle("hud-meter__value--close", hapClose);
       }
@@ -2622,15 +2661,25 @@
       congestionFill.style.width = congestion + "%";
       congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
       congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
-      updateDelta(congestionDelta, congestion, 30, true);
-      const congDone  = congestion <= 30;
-      const congClose = !congDone && congestion <= 40;
-      congestionValue.textContent = congDone ? "✓" : Math.round(congestion) + "→30";
+      updateDelta(congestionDelta, congestion, congTarget, true);
+      const congDone  = congTarget != null && congestion <= congTarget;
+      const congClose = congTarget != null && !congDone && congestion <= congTarget + 10;
+      congestionValue.textContent = congDone ? "✓" : congTarget != null ? Math.round(congestion) + "→" + congTarget : Math.round(congestion);
       congestionValue.classList.toggle("hud-meter__value--good",  congDone);
       congestionValue.classList.toggle("hud-meter__value--close", congClose);
-      if (congestionGoal) congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
+      if (congestionGoal) {
+        if (congTarget != null) {
+          congestionGoal.style.left       = congTarget + '%';
+          congestionGoal.title            = 'Goal: get below ' + congTarget;
+          congestionGoal.dataset.winLabel = '≤' + congTarget + ' WIN';
+          congestionGoal.removeAttribute('hidden');
+          congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
+        } else {
+          congestionGoal.setAttribute('hidden', '');
+        }
+      }
       if (congestionMobileStat) {
-        congestionMobileStat.textContent = congDone ? "✓ 30/100" : Math.round(congestion) + "/100 (30)";
+        congestionMobileStat.textContent = congDone ? "✓ " + congTarget + "/100" : congTarget != null ? Math.round(congestion) + "/100 (" + congTarget + ")" : Math.round(congestion) + "/100";
         congestionMobileStat.classList.toggle("hud-meter__value--good",  congDone);
         congestionMobileStat.classList.toggle("hud-meter__value--close", congClose);
       }
@@ -2640,10 +2689,28 @@
         carbonFill.style.width = carbon + "%";
         carbonBar.setAttribute("aria-valuenow", Math.round(carbon));
         carbonFill.classList.toggle("hud-meter__fill--critical", carbon > 80);
-        updateDelta(carbonDeltaEl, carbon, 100, true);
-        const cbnDone = false; // no universal win target — profile-dependent
-        carbonValue.textContent = Math.round(carbon) + "/100";
-        if (carbonMobileStat) carbonMobileStat.textContent = Math.round(carbon) + "/100";
+        updateDelta(carbonDeltaEl, carbon, cbnTarget, true);
+        const cbnDone  = cbnTarget != null && carbon <= cbnTarget;
+        const cbnClose = cbnTarget != null && !cbnDone && carbon <= cbnTarget + 10;
+        carbonValue.textContent = cbnDone ? "✓" : cbnTarget != null ? Math.round(carbon) + "→" + cbnTarget : Math.round(carbon) + "/100";
+        carbonValue.classList.toggle("hud-meter__value--good",  cbnDone);
+        carbonValue.classList.toggle("hud-meter__value--close", cbnClose);
+        if (carbonGoal) {
+          if (cbnTarget != null) {
+            carbonGoal.style.left       = cbnTarget + '%';
+            carbonGoal.title            = 'Goal: get below ' + cbnTarget;
+            carbonGoal.dataset.winLabel = '≤' + cbnTarget + ' WIN';
+            carbonGoal.removeAttribute('hidden');
+            carbonGoal.classList.toggle("hud-meter__goal--near", cbnClose);
+          } else {
+            carbonGoal.setAttribute('hidden', '');
+          }
+        }
+        if (carbonMobileStat) {
+          carbonMobileStat.textContent = cbnDone ? "✓ " + cbnTarget + "/100" : cbnTarget != null ? Math.round(carbon) + "/100 (" + cbnTarget + ")" : Math.round(carbon) + "/100";
+          carbonMobileStat.classList.toggle("hud-meter__value--good",  cbnDone);
+          carbonMobileStat.classList.toggle("hud-meter__value--close", cbnClose);
+        }
       }
 
       const DR = (window.DECAY_RATES) || { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
@@ -2695,13 +2762,17 @@
     window.updateMeters = window.refreshHUD;
 
     function buildContextBadges() {
-      const diff    = window.currentDifficulty || 'normal';
-      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard' };
-      const weather = window.currentWeather || 'sunny';
-      const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
-      const wMeta   = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      const diff       = window.currentDifficulty || 'normal';
+      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard', expert: '💀 Expert' };
+      const weather    = window.currentWeather || 'sunny';
+      const WMETA      = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const wMeta      = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      const CP         = window.CITY_PROFILES || {};
+      const prof       = CP[window.currentProfile] || {};
+      const profBadge  = prof.emoji ? `<span class="ctx-badge">${prof.emoji} ${prof.label}</span>` : '';
       return `<span class="ctx-badge ctx-badge--${diff}">${diffLabels[diff] || diff}</span>` +
-             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>`;
+             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>` +
+             profBadge;
     }
 
     window.showWinScreen = function showWinScreen() {
@@ -3014,10 +3085,27 @@
       return { congestionDelta: congestionDelta, happinessDelta: happinessDelta, carbonDelta: carbonDelta };
     }
 
-    function checkWinCondition(state) {
-      var turnsLeft = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
-      if (state.happiness >= WIN_HAPPINESS && state.congestion <= WIN_CONGESTION) return "win";
-      if (state.budget <= 0 || (state.minActionCost > 0 && state.budget < state.minActionCost)) return "lose";
+    function checkWinCondition(state, profileKey) {
+      var happiness     = state.happiness     || 0;
+      var congestion    = state.congestion    || 0;
+      var carbon        = state.carbon        != null ? state.carbon : 0;
+      var budget        = state.budget        || 0;
+      var minActionCost = state.minActionCost || 0;
+      var turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
+      var profile = profileKey ? CITY_PROFILES[profileKey] : null;
+      if (profile) {
+        var w = profile.win;
+        var hapWon  = w.happiness  == null || happiness  >= w.happiness;
+        var congWon = w.congestion == null || congestion <= w.congestion;
+        var cbnWon  = w.carbon     == null || carbon     <= w.carbon;
+        if (hapWon && congWon && cbnWon) return "win";
+      } else {
+        if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return "win";
+      }
+      if (congestion >= LOSE_THRESHOLDS.congestion) return "lose";
+      if (happiness  <= LOSE_THRESHOLDS.happiness)  return "lose";
+      if (carbon     >= LOSE_THRESHOLDS.carbon)     return "lose";
+      if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return "lose";
       if (turnsLeft <= 0) return "lose";
       return "playing";
     }
@@ -3029,6 +3117,14 @@
       normal: { budget: 650, turnLimit: 20, blockerRate: 0.03, generatorCount: 2 },
       hard:   { budget: 480, turnLimit: 15, blockerRate: 0.06, generatorCount: 2 },
       expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
+    };
+
+    var CITY_PROFILES = {
+      standard: { label: 'Standard',    emoji: '🏙️', description: 'Reduce congestion and improve quality of life.',    win: { happiness: 75, congestion: 25 } },
+      green:    { label: 'Green City',  emoji: '🌿', description: 'Build a sustainable, low-carbon city.',             win: { happiness: 65, congestion: 35, carbon: 30 } },
+      transit:  { label: 'Transit Hub', emoji: '🚌', description: 'Create a world-class public transport network.',    win: { happiness: 60, congestion: 20 } },
+      vibrant:  { label: 'Vibrant City',emoji: '🎉', description: 'Create a joyful, people-first city.',              win: { happiness: 85, congestion: 40 } },
+      eco:      { label: 'Eco Warriors',emoji: '♻️', description: 'Slash carbon emissions to save the planet.',       win: { happiness: 70, carbon: 20 } },
     };
 
     // ── Puzzle-mechanic constants ─────────────────────────────────────────
@@ -3079,8 +3175,11 @@
       window.currentDifficulty = level;
     };
 
+    window.CITY_PROFILES  = CITY_PROFILES;
+    window.currentProfile = window.currentProfile || 'standard';
+
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
-                          DIFFICULTY_PRESETS, DECAY_RATES, LOSE_THRESHOLDS,
+                          DIFFICULTY_PRESETS, CITY_PROFILES, DECAY_RATES, LOSE_THRESHOLDS,
                           WIN_HAPPINESS, WIN_CONGESTION,
                           ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
                           calculateEffects, checkWinCondition, getGridNeighbours,
@@ -3171,12 +3270,13 @@
 
       var turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
       var result = checkWinCondition({
-        happiness: gs.happiness  || 0,
-        congestion: gs.congestion || 0,
-        budget: gs.budget        || 0,
+        happiness:     gs.happiness     || 0,
+        congestion:    gs.congestion    || 0,
+        carbon:        gs.carbon        != null ? gs.carbon : 0,
+        budget:        gs.budget        || 0,
         minActionCost: minCost,
-        turnsLeft: turnsLeft,
-      });
+        turnsLeft:     turnsLeft,
+      }, window.currentProfile);
 
       if (result === "win") {
         gs.won = true;
@@ -3199,6 +3299,8 @@
       if (undoBtn) undoBtn.setAttribute('hidden', '');
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
+      var profileKeys = Object.keys(CITY_PROFILES);
+      window.currentProfile = profileKeys[Math.floor(Math.random() * profileKeys.length)];
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
       // Generate map — reuse seed if provided (e.g. "restart same map")
