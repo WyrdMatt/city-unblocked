@@ -586,6 +586,20 @@
     }
     .hud__help-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
 
+    /* ── Undo button ─────────────────────────────────────────────── */
+    .hud__undo-btn {
+      flex-shrink: 0;
+      background: var(--c-btn-bg);
+      border: 1px solid var(--c-border-btn);
+      border-radius: 8px; color: var(--c-text-muted);
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; padding: 0.25rem 0.6rem;
+      line-height: 1; font-family: inherit; white-space: nowrap;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .hud__undo-btn:hover { background: var(--c-btn-hover); border-color: var(--c-border-hover); color: var(--c-text); }
+    .hud__undo-btn[hidden] { display: none; }
+
     /* ── Tutorial overlay ────────────────────────────────────────── */
     .overlay--tutorial { background: rgba(7,8,13,0.93); backdrop-filter: blur(10px); z-index: 700; }
     .overlay__card--tutorial {
@@ -1152,7 +1166,8 @@
       /* Music + reset at far right */
       .hud__music-btn { order: 6; font-size: 0.95rem; padding: 0.2rem 0.4rem; }
       .hud__help-btn  { order: 7; font-size: 0.8rem;  padding: 0.2rem 0.4rem; }
-      .hud__reset-mobile { order: 8; }
+      .hud__undo-btn  { order: 8; font-size: 0.72rem; padding: 0.2rem 0.4rem; }
+      .hud__reset-mobile { order: 9; }
     }
   </style>
 </head>
@@ -1257,6 +1272,7 @@
       <span class="hud__budget-label">Budget</span>
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
+    <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
     <button class="hud__help-btn"  id="hudHelp"     type="button" title="How to play" aria-label="How to play">?</button>
     <button class="hud__reset-mobile" id="hudReset" type="button" title="Reset game">↺</button>
@@ -1767,6 +1783,44 @@
     document.getElementById("gameOverRestart")?.addEventListener("click", onRestart);
     document.getElementById("hudReset")?.addEventListener("click", onRestart);
 
+    // ── Undo last placement ──────────────────────────────────────────
+    const hudUndoBtn = document.getElementById("hudUndo");
+
+    function doUndo() {
+      const snap = window.lastPlacement;
+      if (!snap) return;
+      const tile = snap.element;
+      // Reverse the placeTile() call
+      delete tile.dataset.placedAction;
+      delete tile.dataset.placedCost;
+      tile.style.removeProperty("--tile-placed-color");
+      tile.classList.remove("tile--placed");
+      tile.textContent = "";
+      tile.removeAttribute("aria-label");
+      // Restore tile's road/building visual
+      const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
+      if (cgTile && typeof window.refreshTile === "function") window.refreshTile(cgTile);
+      // Restore budget
+      window.gameState.budget += snap.cost;
+      // Recalculate — updateMeters does turn++, so preserve the pre-undo count
+      const prevTurn = window.gameState.turn;
+      if (typeof window.updateMeters === "function") window.updateMeters();
+      window.gameState.turn = Math.max(0, prevTurn - 1);
+      if (typeof window.refreshHUD === "function") window.refreshHUD();
+      // Clear snapshot
+      window.lastPlacement = null;
+      if (hudUndoBtn) hudUndoBtn.setAttribute("hidden", "");
+    }
+
+    hudUndoBtn?.addEventListener("click", doUndo);
+
+    document.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        doUndo();
+      }
+    });
+
     setInterval(window.refreshHUD, 500);
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", window.refreshHUD);
@@ -1996,6 +2050,9 @@
 
     window.restartGame = function restartGame() {
       Object.assign(window.gameState, makeInitialState());
+      window.lastPlacement = null;
+      const undoBtn = document.getElementById('hudUndo');
+      if (undoBtn) undoBtn.setAttribute('hidden', '');
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
@@ -2532,6 +2589,10 @@
       const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
       showPlacementPopup(tile, meta, cgTile);
       window.gameState.budget -= meta.cost;
+      // Save undo snapshot — one level only; next placement overwrites
+      window.lastPlacement = { element: tile, action: meta.action, cost: meta.cost };
+      const undoBtn = document.getElementById('hudUndo');
+      if (undoBtn) undoBtn.removeAttribute('hidden');
       if (typeof window.updateMeters    === "function") window.updateMeters();
       if (typeof window.checkWinLose    === "function") window.checkWinLose();
       window.updateActionAvailability();
