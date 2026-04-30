@@ -1,7 +1,8 @@
 import { describe, test, expect } from 'vitest'
 import {
   EFFECTS, DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION, INITIAL_STATE,
-  GENERATOR_DELTA, calculateEffects, checkWinCondition, applyGeneratorTick,
+  GENERATOR_DELTA, COMMERCIAL_SCORE_BONUS,
+  calculateEffects, checkWinCondition, applyGeneratorTick, calculateWinScore,
 } from '../src/game-logic.js'
 
 const ACTION_COSTS = { 'bus-stop': 80, 'bike-lane': 40, 'parking-garage': 120, 'park': 60, 'road-widening': 90 }
@@ -279,5 +280,48 @@ describe('Test 15: expert difficulty — actions still make meaningful progress'
     const delta = calculateEffects(acts, buildMaxAdjGrid())
     expect(cost).toBeLessThanOrEqual(DIFFICULTY_PRESETS.expert.budget)
     expect(delta.congestionDelta).toBeLessThan(-40)
+  })
+})
+
+// ── Design contracts: commercial engagement gates 3★ ─────────────────────
+
+describe('Design contract: 3★ requires commercial engagement on tight budget', () => {
+  function makeContractGrid(overrides = []) {
+    const g = []
+    for (let r = 0; r < 10; r++)
+      for (let c = 0; c < 10; c++)
+        g.push({ row: r, col: c, type: 'road' })
+    overrides.forEach(o => {
+      const cell = g.find(t => t.row === o.row && t.col === o.col)
+      if (cell) cell.type = o.type
+    })
+    return g
+  }
+
+  test('tight budget with no commercial: winScore < 200 (no 3★)', () => {
+    const grid = makeContractGrid()  // no commercial tiles
+    const placements = [
+      { action: 'bus-stop',  row: 5, col: 5 },
+      { action: 'bike-lane', row: 5, col: 6 },
+    ]
+    const budget = 120  // well within 2★ (≥80) but below 3★ (≥200)
+    const winScore = calculateWinScore(budget, placements, grid)
+    expect(winScore).toBe(120)
+    expect(winScore).toBeLessThan(200)
+  })
+
+  test('same budget with 2 commercial blocks engaged: winScore reaches 3★', () => {
+    const grid = makeContractGrid([
+      { row: 5, col: 4, type: 'commercial' },  // adjacent to bus-stop at (5,5)
+      { row: 5, col: 7, type: 'commercial' },  // adjacent to bike-lane at (5,6)
+    ])
+    const placements = [
+      { action: 'bus-stop',  row: 5, col: 5 },
+      { action: 'bike-lane', row: 5, col: 6 },
+    ]
+    const budget = 120
+    const winScore = calculateWinScore(budget, placements, grid)
+    expect(winScore).toBe(120 + 2 * COMMERCIAL_SCORE_BONUS)
+    expect(winScore).toBeGreaterThanOrEqual(200)
   })
 })

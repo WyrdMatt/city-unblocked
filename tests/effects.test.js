@@ -4,8 +4,11 @@ import {
   WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
   LOSE_THRESHOLDS,
   ROAD_WIDENING_BUILDING_BONUS, CONGESTION_SURCHARGE_ACTIONS,
+  COMMERCIAL_TRANSPORT_SUBSIDY, COMMERCIAL_SCORE_BONUS,
   getGridNeighbours, hotspotScore, calculateEffects, checkWinCondition,
   getCongestSurcharge, calculateRoadWideningBonus,
+  getRoadFaceId, checkBusStopFaceLimit,
+  calculateTransportSubsidy, countCommercialBlocksEngaged, calculateWinScore,
 } from '../src/game-logic.js'
 
 const approx = (a, b, eps = 0.001) => Math.abs(a - b) < eps
@@ -203,11 +206,11 @@ describe('COMBOS constant', () => {
   test('at least 9 combo definitions', () =>
     expect(COMBOS.length).toBeGreaterThanOrEqual(9))
   test('Transit Hub defined', () =>
-    expect(COMBOS.some(c => c.a === 'bus-stop' && c.b === 'park' && c.happiness === 5)).toBe(true))
+    expect(COMBOS.some(c => c.a === 'bus-stop' && c.b === 'park' && c.happiness === 3)).toBe(true))
   test('Green Network defined', () =>
     expect(COMBOS.some(c => c.a === 'park' && c.b === 'park')).toBe(true))
   test('Pedestrian Zone defined (bike+park)', () =>
-    expect(COMBOS.some(c => c.a === 'bike-lane' && c.b === 'park' && c.congestion === -1 && c.happiness === 5)).toBe(true))
+    expect(COMBOS.some(c => c.a === 'bike-lane' && c.b === 'park' && c.congestion === -1 && c.happiness === 3)).toBe(true))
   test('Green Gateway defined (parking+park)', () =>
     expect(COMBOS.some(c => c.a === 'parking-garage' && c.b === 'park' && c.congestion === -2 && c.happiness === 6)).toBe(true))
   test('Commuter Link defined (parking+bike)', () =>
@@ -226,7 +229,7 @@ function isolatedGrid(placements) {
   return grid
 }
 
-test('Pedestrian Zone (bike-lane adj park): −1 cong, +5 hap combo bonus', () => {
+test('Pedestrian Zone (bike-lane adj park): −1 cong, +3 hap combo bonus', () => {
   const grid = isolatedGrid()
   const dCombo = calculateEffects([
     { action: 'bike-lane', row: 5, col: 5 },
@@ -235,7 +238,7 @@ test('Pedestrian Zone (bike-lane adj park): −1 cong, +5 hap combo bonus', () =
   const d1 = calculateEffects([{ action: 'bike-lane', row: 5, col: 5 }], grid)
   const d2 = calculateEffects([{ action: 'park',      row: 5, col: 6 }], grid)
   expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 1, 0.01)).toBe(true)
-  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 5, 0.01)).toBe(true)
+  expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 3, 0.01)).toBe(true)
 })
 
 test('Green Gateway (parking-garage adj park): −2 cong, +6 hap combo bonus', () => {
@@ -279,7 +282,7 @@ test('Industrial Bypass (road-widening adj parking-garage): −5 cong combo bonu
 
 // ── Diagonal combos ────────────────────────────────────────────────────────
 
-test('diagonal combo fires at 50% (truncated): Transit Hub diagonal gives +2 hap', () => {
+test('diagonal combo fires at 50% (truncated): Transit Hub diagonal gives +1 hap', () => {
   const grid = isolatedGrid()
   const dCombo = calculateEffects([
     { action: 'bus-stop', row: 5, col: 5 },
@@ -287,8 +290,8 @@ test('diagonal combo fires at 50% (truncated): Transit Hub diagonal gives +2 hap
   ], grid)
   const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
   const d2 = calculateEffects([{ action: 'park',     row: 6, col: 6 }], grid)
-  // Transit Hub: happiness +5 → floor(5×0.5)=2
-  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 2, 0.01)).toBe(true)
+  // Transit Hub: happiness +3 → floor(3×0.5)=1
+  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 1, 0.01)).toBe(true)
 })
 
 test('diagonal combo does not fire at distance 2', () => {
@@ -310,8 +313,8 @@ test('orthogonal combo still fires at 100% (diagonal logic does not break it)', 
   ], grid)
   const d1 = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], grid)
   const d2 = calculateEffects([{ action: 'park',     row: 5, col: 6 }], grid)
-  // Transit Hub: happiness +5 at full
-  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 5, 0.01)).toBe(true)
+  // Transit Hub: happiness +3 at full
+  expect(approx(dCombo.happinessDelta, d1.happinessDelta + d2.happinessDelta + 3, 0.01)).toBe(true)
 })
 
 // ── Bus stop spacing bonus ─────────────────────────────────────────────────
@@ -727,6 +730,159 @@ describe('weather × industrial-dev', () => {
     const snowy = calculateEffects([{ action: 'industrial-dev', row: 5, col: 5 }], g, 'snowy')
     expect(approx(snowy.congestionDelta, base.congestionDelta, 0.01)).toBe(true)
     expect(approx(snowy.happinessDelta,  base.happinessDelta,  0.01)).toBe(true)
+  })
+})
+
+// ── getRoadFaceId ──────────────────────────────────────────────────────────
+
+describe('getRoadFaceId', () => {
+  const roadRows = [2, 6]
+  const roadCols = [3, 7]
+
+  test('intersection returns X:{row}:{col}', () =>
+    expect(getRoadFaceId(2, 3, roadRows, roadCols)).toBe('X:2:3'))
+
+  test('horizontal road tile: colBand=0 when no roadCols < col', () =>
+    expect(getRoadFaceId(2, 1, roadRows, roadCols)).toBe('H:2:0'))
+
+  test('horizontal road tile: colBand=1 when one roadCol < col', () =>
+    expect(getRoadFaceId(2, 5, roadRows, roadCols)).toBe('H:2:1'))
+
+  test('vertical road tile: rowBand=0 when no roadRows < row', () =>
+    expect(getRoadFaceId(1, 3, roadRows, roadCols)).toBe('V:0:3'))
+
+  test('vertical road tile: rowBand=1 when one roadRow < row', () =>
+    expect(getRoadFaceId(4, 7, roadRows, roadCols)).toBe('V:1:7'))
+
+  test('non-road tile returns null', () =>
+    expect(getRoadFaceId(4, 5, roadRows, roadCols)).toBeNull())
+})
+
+// ── checkBusStopFaceLimit ──────────────────────────────────────────────────
+
+describe('checkBusStopFaceLimit', () => {
+  const roadRows = [2, 6]
+  const roadCols = [3, 7]
+
+  test('empty placements always returns false', () =>
+    expect(checkBusStopFaceLimit([], 'H:2:0', roadRows, roadCols)).toBe(false))
+
+  test('returns true when a bus stop exists on the same face', () => {
+    const placements = [{ action: 'bus-stop', row: 2, col: 1 }]  // H:2:0
+    expect(checkBusStopFaceLimit(placements, 'H:2:0', roadRows, roadCols)).toBe(true)
+  })
+
+  test('returns false when bus stop is on a different face', () => {
+    const placements = [{ action: 'bus-stop', row: 2, col: 5 }]  // H:2:1
+    expect(checkBusStopFaceLimit(placements, 'H:2:0', roadRows, roadCols)).toBe(false)
+  })
+
+  test('returns false for non-bus-stop action on the same face', () => {
+    const placements = [{ action: 'bike-lane', row: 2, col: 1 }]
+    expect(checkBusStopFaceLimit(placements, 'H:2:0', roadRows, roadCols)).toBe(false)
+  })
+
+  test('null faceId always returns false', () =>
+    expect(checkBusStopFaceLimit(
+      [{ action: 'bus-stop', row: 5, col: 5 }], null, roadRows, roadCols
+    )).toBe(false))
+})
+
+// ── calculateTransportSubsidy ──────────────────────────────────────────────
+
+describe('calculateTransportSubsidy', () => {
+  function makeSubsidyGrid(overrides = []) {
+    const g = []
+    for (let r = 0; r < 10; r++)
+      for (let c = 0; c < 10; c++)
+        g.push({ row: r, col: c, type: 'road' })
+    overrides.forEach(o => {
+      const cell = g.find(t => t.row === o.row && t.col === o.col)
+      if (cell) cell.type = o.type
+    })
+    return g
+  }
+
+  const adjCommercialGrid = () => makeSubsidyGrid([{ row: 5, col: 6, type: 'commercial' }])
+
+  test('non-transport action (park) → 0', () =>
+    expect(calculateTransportSubsidy('park', { row: 5, col: 5 }, adjCommercialGrid())).toBe(0))
+
+  test('non-transport action (road-widening) → 0', () =>
+    expect(calculateTransportSubsidy('road-widening', { row: 5, col: 5 }, adjCommercialGrid())).toBe(0))
+
+  test('bus-stop adjacent to commercial → COMMERCIAL_TRANSPORT_SUBSIDY', () =>
+    expect(calculateTransportSubsidy('bus-stop', { row: 5, col: 5 }, adjCommercialGrid())).toBe(COMMERCIAL_TRANSPORT_SUBSIDY))
+
+  test('bike-lane adjacent to commercial → subsidy', () =>
+    expect(calculateTransportSubsidy('bike-lane', { row: 5, col: 5 }, adjCommercialGrid())).toBe(COMMERCIAL_TRANSPORT_SUBSIDY))
+
+  test('ev-charging adjacent to commercial → subsidy', () =>
+    expect(calculateTransportSubsidy('ev-charging', { row: 5, col: 5 }, adjCommercialGrid())).toBe(COMMERCIAL_TRANSPORT_SUBSIDY))
+
+  test('self-driving-taxi adjacent to commercial → subsidy', () =>
+    expect(calculateTransportSubsidy('self-driving-taxi', { row: 5, col: 5 }, adjCommercialGrid())).toBe(COMMERCIAL_TRANSPORT_SUBSIDY))
+
+  test('transport adjacent to building (not commercial) → 0', () =>
+    expect(calculateTransportSubsidy('bus-stop', { row: 5, col: 5 }, makeSubsidyGrid([{ row: 5, col: 6, type: 'building' }]))).toBe(0))
+
+  test('transport with no commercial neighbours → 0', () =>
+    expect(calculateTransportSubsidy('bus-stop', { row: 5, col: 5 }, makeSubsidyGrid())).toBe(0))
+
+  test('null cgTile → 0', () =>
+    expect(calculateTransportSubsidy('bus-stop', null, adjCommercialGrid())).toBe(0))
+})
+
+// ── calculateWinScore ──────────────────────────────────────────────────────
+
+describe('calculateWinScore', () => {
+  function makeWinScoreGrid(overrides = []) {
+    const g = []
+    for (let r = 0; r < 10; r++)
+      for (let c = 0; c < 10; c++)
+        g.push({ row: r, col: c, type: 'road' })
+    overrides.forEach(o => {
+      const cell = g.find(t => t.row === o.row && t.col === o.col)
+      if (cell) cell.type = o.type
+    })
+    return g
+  }
+
+  test('no commercial engaged: score equals budget', () => {
+    const grid = makeWinScoreGrid()
+    expect(calculateWinScore(200, [{ action: 'bus-stop', row: 5, col: 5 }], grid)).toBe(200)
+  })
+
+  test('1 commercial block: score = budget + COMMERCIAL_SCORE_BONUS', () => {
+    const grid = makeWinScoreGrid([{ row: 5, col: 6, type: 'commercial' }])
+    expect(calculateWinScore(160, [{ action: 'bus-stop', row: 5, col: 5 }], grid))
+      .toBe(160 + COMMERCIAL_SCORE_BONUS)
+  })
+
+  test('2 distinct commercial blocks: score = budget + 2×bonus', () => {
+    const grid = makeWinScoreGrid([
+      { row: 5, col: 4, type: 'commercial' },
+      { row: 5, col: 7, type: 'commercial' },
+    ])
+    const placements = [
+      { action: 'bus-stop',  row: 5, col: 5 },
+      { action: 'bike-lane', row: 5, col: 6 },
+    ]
+    expect(calculateWinScore(120, placements, grid)).toBe(120 + 2 * COMMERCIAL_SCORE_BONUS)
+  })
+
+  test('same commercial tile reached by 2 transports counts only once', () => {
+    const grid = makeWinScoreGrid([{ row: 5, col: 6, type: 'commercial' }])
+    const placements = [
+      { action: 'bus-stop',  row: 5, col: 5 },  // adj to commercial at (5,6)
+      { action: 'bike-lane', row: 5, col: 7 },  // also adj to commercial at (5,6)
+    ]
+    expect(calculateWinScore(100, placements, grid)).toBe(100 + COMMERCIAL_SCORE_BONUS)
+  })
+
+  test('non-transport placements do not engage commercial', () => {
+    const grid = makeWinScoreGrid([{ row: 5, col: 6, type: 'commercial' }])
+    expect(calculateWinScore(200, [{ action: 'park', row: 5, col: 5 }], grid)).toBe(200)
   })
 })
 

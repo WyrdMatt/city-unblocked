@@ -63,6 +63,10 @@ Each game randomly assigns one of five city profiles with different win targets:
 
 **Zone caps:** You can only place 2 of the same action type per city block, keeping strategy spread across the map.
 
+**Bus stop face limit:** Only one bus stop per road segment — you can't stack two stops on the same block face.
+
+**Commercial zones 🏪:** Placing a transport action (bus stop, bike lane, EV charging, self-driving taxi) next to a commercial block earns a **£20 city subsidy** immediately. Each engaged commercial block also adds **+40 to your win score** — making it the main route to 3★.
+
 **Single-step undo:** The ↩ button (or Ctrl+Z) reverses your last placement.
 
 **Automatic loss:** Congestion ≥ 100, Happiness ≤ 0, or Carbon ≥ 100 — any meter hitting its limit ends the game immediately.
@@ -81,10 +85,12 @@ Each game starts with a randomly chosen weather condition that modifies action e
 
 ## Win rating
 
-Based on budget remaining when you win:
-- ⭐⭐⭐ — £200+ left
-- ⭐⭐ — £80–199 left
+Based on your **win score** (`budget remaining + 40 per engaged commercial block`) when you win:
+- ⭐⭐⭐ — Win score 200+ ("City Master!")
+- ⭐⭐ — Win score 80–199
 - ⭐ — any win
+
+Engaging commercial zones is the primary way to push a tight budget into 3★ territory.
 
 ## Running locally
 
