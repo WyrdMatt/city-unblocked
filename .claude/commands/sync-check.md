@@ -23,6 +23,8 @@ Run these greps and compare the values found in each file:
    - GENERATOR_CARBON_DELTA
    - DEMOLISH_COST
    - ROAD_WIDENING_BUILDING_BONUS
+   - COMMERCIAL_TRANSPORT_SUBSIDY
+   - COMMERCIAL_SCORE_BONUS
    - CONGESTION_SURCHARGE_ACTIONS (check same 5 actions in both)
 
 6. Puzzle-mechanic functions exist in both files:
@@ -31,6 +33,11 @@ Run these greps and compare the values found in each file:
    - applyGeneratorTick
    - getCongestSurcharge
    - calculateRoadWideningBonus
+   - getRoadFaceId
+   - checkBusStopFaceLimit
+   - calculateTransportSubsidy
+   - countCommercialBlocksEngaged
+   - calculateWinScore
 
 7. CITY_PROFILES keys present in both:
    - standard, green, transit, vibrant, eco
@@ -40,6 +47,16 @@ Run these greps and compare the values found in each file:
    - calculateRoadWideningBonus
    - CONGESTION_SURCHARGE_ACTIONS
    - ROAD_WIDENING_BUILDING_BONUS
+   - COMMERCIAL_TRANSPORT_SUBSIDY
+   - COMMERCIAL_SCORE_BONUS
+   - getRoadFaceId
+   - checkBusStopFaceLimit
+   - calculateTransportSubsidy
+   - calculateWinScore
+
+9. COMBOS — check Transit Hub and Pedestrian Zone combo values:
+   - Transit Hub (bus-stop + park): happiness = 3 in both files
+   - Pedestrian Zone (bike-lane + park): happiness = 3, congestion = -1 in both files
 
 For each item, show the value found in src/game-logic.js and the value found in index.html side by side. Flag any mismatch with ⚠️. If all values match, report ✅ in sync.
 

@@ -8,6 +8,22 @@ Browser game — city planning puzzle. Works on both desktop and mobile. The can
 
 Run locally: `npm run dev` → http://localhost:5173
 
+## Planning sessions
+
+When Matthew asks for help planning a change (balance, new mechanic, feature design), follow this approach rather than validating the proposal immediately:
+
+**1. Read the code before agreeing.** Check the actual numbers, functions, and interactions involved. Many ideas that sound right are undermined by existing mechanics — find out before planning begins, not after.
+
+**2. Identify the root cause, not the symptom.** Ask: what is actually causing the problem? If the proposed fix targets a symptom, say so and find the underlying cause. Example: limiting bus stops per street is a symptom fix; reducing overvalued combo bonuses is the root cause fix.
+
+**3. Push back when an idea would make things worse or miss the point.** Matthew explicitly wants challenge on his proposals. Don't soften this — if an idea creates a new meta, adds complexity without solving the problem, or removes player choice it shouldn't, say so directly with the reasoning.
+
+**4. Drop or modify proposals freely.** It is better to narrow a plan to 4 well-aimed changes than ship 7 where 3 don't work. Explicitly label what to keep, what to modify, and what to drop, and explain why each one.
+
+**5. Flag numerical uncertainty clearly.** When proposing values (subsidy amounts, combo bonuses, score thresholds), say whether they are confident or need a tuning pass after playtesting. Don't present tunable numbers as settled.
+
+**6. Don't implement until the plan is agreed.** End the planning phase with a summary and explicit confirmation question. Only start coding once Matthew has approved the final scope.
+
 ## File structure
 
 ```
@@ -56,7 +72,7 @@ Each block depends on the ones above it. Do not reorder.
 | `window.currentWeather` | game-state | string — one of `WEATHER_TYPES` |
 | `window.currentDifficulty` | game-state | `'easy' \| 'normal' \| 'hard'` |
 | `window.DIFFICULTY_PRESETS` | game-state | `{ easy, normal, hard }` — budget, turnLimit, blockerRate, generatorCount |
-| `window.GAME_LOGIC` | game-state | exposes EFFECTS, COMBOS, WEATHER_META, WEATHER_MULTIPLIERS, CITY_PROFILES, CONGESTION_SURCHARGE_ACTIONS, ROAD_WIDENING_BUILDING_BONUS, and pure functions: calculateEffects, checkWinCondition, getGridNeighbours, getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull, getCongestSurcharge, calculateRoadWideningBonus |
+| `window.GAME_LOGIC` | game-state | exposes EFFECTS, COMBOS, WEATHER_META, WEATHER_MULTIPLIERS, CITY_PROFILES, CONGESTION_SURCHARGE_ACTIONS, ROAD_WIDENING_BUILDING_BONUS, COMMERCIAL_TRANSPORT_SUBSIDY, COMMERCIAL_SCORE_BONUS, and pure functions: calculateEffects, checkWinCondition, getGridNeighbours, getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull, getCongestSurcharge, calculateRoadWideningBonus, getRoadFaceId, checkBusStopFaceLimit, calculateTransportSubsidy, countCommercialBlocksEngaged, calculateWinScore |
 | `window.lastPlacement` | hud | `{ element, action, cost }` — single-step undo snapshot; null when nothing to undo |
 | `window.refreshHUD` | hud | updates all meter DOM elements |
 | `window.showWinScreen` | hud | renders win overlay with stars + stats |
@@ -101,6 +117,8 @@ ZONE_CAP                    = 2   // max same-action placements per city block
 GENERATOR_DELTA             = 3   // congestion added per unsuppressed generator each tick
 DEMOLISH_COST               = 50  // cost to demolish a blocker tile
 ROAD_WIDENING_BUILDING_BONUS = 25  // £ income per adjacent building when road-widening placed
+COMMERCIAL_TRANSPORT_SUBSIDY = 20  // £ refund when transport placed adjacent to commercial tile
+COMMERCIAL_SCORE_BONUS       = 40  // added to win score per unique commercial block engaged
 CONGESTION_SURCHARGE_ACTIONS = Set of 5 road actions that cost more when congestion > 70/85
 ```
 
@@ -151,6 +169,10 @@ Road actions (bus-stop, bike-lane, road-widening, ev-charging, self-driving-taxi
 **Road-widening income (Section H):** Placing road-widening adjacent to building/commercial/arena tiles refunds £25 per adjacent building back to budget. Shown in popup and radial preview.
 
 **Congestion surcharge (Section L):** Road actions (bus-stop, bike-lane, road-widening, ev-charging, self-driving-taxi) cost an extra 10% when congestion >70, or 20% when >85. Shown in radial cost display (⚠️ prefix) and action panel. Surcharge is applied to both the affordability check and the actual deduction.
+
+**Bus stop face limit:** Only one bus stop is allowed per road segment (face). A horizontal road segment between two intersections is one face; a vertical segment between two intersections is another. Intersections get a unique face each (no limit). Checked via `getRoadFaceId` / `checkBusStopFaceLimit` at placement time; blocked buttons shown with `radial-btn--zone-capped` class.
+
+**Commercial transport subsidy:** Placing a transport action (bus-stop, bike-lane, ev-charging, self-driving-taxi) adjacent to a 🏪 commercial tile refunds `COMMERCIAL_TRANSPORT_SUBSIDY` (£20) to the budget immediately. Only one subsidy per placement regardless of how many commercial neighbours exist. Also contributes to the win score.
 
 **Weather system:** Each turn has a weather type (sunny, rainy, overcast, snowy, stormy) that modifies action effectiveness via `WEATHER_MULTIPLIERS`. EV charging and self-driving taxis are strongest in sunny conditions and severely impaired in snow/storms. Bus stops get buffed in bad weather.
 
@@ -215,10 +237,13 @@ Tiles animate in with a diagonal stagger (`animation-delay: (row+col)*15ms`) on 
 
 ## HUD star rating (win screen)
 
-Calculated in `showWinScreen()` from budget remaining:
-- ⭐⭐⭐ — £200+
-- ⭐⭐ — £80–199
+Calculated in `showWinScreen()` using `calculateWinScore(budget, placements, grid)`:
+- `winScore = budget + countCommercialBlocksEngaged(placements, grid) × COMMERCIAL_SCORE_BONUS`
+- ⭐⭐⭐ — winScore ≥ 200 ("City Master!")
+- ⭐⭐ — winScore 80–199
 - ⭐ — any win
+
+Each unique commercial tile that has at least one adjacent transport placement (bus stop, bike lane, EV, taxi) adds **+40** to the win score. Budget alone can still reach 3★ if enough remains, but commercial engagement extends that reach.
 
 ## Development workflow
 
@@ -226,7 +251,7 @@ Calculated in `showWinScreen()` from budget remaining:
 ```
 npm test
 ```
-All **389 Vitest tests** across 8 suites must pass before any commit.
+All **416 Vitest tests** across 8 suites must pass before any commit.
 
 **Toolchain:** Vite (dev server) + Vitest (test runner) + Playwright (layout tests). Run `npm install` once after checkout.
 
@@ -239,8 +264,8 @@ npm run build      # production build to dist/
 ```
 
 **Test files:**
-- `tests/effects.test.js` — calculateEffects, checkWinCondition, getCongestSurcharge, calculateRoadWideningBonus, weather multipliers (123 tests)
-- `tests/balance.test.js` — balance simulations (45 tests)
+- `tests/effects.test.js` — calculateEffects, checkWinCondition, getCongestSurcharge, calculateRoadWideningBonus, weather multipliers, getRoadFaceId, checkBusStopFaceLimit, calculateTransportSubsidy, calculateWinScore (148 tests)
+- `tests/balance.test.js` — balance simulations, commercial engagement design contracts (47 tests)
 - `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds (30 tests)
 - `tests/radial.test.js`  — ACTIONS, getValidActions, getRadialPosition, getButtonPositions (40 tests)
 - `tests/puzzle-mechanics.test.js` — ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST, getBlockId, checkZoneCap, applyGeneratorTick (32 tests)

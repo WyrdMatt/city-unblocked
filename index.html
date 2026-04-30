@@ -169,6 +169,10 @@
     .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
     .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: var(--c-text-hi); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
     .hud__budget-value--low { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
+    .hud__commercial { display: flex; align-items: center; gap: 0.15rem; padding: 0.2rem 0.4rem; border-radius: 6px; background: rgba(255,255,255,0.07); font-size: 0.78rem; font-weight: 700; color: var(--c-text-muted); cursor: default; flex-shrink: 0; }
+    .hud__commercial--engaged { color: #4ade80; background: rgba(74,222,128,0.12); }
+    .hud__commercial-icon { font-size: 0.85rem; line-height: 1; }
+    .hud__commercial-count { font-variant-numeric: tabular-nums; min-width: 0.8ch; }
     @keyframes budget-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ── Overlays ────────────────────────────────────────────────────── */
@@ -1426,6 +1430,7 @@
     .overlay__stars { font-size: 2.2rem; line-height: 1; letter-spacing: 0.1em; user-select: none; }
     .overlay__rating-label { margin: 0; font-size: 0.72rem; color: var(--c-text-label); text-transform: uppercase; letter-spacing: 0.1em; }
     .overlay__context { display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; }
+    .overlay__score-breakdown { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--c-text-muted); text-align: center; }
     .ctx-badge {
       padding: 0.18rem 0.6rem; border-radius: 999px;
       font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
@@ -1494,6 +1499,11 @@
     .weather-mod-down { color: #f87171; font-weight: 700; }
 
     /* ── Combos section — desktop panel ─────────────────────────── */
+    .commercial-section { border-top: 1px solid var(--c-border); padding-top: 0.6rem; margin-top: 0.5rem; }
+    .commercial-info-list { list-style: none; margin: 0.3rem 0; padding: 0; font-size: 0.72rem; color: var(--c-text-muted); display: flex; flex-direction: column; gap: 0.25rem; }
+    .commercial-info-list strong { color: #4ade80; }
+    .commercial-engaged-status { margin: 0.3rem 0 0; font-size: 0.72rem; color: var(--c-text-muted); }
+    .commercial-engaged-status strong { color: var(--c-text); }
     .combos-section {
       border-top: 1px solid var(--c-border-sub); padding-top: 0.55rem;
       display: flex; flex-direction: column; gap: 0.3rem;
@@ -1961,6 +1971,9 @@
       <span class="hud__budget-label">Budget</span>
       <span class="hud__budget-value" id="budgetValue">£0</span>
     </div>
+    <div class="hud__commercial" id="commercialBadge" aria-label="Commercial zones engaged" title="Build transport near 🏪 commercial blocks for a subsidy and 3★ score bonus">
+      <span class="hud__commercial-icon">🏪</span><span class="hud__commercial-count" id="commercialCount">0</span>
+    </div>
     <button class="hud__undo-btn"   id="hudUndo"     type="button" title="Undo last action (Ctrl+Z)" aria-label="Undo last action" hidden>↩ Undo</button>
     <button class="hud__music-btn" id="musicToggle" type="button" title="Music off — click to play">🔇</button>
     <button class="hud__sfx-btn"   id="sfxToggle"   type="button" title="SFX on — click to mute" aria-label="Sound effects on" aria-pressed="true">🔔</button>
@@ -1984,6 +1997,7 @@
         <span>💰 Budget left: <strong id="winBudget">—</strong></span>
       </p>
       <div class="overlay__context" id="winContext" aria-label="Game context"></div>
+      <p class="overlay__score-breakdown" id="winScoreBreakdown" hidden></p>
       <button class="overlay__btn overlay__btn--win" id="winRestart" type="button">Play Again</button>
       <button class="overlay__btn overlay__btn--share" id="winShare" type="button">📋 Copy Score</button>
       <button class="overlay__btn overlay__btn--menu" id="winMenu" type="button">↩ Main Menu</button>
@@ -2164,7 +2178,8 @@
           <li><span class="tutorial-swatch tutorial-swatch--road"></span><b>Road</b> — place Bus Stops, Bike Lanes, EV Charging, Taxi Network, Road Widening. <em>Intersections can't be built on.</em></li>
           <li><span class="tutorial-swatch tutorial-swatch--building"></span><b>Building</b> — place Parking Garages or Industrial Dev</li>
           <li><span class="tutorial-swatch tutorial-swatch--empty"></span><b>Empty Lot</b> — place Parks</li>
-          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏪</span><b>Commercial / 🏟️ Arena</b> — decorative landmarks, not buildable</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏪</span><b>Commercial</b> — transport placed next to 🏪 gets <b>+£20 subsidy</b> and boosts your 3★ score</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏟️</span><b>Arena</b> — adjacent parks get +6 happiness; adjacent bus stops get extra congestion cut</li>
           <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏭</span><b>Generator</b> — raises congestion each turn unless suppressed by an adjacent road action</li>
           <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🚧</span><b>Blocker</b> — demolish for £50 to create a buildable empty lot</li>
         </ul>
@@ -2365,6 +2380,10 @@
             <span><b>Industrial Dev</b> pays +£80 but hurts happiness and carbon badly — use it only if you're desperate for budget, then balance with green actions.</span>
           </div>
           <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">🏪</span>
+            <span>Place transport (bus stop, bike lane, EV, taxi) <b>next to a 🏪 commercial block</b> — the city pays you a <b>£20 subsidy</b> and each engaged zone adds <b>+40 to your score</b> toward 3★.</span>
+          </div>
+          <div class="tutorial-tip">
             <span class="tutorial-tip__icon">↩️</span>
             <span>You get <b>one undo</b> per placement (↩ button or Ctrl+Z). Use it when you accidentally break a combo or misplace an action.</span>
           </div>
@@ -2458,6 +2477,14 @@
       <div class="combos-section" id="combosSection">
         <h3 class="combos-section__title">Combos</h3>
         <ul class="combos-list" id="combosList" aria-label="Available action combos"></ul>
+      </div>
+      <div class="commercial-section">
+        <h3 class="combos-section__title">🏪 Commercial Zones</h3>
+        <ul class="commercial-info-list">
+          <li>Transport near 🏪 <strong>+£20 subsidy</strong></li>
+          <li>Each zone engaged <strong>+40 score</strong> toward 3★</li>
+        </ul>
+        <p class="commercial-engaged-status" id="leftPanelCommercial">Engaged: <strong id="leftPanelCommercialCount">0</strong> zone(s)</p>
       </div>
     </aside>
 
@@ -2874,6 +2901,27 @@
       if (typeof window.updateActionAvailability === "function") window.updateActionAvailability();
     };
 
+    window.refreshCommercialHUD = function refreshCommercialHUD() {
+      const grid       = window.cityGrid || [];
+      const placements = grid
+        .filter(function (t) { return t.element && t.element.dataset.placedAction; })
+        .map(function (t) { return { row: t.row, col: t.col, action: t.element.dataset.placedAction }; });
+      const count = (window.GAME_LOGIC && window.GAME_LOGIC.countCommercialBlocksEngaged)
+        ? window.GAME_LOGIC.countCommercialBlocksEngaged(placements, grid)
+        : 0;
+      const badge    = document.getElementById('commercialBadge');
+      const countEl  = document.getElementById('commercialCount');
+      const leftEl   = document.getElementById('leftPanelCommercialCount');
+      if (countEl)  countEl.textContent = count;
+      if (leftEl)   leftEl.textContent  = count;
+      if (badge) {
+        badge.classList.toggle('hud__commercial--engaged', count > 0);
+        badge.title = count > 0
+          ? count + ' commercial zone(s) engaged — +£' + (count * 40) + ' score toward 3★'
+          : 'Build transport near 🏪 commercial blocks for a subsidy and 3★ score bonus';
+      }
+    };
+
     // Stub — game-state.js overrides this with the full recalculation version
     window.updateMeters = window.refreshHUD;
 
@@ -2900,8 +2948,15 @@
       if (winBudget)     winBudget.textContent     = formatBudget(gs.budget ?? 0);
 
       const budgetLeft = gs.budget ?? 0;
-      const stars = budgetLeft >= 200 ? 3 : budgetLeft >= 80 ? 2 : 1;
-      const starLabels = ["Keep practising!", "Well done!", "Perfect score!"];
+      const placements = (window.cityGrid || [])
+        .filter(t => t.element && t.element.dataset.placedAction)
+        .map(t => ({ row: t.row, col: t.col, action: t.element.dataset.placedAction }));
+      const winScore    = (window.GAME_LOGIC && window.GAME_LOGIC.calculateWinScore)
+        ? window.GAME_LOGIC.calculateWinScore(budgetLeft, placements, window.cityGrid || [])
+        : budgetLeft;
+      const commercialBonus = winScore - budgetLeft;
+      const stars = winScore >= 200 ? 3 : budgetLeft >= 80 ? 2 : 1;
+      const starLabels = ["Keep practising!", "Well done!", "City Master!"];
       const starsEl = document.getElementById("winStars");
       const labelEl = document.getElementById("winRatingLabel");
       if (starsEl) starsEl.textContent = "⭐".repeat(stars) + "☆".repeat(3 - stars);
@@ -2909,6 +2964,19 @@
 
       const winContext = document.getElementById("winContext");
       if (winContext) winContext.innerHTML = buildContextBadges();
+
+      const winScoreEl = document.getElementById("winScoreBreakdown");
+      if (winScoreEl) {
+        if (commercialBonus > 0) {
+          winScoreEl.textContent = `Budget £${budgetLeft} + Commercial bonus £${commercialBonus} = Score £${winScore}`;
+          winScoreEl.removeAttribute("hidden");
+        } else if (stars < 3) {
+          winScoreEl.textContent = "Engage 🏪 commercial zones to boost your score toward 3★";
+          winScoreEl.removeAttribute("hidden");
+        } else {
+          winScoreEl.setAttribute("hidden", "");
+        }
+      }
 
       winOverlay.removeAttribute("hidden");
       document.getElementById("winRestart")?.focus();
@@ -3040,6 +3108,7 @@
       if (typeof window.updateMeters === "function") window.updateMeters();
       window.gameState.turn = Math.max(0, prevTurn - 1);
       if (typeof window.refreshHUD === "function") window.refreshHUD();
+      if (typeof window.refreshCommercialHUD === "function") window.refreshCommercialHUD();
       // Clear snapshot
       window.lastPlacement = null;
       if (hudUndoBtn) hudUndoBtn.setAttribute("hidden", "");
@@ -3133,8 +3202,8 @@
     };
 
     var COMBOS = [
-      { a: "bus-stop",       b: "park",           congestion:  0, happiness: +5, label: "Transit Hub"       },
-      { a: "bike-lane",      b: "park",           congestion: -1, happiness: +5, label: "Pedestrian Zone"   },
+      { a: "bus-stop",       b: "park",           congestion:  0, happiness: +3, label: "Transit Hub"       },
+      { a: "bike-lane",      b: "park",           congestion: -1, happiness: +3, label: "Pedestrian Zone"   },
       { a: "bus-stop",       b: "bike-lane",      congestion: -3, happiness:  0, label: "Active Streets"    },
       { a: "park",           b: "park",           congestion:  0, happiness: +3, label: "Green Network"     },
       { a: "parking-garage", b: "bus-stop",       congestion: -3, happiness:  0, label: "Park & Ride"      },
@@ -3157,6 +3226,45 @@
       if (!cgTile || !Array.isArray(grid)) return 0;
       var isBldg = function (t) { return t.type === 'building' || t.type === 'commercial' || t.type === 'arena'; };
       return getGridNeighbours(cgTile.row, cgTile.col, grid).filter(isBldg).length * ROAD_WIDENING_BUILDING_BONUS;
+    }
+
+    function getRoadFaceId(row, col, roadRows, roadCols) {
+      var inRoadRow = roadRows.indexOf(row) !== -1;
+      var inRoadCol = roadCols.indexOf(col) !== -1;
+      if (inRoadRow && inRoadCol) return 'X:' + row + ':' + col;
+      if (inRoadRow) return 'H:' + row + ':' + roadCols.filter(function (c) { return c < col; }).length;
+      if (inRoadCol) return 'V:' + roadRows.filter(function (r) { return r < row; }).length + ':' + col;
+      return null;
+    }
+
+    function checkBusStopFaceLimit(placements, faceId, roadRows, roadCols) {
+      if (!faceId) return false;
+      return placements.some(function (p) {
+        return p.action === 'bus-stop' && getRoadFaceId(p.row, p.col, roadRows, roadCols) === faceId;
+      });
+    }
+
+    function calculateTransportSubsidy(action, cgTile, grid) {
+      if (!TRANSPORT_SUBSIDY_ACTIONS.has(action)) return 0;
+      if (!cgTile || !Array.isArray(grid)) return 0;
+      var hasCommercial = getGridNeighbours(cgTile.row, cgTile.col, grid)
+        .some(function (n) { return n.type === 'commercial'; });
+      return hasCommercial ? COMMERCIAL_TRANSPORT_SUBSIDY : 0;
+    }
+
+    function countCommercialBlocksEngaged(placements, grid) {
+      var engaged = new Set();
+      placements.forEach(function (p) {
+        if (!TRANSPORT_SUBSIDY_ACTIONS.has(p.action)) return;
+        getGridNeighbours(p.row, p.col, grid)
+          .filter(function (n) { return n.type === 'commercial'; })
+          .forEach(function (n) { engaged.add(n.row + ':' + n.col); });
+      });
+      return engaged.size;
+    }
+
+    function calculateWinScore(budget, placements, grid) {
+      return budget + countCommercialBlocksEngaged(placements, grid) * COMMERCIAL_SCORE_BONUS;
     }
 
     function calculateEffects(placements, grid, weather) {
@@ -3277,8 +3385,11 @@
     var GENERATOR_DELTA        = 3;
     var GENERATOR_CARBON_DELTA = 2;
     var DEMOLISH_COST          = 50;
-    var ROAD_WIDENING_BUILDING_BONUS = 25;
+    var ROAD_WIDENING_BUILDING_BONUS    = 25;
+    var COMMERCIAL_TRANSPORT_SUBSIDY    = 20;
+    var COMMERCIAL_SCORE_BONUS          = 40;
     var CONGESTION_SURCHARGE_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening', 'ev-charging', 'self-driving-taxi']);
+    var TRANSPORT_SUBSIDY_ACTIONS    = new Set(['bus-stop', 'bike-lane', 'ev-charging', 'self-driving-taxi']);
 
     function getBlockId(row, col, roadRows, roadCols) {
       var rowBand = roadRows.filter(function (r) { return r < row; }).length;
@@ -3338,10 +3449,13 @@
                           DIFFICULTY_PRESETS, CITY_PROFILES, DECAY_RATES, LOSE_THRESHOLDS,
                           WIN_HAPPINESS, WIN_CONGESTION,
                           ZONE_CAP, GENERATOR_DELTA, GENERATOR_CARBON_DELTA, DEMOLISH_COST,
-                          ROAD_WIDENING_BUILDING_BONUS, CONGESTION_SURCHARGE_ACTIONS,
+                          ROAD_WIDENING_BUILDING_BONUS, COMMERCIAL_TRANSPORT_SUBSIDY, COMMERCIAL_SCORE_BONUS,
+                          CONGESTION_SURCHARGE_ACTIONS, TRANSPORT_SUBSIDY_ACTIONS,
                           calculateEffects, checkWinCondition, getGridNeighbours,
                           getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull,
-                          getCongestSurcharge, calculateRoadWideningBonus };
+                          getCongestSurcharge, calculateRoadWideningBonus,
+                          getRoadFaceId, checkBusStopFaceLimit,
+                          calculateTransportSubsidy, countCommercialBlocksEngaged, calculateWinScore };
 
     // ── Game state ────────────────────────────────────────────────────────
     const INITIAL = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: 15 };
@@ -4105,6 +4219,11 @@
               : 0;
             if (window.GAME_LOGIC.checkZoneCap(capsPlcm, blockId, meta.action, validInBlock)) {
               btn.classList.add('radial-btn--zone-capped');
+            } else if (meta.action === 'bus-stop' && cgTile && window.GAME_LOGIC.getRoadFaceId && window.GAME_LOGIC.checkBusStopFaceLimit) {
+              const faceId = window.GAME_LOGIC.getRoadFaceId(cgTile.row, cgTile.col, roadRows, roadCols);
+              if (window.GAME_LOGIC.checkBusStopFaceLimit(capsPlcm, faceId, roadRows, roadCols)) {
+                btn.classList.add('radial-btn--zone-capped');
+              }
             }
           }
           // Section K: full marginal preview using calculateEffects
@@ -4137,6 +4256,11 @@
             if (meta.action === 'road-widening' && cgTile && window.GAME_LOGIC?.calculateRoadWideningBonus) {
               const rwB = window.GAME_LOGIC.calculateRoadWideningBonus(cgTile, glGrid);
               if (rwB > 0) parts.push('+£' + rwB);
+            }
+            // Commercial transport subsidy preview
+            if (cgTile && window.GAME_LOGIC?.calculateTransportSubsidy) {
+              const sub = window.GAME_LOGIC.calculateTransportSubsidy(meta.action, cgTile, glGrid);
+              if (sub > 0) parts.push('🏪 +£' + sub);
             }
             previewEl.textContent = parts.join(' ');
           }
@@ -4231,15 +4355,37 @@
 
       if (budget < actualCost) { showBudgetError(); return; }
 
+      // Bus stop face limit — block if this road segment already has a bus stop
+      if (meta.action === 'bus-stop' && GL.getRoadFaceId && GL.checkBusStopFaceLimit) {
+        const map      = window.currentMap;
+        const rRows    = (map && map.roadRows) || [];
+        const rCols    = (map && map.roadCols) || [];
+        const cgTile0  = window.cityGrid?.find(function (t) { return t.element === tile; });
+        if (cgTile0) {
+          const faceId0 = GL.getRoadFaceId(cgTile0.row, cgTile0.col, rRows, rCols);
+          const existing = (window.cityGrid || [])
+            .filter(function (t) { return t.element && t.element.dataset.placedAction; })
+            .map(function (t) { return { row: t.row, col: t.col, action: t.element.dataset.placedAction }; });
+          if (GL.checkBusStopFaceLimit(existing, faceId0, rRows, rCols)) {
+            showTileError("Only 1 bus stop per street segment");
+            return;
+          }
+        }
+      }
+
       if (typeof window.playSFX === 'function') window.playSFX('place');
       placeTile(tile, meta);
       const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
 
       // Section H: road-widening income bonus per adjacent building tile
-      const rwBonus         = (meta.action === 'road-widening' && GL.calculateRoadWideningBonus)
+      const rwBonus       = (meta.action === 'road-widening' && GL.calculateRoadWideningBonus)
         ? GL.calculateRoadWideningBonus(cgTile, window.cityGrid || [])
         : 0;
-      const totalBudgetGain = (meta.budgetGain || 0) + rwBonus;
+      // Commercial transport subsidy
+      const subsidy       = GL.calculateTransportSubsidy
+        ? GL.calculateTransportSubsidy(meta.action, cgTile, window.cityGrid || [])
+        : 0;
+      const totalBudgetGain = (meta.budgetGain || 0) + rwBonus + subsidy;
 
       showPlacementPopup(tile, meta, cgTile, totalBudgetGain);
       window.gameState.budget -= actualCost;
@@ -4251,6 +4397,7 @@
       if (typeof window.updateMeters    === "function") window.updateMeters();
       if (typeof window.checkWinLose    === "function") window.checkWinLose();
       window.updateActionAvailability();
+      if (typeof window.refreshCommercialHUD === 'function') window.refreshCommercialHUD();
       hideBudgetError();
       hideTileError();
       // Turn pulse on meters

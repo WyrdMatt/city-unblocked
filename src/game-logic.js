@@ -72,7 +72,9 @@ export const ZONE_CAP               = 2;   // max of same action type per block 
 export const GENERATOR_DELTA        = 3;   // congestion added per unsuppressed generator per recalc
 export const GENERATOR_CARBON_DELTA = 2;   // carbon added per unsuppressed generator per recalc
 export const DEMOLISH_COST          = 50;  // budget cost to clear a blocker tile
-export const ROAD_WIDENING_BUILDING_BONUS = 25;  // £ returned per adjacent building when road-widening is placed
+export const ROAD_WIDENING_BUILDING_BONUS    = 25;  // £ returned per adjacent building when road-widening is placed
+export const COMMERCIAL_TRANSPORT_SUBSIDY    = 20;  // £ refunded when transport placed adjacent to commercial tile
+export const COMMERCIAL_SCORE_BONUS          = 40;  // score bonus per unique commercial block engaged (for star rating)
 export const CONGESTION_SURCHARGE_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening', 'ev-charging', 'self-driving-taxi']);
 
 // ── Puzzle-mechanic helpers ────────────────────────────────────────────────
@@ -167,8 +169,8 @@ export const WEATHER_MULTIPLIERS = {
 // ── Combo bonuses ──────────────────────────────────────────────────────────
 
 export const COMBOS = [
-  { a: 'bus-stop',       b: 'park',           congestion:  0, happiness: +5, label: 'Transit Hub' },
-  { a: 'bike-lane',      b: 'park',           congestion: -1, happiness: +5, label: 'Pedestrian Zone' },
+  { a: 'bus-stop',       b: 'park',           congestion:  0, happiness: +3, label: 'Transit Hub' },
+  { a: 'bike-lane',      b: 'park',           congestion: -1, happiness: +3, label: 'Pedestrian Zone' },
   { a: 'bus-stop',       b: 'bike-lane',      congestion: -3, happiness:  0, label: 'Active Streets' },
   { a: 'park',           b: 'park',           congestion:  0, happiness: +3, label: 'Green Network' },
   { a: 'parking-garage', b: 'bus-stop',       congestion: -3, happiness:  0, label: 'Park & Ride' },
@@ -193,6 +195,63 @@ export function calculateRoadWideningBonus(cgTile, grid) {
   if (!cgTile || !Array.isArray(grid)) return 0;
   const isBldg = t => t.type === 'building' || t.type === 'commercial' || t.type === 'arena';
   return getGridNeighbours(cgTile.row, cgTile.col, grid).filter(isBldg).length * ROAD_WIDENING_BUILDING_BONUS;
+}
+
+// ── Bus stop face limit ────────────────────────────────────────────────────
+
+// Returns a string key identifying which road segment (face) a tile belongs to.
+// H-road tile → 'H:{row}:{colBand}', V-road tile → 'V:{rowBand}:{col}',
+// intersection → 'X:{row}:{col}' (unique — no cross-street constraint at junctions).
+// Returns null for non-road tiles.
+export function getRoadFaceId(row, col, roadRows, roadCols) {
+  const inRoadRow = roadRows.includes(row);
+  const inRoadCol = roadCols.includes(col);
+  if (inRoadRow && inRoadCol) return `X:${row}:${col}`;
+  if (inRoadRow) return `H:${row}:${roadCols.filter(c => c < col).length}`;
+  if (inRoadCol) return `V:${roadRows.filter(r => r < row).length}:${col}`;
+  return null;
+}
+
+// Returns true if a bus stop already exists on the given road face.
+export function checkBusStopFaceLimit(placements, faceId, roadRows, roadCols) {
+  if (!faceId) return false;
+  return placements.some(p =>
+    p.action === 'bus-stop' && getRoadFaceId(p.row, p.col, roadRows, roadCols) === faceId
+  );
+}
+
+// ── Commercial transport subsidy ───────────────────────────────────────────
+
+const TRANSPORT_SUBSIDY_ACTIONS = new Set(['bus-stop', 'bike-lane', 'ev-charging', 'self-driving-taxi']);
+
+// Returns the budget refund for placing a transport action adjacent to a commercial tile.
+// Flat £COMMERCIAL_TRANSPORT_SUBSIDY if any commercial neighbour exists, else 0.
+export function calculateTransportSubsidy(action, cgTile, grid) {
+  if (!TRANSPORT_SUBSIDY_ACTIONS.has(action)) return 0;
+  if (!cgTile || !Array.isArray(grid)) return 0;
+  const hasCommercial = getGridNeighbours(cgTile.row, cgTile.col, grid)
+    .some(n => n.type === 'commercial');
+  return hasCommercial ? COMMERCIAL_TRANSPORT_SUBSIDY : 0;
+}
+
+// ── Win score (star rating) ────────────────────────────────────────────────
+
+// Counts distinct commercial tile positions that have at least one adjacent placed transport action.
+export function countCommercialBlocksEngaged(placements, grid) {
+  const engaged = new Set();
+  placements
+    .filter(p => TRANSPORT_SUBSIDY_ACTIONS.has(p.action))
+    .forEach(p => {
+      getGridNeighbours(p.row, p.col, grid)
+        .filter(n => n.type === 'commercial')
+        .forEach(n => engaged.add(`${n.row}:${n.col}`));
+    });
+  return engaged.size;
+}
+
+// Win score = budget + commercial engagement bonus (used for star rating only, not actual budget).
+export function calculateWinScore(budget, placements, grid) {
+  return budget + countCommercialBlocksEngaged(placements, grid) * COMMERCIAL_SCORE_BONUS;
 }
 
 // ── calculateEffects ───────────────────────────────────────────────────────
