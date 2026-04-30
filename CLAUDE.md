@@ -56,7 +56,7 @@ Each block depends on the ones above it. Do not reorder.
 | `window.currentWeather` | game-state | string — one of `WEATHER_TYPES` |
 | `window.currentDifficulty` | game-state | `'easy' \| 'normal' \| 'hard'` |
 | `window.DIFFICULTY_PRESETS` | game-state | `{ easy, normal, hard }` — budget, turnLimit, blockerRate, generatorCount |
-| `window.GAME_LOGIC` | game-state | exposes EFFECTS, COMBOS, WEATHER_META, WEATHER_MULTIPLIERS, pure functions for tests |
+| `window.GAME_LOGIC` | game-state | exposes EFFECTS, COMBOS, WEATHER_META, WEATHER_MULTIPLIERS, CITY_PROFILES, CONGESTION_SURCHARGE_ACTIONS, ROAD_WIDENING_BUILDING_BONUS, and pure functions: calculateEffects, checkWinCondition, getGridNeighbours, getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull, getCongestSurcharge, calculateRoadWideningBonus |
 | `window.lastPlacement` | hud | `{ element, action, cost }` — single-step undo snapshot; null when nothing to undo |
 | `window.refreshHUD` | hud | updates all meter DOM elements |
 | `window.showWinScreen` | hud | renders win overlay with stars + stats |
@@ -76,26 +76,32 @@ Each block depends on the ones above it. Do not reorder.
 ## Game constants (game-state block)
 
 ```js
-WIN_HAPPINESS  = 70   // happiness must reach this
-WIN_CONGESTION = 30   // congestion must fall to or below this
+WIN_HAPPINESS  = 70   // happiness must reach this (default profile)
+WIN_CONGESTION = 30   // congestion must fall to or below this (default profile)
 
 EFFECTS = {
-  "bus-stop":       { congestion: -10, happiness: +6  },
-  "bike-lane":      { congestion:  -6, happiness: +8  },
-  "parking-garage": { congestion:  -8, happiness: +4  },
-  "park":           { congestion:  -4, happiness: +12 },
-  "road-widening":  { congestion: -15, happiness:  -5 },
+  "bus-stop":          { congestion: -10, happiness:  +6, carbon:  -3 },
+  "bike-lane":         { congestion:  -6, happiness:  +8, carbon:  -5 },
+  "parking-garage":    { congestion:  -8, happiness:  +4, carbon:  +4 },
+  "park":              { congestion:  -4, happiness: +12, carbon:  -6 },
+  "road-widening":     { congestion: -15, happiness:  -5, carbon:  +8 },
+  "ev-charging":       { congestion:  -3, happiness:  +2, carbon:  -8 },
+  "self-driving-taxi": { congestion:  -8, happiness: +10, carbon:  -4 },
+  "industrial-dev":    { congestion:  +5, happiness: -10, carbon: +12 },
 }
 
 DIFFICULTY_PRESETS = {
-  easy:   { budget: 700, turnLimit: 20, blockerRate: 0,    generatorCount: 1 },
-  normal: { budget: 500, turnLimit: 15, blockerRate: 0.03, generatorCount: 2 },
-  hard:   { budget: 350, turnLimit: 12, blockerRate: 0.06, generatorCount: 2 },
+  easy:   { budget: 900, turnLimit: 25, blockerRate: 0,    generatorCount: 1 },
+  normal: { budget: 650, turnLimit: 20, blockerRate: 0.03, generatorCount: 2 },
+  hard:   { budget: 480, turnLimit: 15, blockerRate: 0.06, generatorCount: 2 },
+  expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
 }
 
-ZONE_CAP        = 2    // max same-action placements per city block
-GENERATOR_DELTA = 3    // congestion added per unsuppressed generator each tick
-DEMOLISH_COST   = 50   // cost to demolish a blocker tile
+ZONE_CAP                    = 2   // max same-action placements per city block
+GENERATOR_DELTA             = 3   // congestion added per unsuppressed generator each tick
+DEMOLISH_COST               = 50  // cost to demolish a blocker tile
+ROAD_WIDENING_BUILDING_BONUS = 25  // £ income per adjacent building when road-widening placed
+CONGESTION_SURCHARGE_ACTIONS = Set of 5 road actions that cost more when congestion > 70/85
 ```
 
 ## Interaction model (desktop + mobile)
@@ -115,11 +121,16 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 
 | Key | Emoji | Label | Cost | Valid tile | Effect |
 |---|---|---|---|---|---|
-| `bus-stop` | 🚌 | Bus Stop | £80 | road | –10 congestion, +6 happiness |
-| `bike-lane` | 🚲 | Bike Lane | £40 | road | –6 congestion, +8 happiness |
-| `parking-garage` | 🅿️ | Parking | £120 | building | –8 congestion, +4 happiness |
-| `park` | 🌳 | Park | £60 | empty | –4 congestion, +12 happiness |
-| `road-widening` | 🚧 | Road Widening | £90 | road | –15 congestion, –5 happiness |
+| `bus-stop` | 🚌 | Bus Stop | £80 | road | –10 cong, +6 hap, –3 carbon |
+| `bike-lane` | 🚲 | Bike Lane | £40 | road | –6 cong, +8 hap, –5 carbon |
+| `parking-garage` | 🅿️ | Parking | £120 | building | –8 cong, +4 hap, +4 carbon |
+| `park` | 🌳 | Park | £60 | empty | –4 cong, +12 hap, –6 carbon |
+| `road-widening` | 🚧 | Road Widening | £90 | road | –15 cong, –5 hap, +8 carbon; +£25/adj building returned |
+| `ev-charging` | 🔋 | EV Charging | £70 | road | –3 cong, +2 hap, –8 carbon |
+| `self-driving-taxi` | 🤖 | Self-Driving Taxi | £110 | road | –8 cong, +10 hap, –4 carbon |
+| `industrial-dev` | 🏗️ | Industrial Dev | free | building | +5 cong, –10 hap, +12 carbon; returns +£80 budget |
+
+Road actions (bus-stop, bike-lane, road-widening, ev-charging, self-driving-taxi) cost +10% when congestion >70, +20% when >85.
 
 ## Mechanics
 
@@ -129,7 +140,7 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 - Park next to building tile: +3 happiness per neighbour
 - Bus stop next to building tile: –2 congestion per neighbour
 
-**Combo bonuses:** Adjacent placements of specific pairs trigger extra effects (Transit Hub, Green Corridor, Active Streets, Green Network, Park & Ride, Express Lane). Checked in `calculateEffects`.
+**Combo bonuses:** Adjacent placements of specific pairs trigger extra effects (11 combos: Transit Hub, Pedestrian Zone, Active Streets, Green Network, Park & Ride, Express Lane, Green Gateway, Commuter Link, Industrial Bypass, Clean Commute, Seamless Network). Checked in `calculateEffects`.
 
 **Zone caps:** Max `ZONE_CAP` (2) placements of the same action type per city block. Cap scales up for large blocks: `max(2, floor(validTiles/2))`.
 
@@ -137,7 +148,19 @@ Buttons show state: available (full opacity), wrong-tile (greyed, 32%), unafford
 
 **Demolishable blockers (🚧):** `blockerRate` fraction of empty cells become impassable blockers. Clicking one spends `DEMOLISH_COST` (£50) and converts it to an empty lot.
 
-**Single-step undo:** `window.lastPlacement` holds the most recent placement snapshot. `doUndo()` (↩ button / Ctrl+Z) reverses it and decrements the turn counter.
+**Road-widening income (Section H):** Placing road-widening adjacent to building/commercial/arena tiles refunds £25 per adjacent building back to budget. Shown in popup and radial preview.
+
+**Congestion surcharge (Section L):** Road actions (bus-stop, bike-lane, road-widening, ev-charging, self-driving-taxi) cost an extra 10% when congestion >70, or 20% when >85. Shown in radial cost display (⚠️ prefix) and action panel. Surcharge is applied to both the affordability check and the actual deduction.
+
+**Weather system:** Each turn has a weather type (sunny, rainy, overcast, snowy, stormy) that modifies action effectiveness via `WEATHER_MULTIPLIERS`. EV charging and self-driving taxis are strongest in sunny conditions and severely impaired in snow/storms. Bus stops get buffed in bad weather.
+
+**City profiles:** Each game has a city profile (standard, green, transit, vibrant, eco) with different win thresholds. Checked in `checkWinCondition(state, profileKey)`.
+
+**Carbon meter:** Third meter (alongside congestion and happiness). Actions have carbon effects; carbon ≥100 is an automatic loss. Some profiles require carbon ≤30 or ≤20 to win.
+
+**Single-step undo:** `window.lastPlacement` holds the most recent placement snapshot (stores `actualCost` after surcharge, and `totalBudgetGain` including road-widening income). `doUndo()` (↩ button / Ctrl+Z) reverses it and decrements the turn counter.
+
+**Radial preview (Section K):** Preview in radial fan buttons uses `calculateEffects` with a hypothetical placement to show accurate marginal deltas (congestion, happiness, carbon), including combo bonuses and adjacency effects.
 
 **Goal markers** sit at `left: 70%` (happiness bar) and `left: 30%` (congestion bar) — these match WIN_HAPPINESS / WIN_CONGESTION exactly.
 
@@ -203,22 +226,28 @@ Calculated in `showWinScreen()` from budget remaining:
 ```
 npm test
 ```
-All **175 tests** across 5 suites must pass before any commit.
+All **389 Vitest tests** across 8 suites must pass before any commit.
 
-**Toolchain:** Vite (dev server) + Vitest (test runner). Run `npm install` once after checkout.
+**Toolchain:** Vite (dev server) + Vitest (test runner) + Playwright (layout tests). Run `npm install` once after checkout.
 
 ```
-npm run dev      # start Vite dev server → http://localhost:5173
-npm test         # run all 175 Vitest tests
-npm run build    # production build to dist/
+npm run dev        # start Vite dev server → http://localhost:5173
+npm test           # run all 389 Vitest tests
+npm run test:layout  # run 54 Playwright mobile layout tests (needs dev server)
+npm run test:all   # run Vitest + Playwright
+npm run build      # production build to dist/
 ```
 
 **Test files:**
-- `tests/effects.test.js` — calculateEffects, checkWinCondition (51 tests)
-- `tests/balance.test.js` — balance simulations (33 tests)
-- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds (19 tests)
+- `tests/effects.test.js` — calculateEffects, checkWinCondition, getCongestSurcharge, calculateRoadWideningBonus, weather multipliers (123 tests)
+- `tests/balance.test.js` — balance simulations (45 tests)
+- `tests/mapgen.test.js`  — map generation fuzzing with 5000 seeds (30 tests)
 - `tests/radial.test.js`  — ACTIONS, getValidActions, getRadialPosition, getButtonPositions (40 tests)
 - `tests/puzzle-mechanics.test.js` — ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST, getBlockId, checkZoneCap, applyGeneratorTick (32 tests)
+- `tests/decay.test.js`   — DECAY_RATES, passive meter decay (23 tests)
+- `tests/profiles.test.js` — CITY_PROFILES, city profile win conditions (78 tests)
+- `tests/building-subtypes.test.js` — commercial, arena adjacency bonuses (18 tests)
+- `tests/mobile-layout.spec.js` — Playwright layout tests at 3 phone viewports (54 tests, run via `npm run test:layout`)
 
 **Commit convention:** Conventional Commits.
 Format: `type: short description` where type is `feat`, `refactor`, `fix`, `test`, or `chore`.
@@ -233,7 +262,7 @@ Never commit directly to `main`. Never use `--no-verify`.
 
 Before marking any task complete or opening a PR, work through this checklist:
 
-1. **Tests** — run `npm test`; all 175 tests must be green. If new pure logic was added to `src/`, write tests for it.
+1. **Tests** — run `npm test`; all 389 Vitest tests must be green. If new pure logic was added to `src/`, write tests for it.
 2. **CLAUDE.md** — update if: a new global was added, a mechanic changed, a constant changed, the test count changed, a new skill was added, or the audio/UI system changed.
 3. **README.md** — update if: action costs/effects changed, new mechanics affect gameplay, win conditions changed, or running instructions changed.
 4. **Skill files** (`.claude/commands/`) — update if their grep targets changed (new buttons added to touch-action rule, new constants in sync-check, etc.).

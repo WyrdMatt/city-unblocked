@@ -5,11 +5,14 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export const EFFECTS = {
-  'bus-stop':       { congestion: -10, happiness:  +6, carbon:  -3 },
-  'bike-lane':      { congestion:  -6, happiness:  +8, carbon:  -5 },
-  'parking-garage': { congestion:  -8, happiness:  +4, carbon:  +4 },
-  'park':           { congestion:  -4, happiness: +12, carbon:  -6 },
-  'road-widening':  { congestion: -15, happiness:  -5, carbon:  +8 },
+  'bus-stop':          { congestion: -10, happiness:  +6, carbon:  -3 },
+  'bike-lane':         { congestion:  -6, happiness:  +8, carbon:  -5 },
+  'parking-garage':    { congestion:  -8, happiness:  +4, carbon:  +4 },
+  'park':              { congestion:  -4, happiness: +12, carbon:  -6 },
+  'road-widening':     { congestion: -15, happiness:  -5, carbon:  +8 },
+  'ev-charging':       { congestion:  -3, happiness:  +2, carbon:  -8 },
+  'self-driving-taxi': { congestion:  -8, happiness: +10, carbon:  -4 },
+  'industrial-dev':    { congestion:  +5, happiness: -10, carbon: +12 },
 };
 
 export const WIN_HAPPINESS  = 70;
@@ -69,6 +72,8 @@ export const ZONE_CAP               = 2;   // max of same action type per block 
 export const GENERATOR_DELTA        = 3;   // congestion added per unsuppressed generator per recalc
 export const GENERATOR_CARBON_DELTA = 2;   // carbon added per unsuppressed generator per recalc
 export const DEMOLISH_COST          = 50;  // budget cost to clear a blocker tile
+export const ROAD_WIDENING_BUILDING_BONUS = 25;  // £ returned per adjacent building when road-widening is placed
+export const CONGESTION_SURCHARGE_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening', 'ev-charging', 'self-driving-taxi']);
 
 // ── Puzzle-mechanic helpers ────────────────────────────────────────────────
 
@@ -82,6 +87,10 @@ export function checkZoneCap(placements, blockId, action, validTilesInBlock) {
   const cap   = Math.max(ZONE_CAP, Math.floor((validTilesInBlock || 0) / 2));
   const count = placements.filter(p => p.blockId === blockId && p.action === action).length;
   return count >= cap;
+}
+
+export function getCongestSurcharge(congestion) {
+  return congestion >= 85 ? 1.20 : congestion >= 70 ? 1.10 : 1.00;
 }
 
 export function applyGeneratorTickFull(generatorTiles, placements) {
@@ -107,36 +116,51 @@ export function applyGeneratorTick(generatorTiles, placements) {
 export const WEATHER_TYPES = ['sunny', 'rainy', 'overcast', 'snowy', 'stormy'];
 
 export const WEATHER_META = {
-  sunny:    { label: 'Sunny',    emoji: '☀️',  hint: 'Perfect conditions. All actions at full effect.' },
-  rainy:    { label: 'Rainy',    emoji: '🌧️',  hint: 'Wet roads — bike lanes and parks less effective; bus stops busier.' },
-  overcast: { label: 'Overcast', emoji: '☁️',  hint: 'Grey skies — slight reduction in happiness gains.' },
-  snowy:    { label: 'Snowy',    emoji: '❄️',  hint: 'Icy conditions — bus stops critical; bikes impractical.' },
-  stormy:   { label: 'Stormy',   emoji: '⛈️',  hint: 'Severe weather — only infrastructure actions are effective.' },
+  sunny:    { label: 'Sunny',    emoji: '☀️',  hint: 'Perfect conditions. EVs and autonomous taxis at peak performance.' },
+  rainy:    { label: 'Rainy',    emoji: '🌧️',  hint: 'Wet roads — bike lanes and parks less effective; bus stops busier. EV and taxi networks slightly reduced.' },
+  overcast: { label: 'Overcast', emoji: '☁️',  hint: 'Grey skies — slight happiness reduction. Autonomous taxi sensors less accurate.' },
+  snowy:    { label: 'Snowy',    emoji: '❄️',  hint: 'Icy conditions — bus stops critical; bikes and EVs severely impaired; autonomous taxis unreliable.' },
+  stormy:   { label: 'Stormy',   emoji: '⛈️',  hint: 'Severe weather — only infrastructure works well. EVs and autonomous vehicles near-useless.' },
 };
 
 export const WEATHER_MULTIPLIERS = {
-  sunny: {},
+  sunny: {
+    // Warm, clear conditions: EV batteries at peak range; autonomous sensors optimal
+    'ev-charging':       { cong: 1.15, hap: 1.10 },
+    'self-driving-taxi': { cong: 1.10, hap: 1.05 },
+  },
   rainy: {
-    'bike-lane':  { cong: 0.75, hap: 0.60 },
-    'park':       { cong: 1.00, hap: 0.70 },
-    'bus-stop':   { cong: 1.30, hap: 1.00 },
+    'bike-lane':         { cong: 0.75, hap: 0.60 },
+    'park':              { cong: 1.00, hap: 0.70 },
+    'bus-stop':          { cong: 1.30, hap: 1.00 },
+    // Rain mildly reduces EV range; lidar/cameras slightly impaired on taxis
+    'ev-charging':       { cong: 0.85, hap: 0.85 },
+    'self-driving-taxi': { cong: 0.80, hap: 0.85 },
   },
   overcast: {
-    'bike-lane': { hap: 0.85 },
-    'park':      { hap: 0.90 },
+    'bike-lane':         { hap: 0.85 },
+    'park':              { hap: 0.90 },
+    // Reduced visibility affects camera-based taxi systems
+    'self-driving-taxi': { cong: 0.90, hap: 0.90 },
   },
   snowy: {
-    'bike-lane':     { cong: 0.40, hap: 0.35 },
-    'park':          { cong: 0.70, hap: 0.50 },
-    'bus-stop':      { cong: 1.40, hap: 1.20 },
-    'road-widening': { cong: 1.30 },
+    'bike-lane':         { cong: 0.40, hap: 0.35 },
+    'park':              { cong: 0.70, hap: 0.50 },
+    'bus-stop':          { cong: 1.40, hap: 1.20 },
+    'road-widening':     { cong: 1.30 },
+    // Cold kills EV battery range by 30-40%; lane markings hidden impairs taxi sensors
+    'ev-charging':       { cong: 0.40, hap: 0.45 },
+    'self-driving-taxi': { cong: 0.45, hap: 0.50 },
   },
   stormy: {
-    'bike-lane':      { cong: 0.30, hap: 0.25 },
-    'park':           { cong: 0.50, hap: 0.30 },
-    'bus-stop':       { cong: 1.50, hap: 1.00 },
-    'road-widening':  { cong: 1.25 },
-    'parking-garage': { cong: 1.20 },
+    'bike-lane':         { cong: 0.30, hap: 0.25 },
+    'park':              { cong: 0.50, hap: 0.30 },
+    'bus-stop':          { cong: 1.50, hap: 1.00 },
+    'road-widening':     { cong: 1.25 },
+    'parking-garage':    { cong: 1.20 },
+    // Extreme cold + safety risk; autonomous sensors severely impaired in storm
+    'ev-charging':       { cong: 0.25, hap: 0.30 },
+    'self-driving-taxi': { cong: 0.25, hap: 0.30 },
   },
 };
 
@@ -152,6 +176,8 @@ export const COMBOS = [
   { a: 'parking-garage', b: 'park',           congestion: -2, happiness: +6, label: 'Green Gateway' },
   { a: 'parking-garage', b: 'bike-lane',      congestion: -3, happiness: +2, label: 'Commuter Link' },
   { a: 'road-widening',  b: 'parking-garage', congestion: -5, happiness:  0, label: 'Industrial Bypass' },
+  { a: 'ev-charging',       b: 'parking-garage', congestion: -4, happiness:  0, carbon: -5, label: 'Clean Commute'    },
+  { a: 'self-driving-taxi', b: 'bus-stop',       congestion: -3, happiness: +4, label: 'Seamless Network' },
 ];
 
 // ── Helper: grid neighbours ────────────────────────────────────────────────
@@ -161,6 +187,12 @@ export function getGridNeighbours(row, col, grid) {
   return offsets
     .map(([dr, dc]) => grid.find(t => t.row === row + dr && t.col === col + dc))
     .filter(Boolean);
+}
+
+export function calculateRoadWideningBonus(cgTile, grid) {
+  if (!cgTile || !Array.isArray(grid)) return 0;
+  const isBldg = t => t.type === 'building' || t.type === 'commercial' || t.type === 'arena';
+  return getGridNeighbours(cgTile.row, cgTile.col, grid).filter(isBldg).length * ROAD_WIDENING_BUILDING_BONUS;
 }
 
 // ── calculateEffects ───────────────────────────────────────────────────────
@@ -247,6 +279,7 @@ export function calculateEffects(placements, grid, weather) {
         if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
           congestionDelta += Math.trunc(combo.congestion * multiplier);
           happinessDelta  += Math.trunc(combo.happiness  * multiplier);
+          if (combo.carbon) carbonDelta += Math.trunc(combo.carbon * multiplier);
         }
       });
     }
