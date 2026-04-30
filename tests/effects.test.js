@@ -2,7 +2,10 @@ import { describe, test, expect } from 'vitest'
 import {
   EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
   WIN_HAPPINESS, WIN_CONGESTION, DEFAULT_TURN_LIMIT, INITIAL_STATE,
+  LOSE_THRESHOLDS,
+  ROAD_WIDENING_BUILDING_BONUS, CONGESTION_SURCHARGE_ACTIONS,
   getGridNeighbours, hotspotScore, calculateEffects, checkWinCondition,
+  getCongestSurcharge, calculateRoadWideningBonus,
 } from '../src/game-logic.js'
 
 const approx = (a, b, eps = 0.001) => Math.abs(a - b) < eps
@@ -51,8 +54,9 @@ describe('win / initial constants', () => {
   test('WIN_CONGESTION = 30', () => expect(WIN_CONGESTION).toBe(30))
   test('DEFAULT_TURN_LIMIT = 15', () => expect(DEFAULT_TURN_LIMIT).toBe(15))
   test('INITIAL_STATE shape', () => {
-    expect(INITIAL_STATE.congestion).toBe(80)
-    expect(INITIAL_STATE.happiness).toBe(20)
+    expect(INITIAL_STATE.congestion).toBe(55)
+    expect(INITIAL_STATE.happiness).toBe(45)
+    expect(INITIAL_STATE.carbon).toBe(35)
     expect(INITIAL_STATE.budget).toBe(500)
     expect(INITIAL_STATE.turnLimit).toBe(15)
   })
@@ -451,5 +455,389 @@ describe('calculateEffects with weather', () => {
     const dNone = calculateEffects(p, grid)
     const dNull = calculateEffects(p, grid, null)
     expect(approx(dNone.happinessDelta, dNull.happinessDelta, 0.01)).toBe(true)
+  })
+})
+
+// ── Carbon effects ─────────────────────────────────────────────────────────
+
+describe('EFFECTS carbon values', () => {
+  test('bus-stop has carbon -3',       () => expect(EFFECTS['bus-stop'].carbon).toBe(-3))
+  test('bike-lane has carbon -5',      () => expect(EFFECTS['bike-lane'].carbon).toBe(-5))
+  test('parking-garage has carbon +4', () => expect(EFFECTS['parking-garage'].carbon).toBe(4))
+  test('park has carbon -6',           () => expect(EFFECTS['park'].carbon).toBe(-6))
+  test('road-widening has carbon +8',  () => expect(EFFECTS['road-widening'].carbon).toBe(8))
+})
+
+describe('calculateEffects returns carbonDelta', () => {
+  const roadGrid = () => buildGrid(
+    Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+  )
+
+  test('single park: carbonDelta = -6', () => {
+    const d = calculateEffects([{ action: 'park', row: 5, col: 5 }], buildGrid())
+    expect(approx(d.carbonDelta, -6, 0.001)).toBe(true)
+  })
+
+  test('single road-widening: carbonDelta = +8', () => {
+    const d = calculateEffects([{ action: 'road-widening', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.carbonDelta, 8, 0.001)).toBe(true)
+  })
+
+  test('single bus-stop: carbonDelta = -3', () => {
+    const d = calculateEffects([{ action: 'bus-stop', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.carbonDelta, -3, 0.001)).toBe(true)
+  })
+
+  test('carbon diminishing returns: 2× park = -6 + (-6×0.85) = -11.1', () => {
+    const d = calculateEffects(
+      [{ action: 'park', row: 0, col: 0 }, { action: 'park', row: 5, col: 5 }],
+      buildGrid()
+    )
+    expect(approx(d.carbonDelta, -6 + (-6 * 0.85), 0.01)).toBe(true)
+  })
+
+  test('mixed actions: park + road-widening carbon sums correctly', () => {
+    const d = calculateEffects(
+      [{ action: 'park', row: 0, col: 0 }, { action: 'road-widening', row: 5, col: 5 }],
+      buildGrid([{ row: 5, col: 5, type: 'road' }])
+    )
+    expect(approx(d.carbonDelta, -6 + 8, 0.01)).toBe(true)
+  })
+})
+
+// ── Section G: new action EFFECTS ─────────────────────────────────────────
+
+describe('EFFECTS: ev-charging', () => {
+  test('congestion = -3', () => expect(EFFECTS['ev-charging'].congestion).toBe(-3))
+  test('happiness  = +2', () => expect(EFFECTS['ev-charging'].happiness).toBe(2))
+  test('carbon     = -8', () => expect(EFFECTS['ev-charging'].carbon).toBe(-8))
+})
+
+describe('EFFECTS: self-driving-taxi', () => {
+  test('congestion = -8',  () => expect(EFFECTS['self-driving-taxi'].congestion).toBe(-8))
+  test('happiness  = +10', () => expect(EFFECTS['self-driving-taxi'].happiness).toBe(10))
+  test('carbon     = -4',  () => expect(EFFECTS['self-driving-taxi'].carbon).toBe(-4))
+})
+
+describe('EFFECTS: industrial-dev', () => {
+  test('congestion = +5',  () => expect(EFFECTS['industrial-dev'].congestion).toBe(5))
+  test('happiness  = -10', () => expect(EFFECTS['industrial-dev'].happiness).toBe(-10))
+  test('carbon     = +12', () => expect(EFFECTS['industrial-dev'].carbon).toBe(12))
+})
+
+describe('calculateEffects: new actions produce correct deltas', () => {
+  const roadGrid = () => buildGrid(
+    Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+  )
+
+  test('ev-charging: congestion -3, carbon -8 on all-road grid', () => {
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.congestionDelta, -3,  0.01)).toBe(true)
+    expect(approx(d.carbonDelta,     -8,  0.01)).toBe(true)
+  })
+
+  test('self-driving-taxi: congestion -8, happiness +10 on all-road grid', () => {
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], roadGrid())
+    expect(approx(d.congestionDelta, -8,  0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  +10, 0.01)).toBe(true)
+    expect(approx(d.carbonDelta,     -4,  0.01)).toBe(true)
+  })
+
+  test('industrial-dev: congestion +5, happiness -10, carbon +12 on building grid', () => {
+    const d = calculateEffects([{ action: 'industrial-dev', row: 5, col: 5 }], buildGrid())
+    expect(approx(d.congestionDelta, +5,  0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  -10, 0.01)).toBe(true)
+    expect(approx(d.carbonDelta,     +12, 0.01)).toBe(true)
+  })
+})
+
+// ── Section G: new combo constants ────────────────────────────────────────
+
+describe('COMBOS: Clean Commute (ev-charging + parking-garage)', () => {
+  test('combo exists in COMBOS', () =>
+    expect(COMBOS.some(c =>
+      (c.a === 'ev-charging' && c.b === 'parking-garage') ||
+      (c.a === 'parking-garage' && c.b === 'ev-charging')
+    )).toBe(true))
+
+  test('congestion bonus = -4', () => {
+    const combo = COMBOS.find(c =>
+      (c.a === 'ev-charging' && c.b === 'parking-garage') ||
+      (c.a === 'parking-garage' && c.b === 'ev-charging')
+    )
+    expect(combo.congestion).toBe(-4)
+  })
+
+  test('carbon bonus = -5', () => {
+    const combo = COMBOS.find(c =>
+      (c.a === 'ev-charging' && c.b === 'parking-garage') ||
+      (c.a === 'parking-garage' && c.b === 'ev-charging')
+    )
+    expect(combo.carbon).toBe(-5)
+  })
+
+  test('adjacent ev-charging + parking-garage applies -4 cong and -5 carbon', () => {
+    const grid = buildGrid([
+      { row: 5, col: 5, type: 'road'     },
+      { row: 5, col: 6, type: 'building' },
+    ])
+    const dCombo = calculateEffects([
+      { action: 'ev-charging',    row: 5, col: 5 },
+      { action: 'parking-garage', row: 5, col: 6 },
+    ], grid)
+    const d1 = calculateEffects([{ action: 'ev-charging',    row: 5, col: 5 }], grid)
+    const d2 = calculateEffects([{ action: 'parking-garage', row: 5, col: 6 }], grid)
+    expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 4, 0.01)).toBe(true)
+    expect(approx(dCombo.carbonDelta,     d1.carbonDelta     + d2.carbonDelta     - 5, 0.01)).toBe(true)
+  })
+})
+
+describe('COMBOS: Seamless Network (self-driving-taxi + bus-stop)', () => {
+  test('combo exists in COMBOS', () =>
+    expect(COMBOS.some(c =>
+      (c.a === 'self-driving-taxi' && c.b === 'bus-stop') ||
+      (c.a === 'bus-stop' && c.b === 'self-driving-taxi')
+    )).toBe(true))
+
+  test('congestion bonus = -3', () => {
+    const combo = COMBOS.find(c =>
+      (c.a === 'self-driving-taxi' && c.b === 'bus-stop') ||
+      (c.a === 'bus-stop' && c.b === 'self-driving-taxi')
+    )
+    expect(combo.congestion).toBe(-3)
+  })
+
+  test('happiness bonus = +4', () => {
+    const combo = COMBOS.find(c =>
+      (c.a === 'self-driving-taxi' && c.b === 'bus-stop') ||
+      (c.a === 'bus-stop' && c.b === 'self-driving-taxi')
+    )
+    expect(combo.happiness).toBe(4)
+  })
+
+  test('adjacent taxi + bus-stop applies -3 cong and +4 hap bonus', () => {
+    const grid = buildGrid(
+      Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+    )
+    const dCombo = calculateEffects([
+      { action: 'self-driving-taxi', row: 5, col: 5 },
+      { action: 'bus-stop',          row: 5, col: 6 },
+    ], grid)
+    const d1 = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], grid)
+    const d2 = calculateEffects([{ action: 'bus-stop',          row: 5, col: 6 }], grid)
+    expect(approx(dCombo.congestionDelta, d1.congestionDelta + d2.congestionDelta - 3, 0.01)).toBe(true)
+    expect(approx(dCombo.happinessDelta,  d1.happinessDelta  + d2.happinessDelta  + 4, 0.01)).toBe(true)
+  })
+})
+
+// ── Weather multipliers: EV Charging ──────────────────────────────────────
+
+describe('weather × ev-charging', () => {
+  const roadGrid = () => buildGrid(
+    Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+  )
+  const base = (g = roadGrid()) => calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g)
+
+  test('sunny: congestion ×1.15, happiness ×1.10', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g, 'sunny')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 1.15, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 1.10, 0.01)).toBe(true)
+  })
+
+  test('rainy: congestion ×0.85, happiness ×0.85', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g, 'rainy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.85, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.85, 0.01)).toBe(true)
+  })
+
+  test('overcast: no modifier (EV unaffected by overcast)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g, 'overcast')
+    expect(approx(d.congestionDelta, base(g).congestionDelta, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta,  0.01)).toBe(true)
+  })
+
+  test('snowy: congestion ×0.40 (cold kills battery range)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g, 'snowy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.40, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.45, 0.01)).toBe(true)
+  })
+
+  test('stormy: congestion ×0.25 (near-useless in extreme conditions)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'ev-charging', row: 5, col: 5 }], g, 'stormy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.25, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.30, 0.01)).toBe(true)
+  })
+})
+
+// ── Weather multipliers: Self-Driving Taxi ─────────────────────────────────
+
+describe('weather × self-driving-taxi', () => {
+  const roadGrid = () => buildGrid(
+    Array.from({ length: 100 }, (_, i) => ({ row: Math.floor(i/10), col: i%10, type: 'road' }))
+  )
+  const base = (g = roadGrid()) => calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g)
+
+  test('sunny: congestion ×1.10, happiness ×1.05 (optimal sensor conditions)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g, 'sunny')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 1.10, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 1.05, 0.01)).toBe(true)
+  })
+
+  test('rainy: congestion ×0.80, happiness ×0.85 (lidar/camera impaired)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g, 'rainy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.80, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.85, 0.01)).toBe(true)
+  })
+
+  test('overcast: congestion ×0.90, happiness ×0.90 (reduced camera accuracy)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g, 'overcast')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.90, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.90, 0.01)).toBe(true)
+  })
+
+  test('snowy: congestion ×0.45 (lane markings hidden, sensors impaired)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g, 'snowy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.45, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.50, 0.01)).toBe(true)
+  })
+
+  test('stormy: congestion ×0.25 (dangerous conditions, near-unusable)', () => {
+    const g = roadGrid()
+    const d = calculateEffects([{ action: 'self-driving-taxi', row: 5, col: 5 }], g, 'stormy')
+    expect(approx(d.congestionDelta, base(g).congestionDelta * 0.25, 0.01)).toBe(true)
+    expect(approx(d.happinessDelta,  base(g).happinessDelta  * 0.30, 0.01)).toBe(true)
+  })
+})
+
+// ── Weather: industrial-dev unaffected ────────────────────────────────────
+
+describe('weather × industrial-dev', () => {
+  test('snowy: no weather modifier — construction happens regardless', () => {
+    const g = buildGrid()
+    const base  = calculateEffects([{ action: 'industrial-dev', row: 5, col: 5 }], g)
+    const snowy = calculateEffects([{ action: 'industrial-dev', row: 5, col: 5 }], g, 'snowy')
+    expect(approx(snowy.congestionDelta, base.congestionDelta, 0.01)).toBe(true)
+    expect(approx(snowy.happinessDelta,  base.happinessDelta,  0.01)).toBe(true)
+  })
+})
+
+describe('checkWinCondition: carbon lose threshold', () => {
+  test('carbon = 100 → lose', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, carbon: 100, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('lose'))
+
+  test('carbon = 99 → playing', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, carbon: 99, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('playing'))
+
+  test('carbon omitted (undefined) → no lose triggered', () =>
+    expect(checkWinCondition({ happiness: 50, congestion: 50, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('playing'))
+
+  test('win takes priority over high carbon', () =>
+    expect(checkWinCondition({ happiness: WIN_HAPPINESS, congestion: WIN_CONGESTION, carbon: 100, budget: 500, minActionCost: 40, turnsLeft: 10 })).toBe('win'))
+
+  test('LOSE_THRESHOLDS.carbon is 100', () => expect(LOSE_THRESHOLDS.carbon).toBe(100))
+})
+
+// ── getCongestSurcharge (Section L) ───────────────────────────────────────────
+
+describe('getCongestSurcharge', () => {
+  test('congestion < 70 → no surcharge (1.0)', () => {
+    expect(getCongestSurcharge(69)).toBe(1.00)
+    expect(getCongestSurcharge(55)).toBe(1.00)
+    expect(getCongestSurcharge(0)).toBe(1.00)
+  })
+
+  test('congestion 70 → +10% surcharge (1.1)', () => {
+    expect(getCongestSurcharge(70)).toBe(1.10)
+    expect(getCongestSurcharge(84)).toBe(1.10)
+  })
+
+  test('congestion 85 → +20% surcharge (1.2)', () => {
+    expect(getCongestSurcharge(85)).toBe(1.20)
+    expect(getCongestSurcharge(100)).toBe(1.20)
+  })
+
+  test('CONGESTION_SURCHARGE_ACTIONS covers all 5 road actions', () => {
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('bus-stop')).toBe(true)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('bike-lane')).toBe(true)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('road-widening')).toBe(true)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('ev-charging')).toBe(true)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('self-driving-taxi')).toBe(true)
+  })
+
+  test('CONGESTION_SURCHARGE_ACTIONS does not cover building/park actions', () => {
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('parking-garage')).toBe(false)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('park')).toBe(false)
+    expect(CONGESTION_SURCHARGE_ACTIONS.has('industrial-dev')).toBe(false)
+  })
+})
+
+// ── calculateRoadWideningBonus (Section H) ────────────────────────────────────
+
+describe('calculateRoadWideningBonus', () => {
+  test('ROAD_WIDENING_BUILDING_BONUS constant is 25', () => {
+    expect(ROAD_WIDENING_BUILDING_BONUS).toBe(25)
+  })
+
+  test('0 adjacent buildings → bonus is 0', () => {
+    const grid = buildGrid([
+      { row: 5, col: 5, type: 'road' },
+      { row: 4, col: 5, type: 'road' },
+      { row: 6, col: 5, type: 'road' },
+      { row: 5, col: 4, type: 'road' },
+      { row: 5, col: 6, type: 'road' },
+    ])
+    expect(calculateRoadWideningBonus({ row: 5, col: 5 }, grid)).toBe(0)
+  })
+
+  test('1 adjacent building → bonus is £25', () => {
+    const grid = buildGrid([{ row: 5, col: 5, type: 'road' }])
+    // row 4, 6, col 4, 6 are all buildings (default), but we only test 1 building neighbour
+    const smallGrid = [
+      { row: 5, col: 5, type: 'road' },
+      { row: 4, col: 5, type: 'building' },
+      { row: 6, col: 5, type: 'road' },
+      { row: 5, col: 4, type: 'road' },
+      { row: 5, col: 6, type: 'road' },
+    ]
+    expect(calculateRoadWideningBonus({ row: 5, col: 5 }, smallGrid)).toBe(25)
+  })
+
+  test('3 adjacent buildings → bonus is £75', () => {
+    const smallGrid = [
+      { row: 5, col: 5, type: 'road' },
+      { row: 4, col: 5, type: 'building' },
+      { row: 6, col: 5, type: 'building' },
+      { row: 5, col: 4, type: 'building' },
+      { row: 5, col: 6, type: 'road' },
+    ]
+    expect(calculateRoadWideningBonus({ row: 5, col: 5 }, smallGrid)).toBe(75)
+  })
+
+  test('commercial and arena tiles also count as buildings', () => {
+    const smallGrid = [
+      { row: 5, col: 5, type: 'road' },
+      { row: 4, col: 5, type: 'commercial' },
+      { row: 6, col: 5, type: 'arena' },
+      { row: 5, col: 4, type: 'road' },
+      { row: 5, col: 6, type: 'road' },
+    ]
+    expect(calculateRoadWideningBonus({ row: 5, col: 5 }, smallGrid)).toBe(50)
+  })
+
+  test('null cgTile → returns 0', () => {
+    expect(calculateRoadWideningBonus(null, [])).toBe(0)
+  })
+
+  test('null grid → returns 0', () => {
+    expect(calculateRoadWideningBonus({ row: 5, col: 5 }, null)).toBe(0)
   })
 })

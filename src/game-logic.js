@@ -5,18 +5,31 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export const EFFECTS = {
-  'bus-stop':       { congestion: -10, happiness:  +6 },
-  'bike-lane':      { congestion:  -6, happiness:  +8 },
-  'parking-garage': { congestion:  -8, happiness:  +4 },
-  'park':           { congestion:  -4, happiness: +12 },
-  'road-widening':  { congestion: -15, happiness:  -5 },
+  'bus-stop':          { congestion: -10, happiness:  +6, carbon:  -3 },
+  'bike-lane':         { congestion:  -6, happiness:  +8, carbon:  -5 },
+  'parking-garage':    { congestion:  -8, happiness:  +4, carbon:  +4 },
+  'park':              { congestion:  -4, happiness: +12, carbon:  -6 },
+  'road-widening':     { congestion: -15, happiness:  -5, carbon:  +8 },
+  'ev-charging':       { congestion:  -3, happiness:  +2, carbon:  -8 },
+  'self-driving-taxi': { congestion:  -8, happiness: +10, carbon:  -4 },
+  'industrial-dev':    { congestion:  +5, happiness: -10, carbon: +12 },
 };
 
 export const WIN_HAPPINESS  = 70;
 export const WIN_CONGESTION = 30;
 export const DEFAULT_TURN_LIMIT = 15;
 
-export const INITIAL_STATE = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
+// Passive decay applied per turn in updateMeters()
+export const DECAY_RATES = {
+  congestion: 1.5,   // +1.5 cong/turn  → hits 100 in ~30 turns with no mitigation
+  happiness:  -1.5,  // −1.5 hap/turn   → hits 0   in ~30 turns with no mitigation
+  carbon:     1.0,   // +1.0 carbon/turn → hits 100 in ~65 turns (slower pressure)
+};
+
+// Automatic loss when any meter crosses these thresholds
+export const LOSE_THRESHOLDS = { congestion: 100, happiness: 0, carbon: 100 };
+
+export const INITIAL_STATE = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: DEFAULT_TURN_LIMIT };
 
 export const DIFFICULTY_PRESETS = {
   easy:   { budget: 900, turnLimit: 25, blockerRate: 0,    generatorCount: 1 },
@@ -25,11 +38,42 @@ export const DIFFICULTY_PRESETS = {
   expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
 };
 
+export const CITY_PROFILES = {
+  standard: {
+    label: 'Standard', emoji: '🏙️',
+    description: 'Reduce congestion and improve quality of life.',
+    win: { happiness: 75, congestion: 25 },
+  },
+  green: {
+    label: 'Green City', emoji: '🌿',
+    description: 'Build a sustainable, low-carbon city.',
+    win: { happiness: 65, congestion: 35, carbon: 30 },
+  },
+  transit: {
+    label: 'Transit Hub', emoji: '🚌',
+    description: 'Create a world-class public transport network.',
+    win: { happiness: 60, congestion: 20 },
+  },
+  vibrant: {
+    label: 'Vibrant City', emoji: '🎉',
+    description: 'Create a joyful, people-first city.',
+    win: { happiness: 85, congestion: 40 },
+  },
+  eco: {
+    label: 'Eco Warriors', emoji: '♻️',
+    description: 'Slash carbon emissions to save the planet.',
+    win: { happiness: 70, carbon: 20 },
+  },
+};
+
 // ── Puzzle-mechanic constants ──────────────────────────────────────────────
 
-export const ZONE_CAP        = 2;   // max of same action type per block zone
-export const GENERATOR_DELTA = 3;   // congestion added per unsuppressed generator per recalc
-export const DEMOLISH_COST   = 50;  // budget cost to clear a blocker tile
+export const ZONE_CAP               = 2;   // max of same action type per block zone
+export const GENERATOR_DELTA        = 3;   // congestion added per unsuppressed generator per recalc
+export const GENERATOR_CARBON_DELTA = 2;   // carbon added per unsuppressed generator per recalc
+export const DEMOLISH_COST          = 50;  // budget cost to clear a blocker tile
+export const ROAD_WIDENING_BUILDING_BONUS = 25;  // £ returned per adjacent building when road-widening is placed
+export const CONGESTION_SURCHARGE_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening', 'ev-charging', 'self-driving-taxi']);
 
 // ── Puzzle-mechanic helpers ────────────────────────────────────────────────
 
@@ -45,18 +89,26 @@ export function checkZoneCap(placements, blockId, action, validTilesInBlock) {
   return count >= cap;
 }
 
-export function applyGeneratorTick(generatorTiles, placements) {
+export function getCongestSurcharge(congestion) {
+  return congestion >= 85 ? 1.20 : congestion >= 70 ? 1.10 : 1.00;
+}
+
+export function applyGeneratorTickFull(generatorTiles, placements) {
   const ROAD_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening']);
-  let delta = 0;
+  let congestion = 0, carbon = 0;
   generatorTiles.forEach(gen => {
     const suppressed = placements.some(p => {
       if (!ROAD_ACTIONS.has(p.action)) return false;
       return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
              (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
     });
-    if (!suppressed) delta += GENERATOR_DELTA;
+    if (!suppressed) { congestion += GENERATOR_DELTA; carbon += GENERATOR_CARBON_DELTA; }
   });
-  return delta;
+  return { congestion, carbon };
+}
+
+export function applyGeneratorTick(generatorTiles, placements) {
+  return applyGeneratorTickFull(generatorTiles, placements).congestion;
 }
 
 // ── Weather system ─────────────────────────────────────────────────────────
@@ -64,36 +116,51 @@ export function applyGeneratorTick(generatorTiles, placements) {
 export const WEATHER_TYPES = ['sunny', 'rainy', 'overcast', 'snowy', 'stormy'];
 
 export const WEATHER_META = {
-  sunny:    { label: 'Sunny',    emoji: '☀️',  hint: 'Perfect conditions. All actions at full effect.' },
-  rainy:    { label: 'Rainy',    emoji: '🌧️',  hint: 'Wet roads — bike lanes and parks less effective; bus stops busier.' },
-  overcast: { label: 'Overcast', emoji: '☁️',  hint: 'Grey skies — slight reduction in happiness gains.' },
-  snowy:    { label: 'Snowy',    emoji: '❄️',  hint: 'Icy conditions — bus stops critical; bikes impractical.' },
-  stormy:   { label: 'Stormy',   emoji: '⛈️',  hint: 'Severe weather — only infrastructure actions are effective.' },
+  sunny:    { label: 'Sunny',    emoji: '☀️',  hint: 'Perfect conditions. EVs and autonomous taxis at peak performance.' },
+  rainy:    { label: 'Rainy',    emoji: '🌧️',  hint: 'Wet roads — bike lanes and parks less effective; bus stops busier. EV and taxi networks slightly reduced.' },
+  overcast: { label: 'Overcast', emoji: '☁️',  hint: 'Grey skies — slight happiness reduction. Autonomous taxi sensors less accurate.' },
+  snowy:    { label: 'Snowy',    emoji: '❄️',  hint: 'Icy conditions — bus stops critical; bikes and EVs severely impaired; autonomous taxis unreliable.' },
+  stormy:   { label: 'Stormy',   emoji: '⛈️',  hint: 'Severe weather — only infrastructure works well. EVs and autonomous vehicles near-useless.' },
 };
 
 export const WEATHER_MULTIPLIERS = {
-  sunny: {},
+  sunny: {
+    // Warm, clear conditions: EV batteries at peak range; autonomous sensors optimal
+    'ev-charging':       { cong: 1.15, hap: 1.10 },
+    'self-driving-taxi': { cong: 1.10, hap: 1.05 },
+  },
   rainy: {
-    'bike-lane':  { cong: 0.75, hap: 0.60 },
-    'park':       { cong: 1.00, hap: 0.70 },
-    'bus-stop':   { cong: 1.30, hap: 1.00 },
+    'bike-lane':         { cong: 0.75, hap: 0.60 },
+    'park':              { cong: 1.00, hap: 0.70 },
+    'bus-stop':          { cong: 1.30, hap: 1.00 },
+    // Rain mildly reduces EV range; lidar/cameras slightly impaired on taxis
+    'ev-charging':       { cong: 0.85, hap: 0.85 },
+    'self-driving-taxi': { cong: 0.80, hap: 0.85 },
   },
   overcast: {
-    'bike-lane': { hap: 0.85 },
-    'park':      { hap: 0.90 },
+    'bike-lane':         { hap: 0.85 },
+    'park':              { hap: 0.90 },
+    // Reduced visibility affects camera-based taxi systems
+    'self-driving-taxi': { cong: 0.90, hap: 0.90 },
   },
   snowy: {
-    'bike-lane':     { cong: 0.40, hap: 0.35 },
-    'park':          { cong: 0.70, hap: 0.50 },
-    'bus-stop':      { cong: 1.40, hap: 1.20 },
-    'road-widening': { cong: 1.30 },
+    'bike-lane':         { cong: 0.40, hap: 0.35 },
+    'park':              { cong: 0.70, hap: 0.50 },
+    'bus-stop':          { cong: 1.40, hap: 1.20 },
+    'road-widening':     { cong: 1.30 },
+    // Cold kills EV battery range by 30-40%; lane markings hidden impairs taxi sensors
+    'ev-charging':       { cong: 0.40, hap: 0.45 },
+    'self-driving-taxi': { cong: 0.45, hap: 0.50 },
   },
   stormy: {
-    'bike-lane':      { cong: 0.30, hap: 0.25 },
-    'park':           { cong: 0.50, hap: 0.30 },
-    'bus-stop':       { cong: 1.50, hap: 1.00 },
-    'road-widening':  { cong: 1.25 },
-    'parking-garage': { cong: 1.20 },
+    'bike-lane':         { cong: 0.30, hap: 0.25 },
+    'park':              { cong: 0.50, hap: 0.30 },
+    'bus-stop':          { cong: 1.50, hap: 1.00 },
+    'road-widening':     { cong: 1.25 },
+    'parking-garage':    { cong: 1.20 },
+    // Extreme cold + safety risk; autonomous sensors severely impaired in storm
+    'ev-charging':       { cong: 0.25, hap: 0.30 },
+    'self-driving-taxi': { cong: 0.25, hap: 0.30 },
   },
 };
 
@@ -109,6 +176,8 @@ export const COMBOS = [
   { a: 'parking-garage', b: 'park',           congestion: -2, happiness: +6, label: 'Green Gateway' },
   { a: 'parking-garage', b: 'bike-lane',      congestion: -3, happiness: +2, label: 'Commuter Link' },
   { a: 'road-widening',  b: 'parking-garage', congestion: -5, happiness:  0, label: 'Industrial Bypass' },
+  { a: 'ev-charging',       b: 'parking-garage', congestion: -4, happiness:  0, carbon: -5, label: 'Clean Commute'    },
+  { a: 'self-driving-taxi', b: 'bus-stop',       congestion: -3, happiness: +4, label: 'Seamless Network' },
 ];
 
 // ── Helper: grid neighbours ────────────────────────────────────────────────
@@ -118,6 +187,12 @@ export function getGridNeighbours(row, col, grid) {
   return offsets
     .map(([dr, dc]) => grid.find(t => t.row === row + dr && t.col === col + dc))
     .filter(Boolean);
+}
+
+export function calculateRoadWideningBonus(cgTile, grid) {
+  if (!cgTile || !Array.isArray(grid)) return 0;
+  const isBldg = t => t.type === 'building' || t.type === 'commercial' || t.type === 'arena';
+  return getGridNeighbours(cgTile.row, cgTile.col, grid).filter(isBldg).length * ROAD_WIDENING_BUILDING_BONUS;
 }
 
 // ── calculateEffects ───────────────────────────────────────────────────────
@@ -136,6 +211,7 @@ export function calculateEffects(placements, grid, weather) {
   const remaining = { ...placedCount };
   let congestionDelta = 0;
   let happinessDelta  = 0;
+  let carbonDelta     = 0;
 
   placements.forEach(p => {
     const effect = EFFECTS[p.action];
@@ -145,11 +221,15 @@ export function calculateEffects(placements, grid, weather) {
     remaining[p.action]--;
     const diminish = Math.pow(0.85, nth - 1);
 
-    let cDelta = effect.congestion * diminish;
-    let hDelta = effect.happiness  * diminish;
+    let cDelta   = effect.congestion * diminish;
+    let hDelta   = effect.happiness  * diminish;
+    let cbnDelta = (effect.carbon || 0) * diminish;
 
-    const neighbours   = getGridNeighbours(p.row, p.col, grid);
-    const adjBuildings = neighbours.filter(n => n.type === 'building').length;
+    const neighbours    = getGridNeighbours(p.row, p.col, grid);
+    const isBldg        = n => n.type === 'building' || n.type === 'commercial' || n.type === 'arena';
+    const adjBuildings  = neighbours.filter(isBldg).length;
+    const adjCommercial = neighbours.filter(n => n.type === 'commercial').length;
+    const adjArena      = neighbours.filter(n => n.type === 'arena').length;
 
     if (p.action === 'park')     hDelta += adjBuildings * 3;
     if (p.action === 'bus-stop') cDelta -= adjBuildings * 2;
@@ -159,6 +239,11 @@ export function calculateEffects(placements, grid, weather) {
       hDelta *= 1.25;
     }
 
+    // Building sub-type bonuses
+    if (p.action === 'bus-stop' && adjCommercial > 0) cDelta *= 1.25;
+    if (p.action === 'park'     && adjArena > 0)      hDelta += adjArena * 6;
+    if (p.action === 'bus-stop' && adjArena > 0)      cDelta -= adjArena * 5;
+
     if (weather && WEATHER_MULTIPLIERS[weather]) {
       const wm = WEATHER_MULTIPLIERS[weather][p.action] || {};
       if (wm.cong != null) cDelta *= wm.cong;
@@ -167,6 +252,7 @@ export function calculateEffects(placements, grid, weather) {
 
     congestionDelta += cDelta;
     happinessDelta  += hDelta;
+    carbonDelta     += cbnDelta;
   });
 
   // Bus stop network bonus: each stop ≥3 Chebyshev from every other stop gets −3 congestion
@@ -193,24 +279,41 @@ export function calculateEffects(placements, grid, weather) {
         if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
           congestionDelta += Math.trunc(combo.congestion * multiplier);
           happinessDelta  += Math.trunc(combo.happiness  * multiplier);
+          if (combo.carbon) carbonDelta += Math.trunc(combo.carbon * multiplier);
         }
       });
     }
   }
 
-  return { congestionDelta, happinessDelta };
+  return { congestionDelta, happinessDelta, carbonDelta };
 }
 
 // ── checkWinCondition ──────────────────────────────────────────────────────
 
-export function checkWinCondition(state) {
+export function checkWinCondition(state, profileKey) {
   const happiness     = state.happiness     || 0;
   const congestion    = state.congestion    || 0;
+  const carbon        = state.carbon        ?? 0;
   const budget        = state.budget        || 0;
   const minActionCost = state.minActionCost || 0;
   const turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
 
-  if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
+  // Win check — use profile thresholds when specified, else default constants
+  const profile = profileKey ? CITY_PROFILES[profileKey] : null;
+  if (profile) {
+    const w = profile.win;
+    const hapWon  = w.happiness  == null || happiness  >= w.happiness;
+    const congWon = w.congestion == null || congestion <= w.congestion;
+    const cbnWon  = w.carbon     == null || carbon     <= w.carbon;
+    if (hapWon && congWon && cbnWon) return 'win';
+  } else {
+    if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return 'win';
+  }
+
+  // Universal lose checks
+  if (congestion >= LOSE_THRESHOLDS.congestion) return 'lose';
+  if (happiness <= LOSE_THRESHOLDS.happiness) return 'lose';
+  if (carbon >= LOSE_THRESHOLDS.carbon) return 'lose';
   if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return 'lose';
   if (turnsLeft <= 0) return 'lose';
   return 'playing';

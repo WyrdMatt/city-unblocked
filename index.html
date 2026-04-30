@@ -48,6 +48,8 @@
       --c-happy-2:      #34d399;
       --c-cong-1:       #dc2626;
       --c-cong-2:       #f87171;
+      --c-carbon-1:     #15803d;
+      --c-carbon-2:     #4ade80;
 
       /* Road */
       --c-road:         #2e3240;
@@ -99,6 +101,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
     #game-area {
@@ -143,48 +146,25 @@
       font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--c-text); white-space: nowrap;
     }
-    .hud__meters { display: flex; align-items: center; gap: 2rem; flex: 1; min-width: 0; }
-    .hud-meter { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
+    .hud__meters { display: flex; align-items: stretch; gap: 0.4rem; flex: 1; min-width: 0; }
+    .hud-meter {
+      display: flex; flex-direction: column; gap: 0.08rem; flex: 1; min-width: 0;
+      padding: 0.3rem 0.55rem; background: rgba(255,255,255,.05);
+      border-radius: 8px; border: 1px solid rgba(255,255,255,.07);
+    }
     .hud-meter__label {
-      display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem;
+      display: flex; align-items: center; gap: 0.3rem; font-size: 0.58rem;
       font-weight: 700; color: var(--c-text-label); text-transform: uppercase;
-      letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0;
+      letter-spacing: 0.08em; white-space: nowrap;
     }
-    .hud-meter__track {
-      position: relative; flex: 1; height: 14px;
-      background: var(--c-border-btn);
-      border-radius: 999px; overflow: visible; min-width: 80px;
-      /* padding-bottom makes room for the WIN label ::after on .hud-meter__goal */
-      padding-bottom: 16px; margin-bottom: -16px;
+    .hud-meter__value {
+      font-size: 1.1rem; font-weight: 900; color: var(--c-text-hi);
+      font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.15;
     }
-    /* Colour zones: green=win, amber=close, red=bad */
-    .hud-meter--happiness .hud-meter__track {
-      background: linear-gradient(90deg,
-        rgba(220,38,38,.20)  0%,  rgba(220,38,38,.20)  50%,
-        rgba(251,146,60,.20) 50%, rgba(251,146,60,.20) 65%,
-        rgba(16,185,129,.20) 65%, rgba(16,185,129,.20) 100%);
-    }
-    .hud-meter--congestion .hud-meter__track {
-      background: linear-gradient(90deg,
-        rgba(16,185,129,.20) 0%,  rgba(16,185,129,.20) 30%,
-        rgba(251,146,60,.20) 30%, rgba(251,146,60,.20) 50%,
-        rgba(220,38,38,.20)  50%, rgba(220,38,38,.20)  100%);
-    }
-    .hud-meter__fill {
-      position: absolute; inset: 0 auto 0 0; width: 0%;
-      border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
-      clip-path: inset(0 round 999px);
-    }
-    .hud-meter--happiness .hud-meter__fill { background: linear-gradient(90deg, var(--c-happy-1), var(--c-happy-2)); }
-    .hud-meter--congestion .hud-meter__fill { background: linear-gradient(90deg, var(--c-cong-1), var(--c-cong-2)); }
-    .hud-meter__fill--critical { animation: meter-pulse 1s ease-in-out infinite; }
     .hud-meter__mobile-stat {
-      font-size: 0.75rem; font-weight: 800; color: var(--c-text);
-      min-width: 10ch; text-align: right; flex-shrink: 0;
+      display: none; font-size: 0.82rem; font-weight: 800; color: var(--c-text);
       font-variant-numeric: tabular-nums; white-space: nowrap;
     }
-    @keyframes meter-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
-    .hud-meter__value { display: none; }
     .hud__budget { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
     .hud__budget-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
     .hud__budget-value { font-size: 1.3rem; font-weight: 900; color: var(--c-text-hi); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
@@ -625,7 +605,7 @@
 
     /* ── Left info panel (weather + combos) ─────────────────────────── */
     .info-panel--left {
-      display: flex; flex-direction: column; gap: 0.85rem; width: 220px;
+      display: flex; flex-direction: column; gap: 0.85rem; width: 240px;
       flex-shrink: 0; padding: 1.25rem;
       background: var(--c-surface);
       border-right: 1px solid var(--c-border);
@@ -651,7 +631,7 @@
 
     /* ── actions-panel.css ───────────────────────────────────────────── */
     .actions-panel {
-      display: flex; flex-direction: column; gap: 1rem; width: 220px;
+      display: flex; flex-direction: column; gap: 1rem; width: 250px;
       flex-shrink: 0; padding: 1.25rem;
       background: var(--c-surface);
       border-left: 1px solid var(--c-border);
@@ -661,14 +641,14 @@
     .actions-panel__header { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--c-border-sub); }
     .actions-panel__title { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-text-dim); }
     .actions-panel__sub { margin: 0; font-size: 0.72rem; color: var(--c-text-faint); line-height: 1.4; }
-    .actions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+    .actions-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
     .action-btn {
-      display: flex; align-items: center; gap: 0.75rem; width: 100%;
-      padding: 0.7rem 0.875rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%;
+      padding: 0.55rem 0.3rem;
       background: var(--c-btn-bg);
       border: 1px solid var(--c-border);
       border-radius: 12px; cursor: default; color: var(--c-text-btn); font-family: inherit;
-      text-align: left; pointer-events: none;
+      text-align: center; pointer-events: none;
       transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
     }
     .action-btn--active {
@@ -678,20 +658,20 @@
                   inset 0 0 0 1px color-mix(in srgb, var(--action-color, var(--c-focus)) 40%, transparent);
     }
     .action-btn--active .action-btn__cost { background: var(--action-color, var(--c-focus)); color: var(--c-bg); }
-    .action-btn__emoji { font-size: 1.6rem; line-height: 1; flex-shrink: 0; pointer-events: none; user-select: none; }
-    .action-btn__body { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; min-width: 0; }
-    .action-btn__name { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: var(--c-text); }
-    .action-btn__cost { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.1em 0.5em; border-radius: 5px; background: var(--c-border-btn); color: var(--c-text-muted); align-self: flex-start; transition: background .15s, color .15s; }
+    .action-btn__emoji { font-size: 1.4rem; line-height: 1; pointer-events: none; user-select: none; margin-bottom: 0.18rem; }
+    .action-btn__body { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; width: 100%; min-width: 0; }
+    .action-btn__name { font-size: 0.72rem; font-weight: 600; line-height: 1.2; color: var(--c-text); text-align: center; }
+    .action-btn__cost { display: inline-block; font-size: 0.67rem; font-weight: 700; padding: 0.1em 0.4em; border-radius: 5px; background: var(--c-border-btn); color: var(--c-text-muted); align-self: center; transition: background .15s, color .15s; }
     .actions-panel__error { margin: 0; padding: 0.5rem 0.75rem; background: var(--c-error-bg); border: 1px solid var(--c-error-border); border-radius: 8px; font-size: 0.76rem; font-weight: 600; color: var(--c-error-text); animation: shake 0.35s ease; }
     .actions-panel__error[hidden] { display: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 
     .action-btn__effects {
-      display: flex; gap: 0.35rem; margin-top: 0.25rem; flex-wrap: wrap;
+      display: flex; flex-direction: column; align-items: center; gap: 0.06rem; margin-top: 0.12rem;
     }
     .effect {
-      font-size: 0.62rem; font-weight: 700;
-      padding: 0.1em 0.45em; border-radius: 4px; line-height: 1.5;
+      font-size: 0.6rem; font-weight: 700;
+      padding: 0.08em 0.38em; border-radius: 4px; line-height: 1.5;
     }
     .effect--happy { background: rgba(16,185,129,.15); color: var(--c-happy-2); }
     .effect--cong  { background: rgba(239,68,68,.15);  color: var(--c-cong-2); }
@@ -912,6 +892,31 @@
       animation: gen-pulse 1.4s ease-in-out infinite;
     }
 
+    /* ── Commercial tiles (🏪) ──────────────────────────────────────── */
+    .tile.commercial {
+      background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+      box-shadow: inset 0 0 0 1px rgba(251,191,36,.20);
+    }
+    .tile.commercial::after {
+      content: '🏪'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 26px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.6));
+    }
+
+    /* ── Arena tiles (🏟️) ────────────────────────────────────────────── */
+    .tile.arena {
+      background: linear-gradient(180deg, #4338ca 0%, #1e1b4b 100%);
+      box-shadow: inset 0 0 0 2px rgba(167,139,250,.25),
+                  inset 0 0 14px rgba(167,139,250,.10);
+    }
+    .tile.arena::after {
+      content: '🏟️'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(12px, calc(var(--tile-size) * 0.52), 26px);
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,.6));
+    }
+
     /* ── Placed tiles ────────────────────────────────────────────────── */
     .tile--placed {
       display: flex; align-items: center; justify-content: center;
@@ -1031,8 +1036,9 @@
     .mat-cost  { color: var(--c-text-dim); text-align: right; white-space: nowrap; padding-right: 0.5rem !important; }
     .mat-tile  { color: var(--c-text-dim); font-style: italic; white-space: nowrap; padding-right: 0.5rem !important; }
     .mat-effect { display: flex; gap: 0.35rem; flex-wrap: nowrap; }
-    .mat-cong  { color: #f87171; font-weight: 700; white-space: nowrap; }
-    .mat-hap   { color: #4ade80; font-weight: 700; white-space: nowrap; }
+    .mat-cong   { color: #f87171; font-weight: 700; white-space: nowrap; }
+    .mat-hap    { color: #4ade80; font-weight: 700; white-space: nowrap; }
+    .mat-carbon { color: #6ee7b7; font-weight: 700; white-space: nowrap; }
 
     /* Option buttons */
     .menu-options { display: flex; flex-direction: column; gap: 0.45rem; }
@@ -1364,23 +1370,8 @@
       93%, 95%             { opacity: 1; }
     }
 
-    /* ── HUD goal markers ────────────────────────────────────────── */
-    .hud-meter__goal {
-      position: absolute; top: -4px; bottom: -4px; width: 3px;
-      background: rgba(255,255,255,.92);
-      border-radius: 2px;
-      box-shadow: 0 0 8px rgba(255,255,255,.75), 0 0 2px #fff;
-      pointer-events: none;
-    }
-    /* WIN label pinned just below the goal tick */
-    .hud-meter__goal::after {
-      content: attr(data-win-label);
-      position: absolute;
-      top: calc(100% + 5px);
-      left: 50%; transform: translateX(-50%);
-      font-size: 0.48rem; font-weight: 800; letter-spacing: 0.06em;
-      color: rgba(255,255,255,.5); white-space: nowrap; pointer-events: none;
-    }
+    /* ── Intersection tile (road crossing — not actionable) ─────── */
+    .tile.road.intersection { cursor: default; opacity: 0.7; }
 
 
     /* Grid entrance — tiles scale+fade in from near-zero, staggered by (row+col) delay */
@@ -1420,8 +1411,10 @@
       75%  { opacity: 1; transform: translateX(-50%) translateY(-44px); }
       100% { opacity: 0; transform: translateX(-50%) translateY(-58px); }
     }
-    .popup-happy { color: var(--c-happy-2); }
-    .popup-cong  { color: var(--c-cong-2); }
+    .popup-happy   { color: var(--c-happy-2); }
+    .popup-cong    { color: var(--c-cong-2); }
+    .popup-carbon  { color: #6ee7b7; }
+    .popup-budget  { color: #fbbf24; font-weight: 700; }
 
     /* ── Disabled action buttons ──────────────────────────────────── */
     .action-btn--disabled {
@@ -1452,6 +1445,13 @@
     .hud__weather-label { font-size: 0.52rem; font-weight: 700; text-transform: uppercase;
                           letter-spacing: 0.08em; color: var(--c-text-dim); white-space: nowrap; }
 
+    /* ── Per-turn decay badge ─────────────────────────────────── */
+    .hud-meter__decay {
+      font-size: 0.58rem; font-weight: 700; color: rgba(220,38,38,.8);
+      background: rgba(220,38,38,.10); border-radius: 3px; padding: 1px 4px;
+      white-space: nowrap; flex-shrink: 0; letter-spacing: 0;
+    }
+
     /* ── Distance-to-win delta label ────────────────────────────── */
     .hud-meter__delta {
       font-size: 0.68rem; font-weight: 700; color: var(--c-text-muted);
@@ -1466,6 +1466,12 @@
     .hud__turns-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-text-dim); }
     .hud__turns-value { font-size: 1rem; font-weight: 900; color: var(--c-text-muted); font-variant-numeric: tabular-nums; transition: color 0.3s; letter-spacing: -0.02em; }
     .hud__turns-value--urgent { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
+
+    /* ── Profile badge ───────────────────────────────────────────── */
+    .hud__profile { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 0; }
+    .hud__profile-icon  { font-size: 1rem; line-height: 1; }
+    .hud__profile-label { font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
+                          letter-spacing: 0.06em; color: var(--c-text-dim); white-space: nowrap; }
 
     /* ── Hotspot road tile glow ──────────────────────────────────── */
     .tile.road[data-hotspot="1"] { box-shadow: inset 0 0 5px rgba(251,146,60,.12); }
@@ -1497,25 +1503,31 @@
       margin: 0; font-size: 0.66rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.12em; color: var(--c-text-dim);
     }
-    .combos-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
-    .combo-item {
-      display: grid; grid-template-columns: auto 1fr auto;
-      align-items: center; gap: 0.4rem;
-      font-size: 0.65rem; color: var(--c-text-muted);
-      padding: 0.3rem 0.45rem; border-radius: 6px; transition: background 0.15s;
-      border-bottom: 1px solid rgba(255,255,255,.04);
+    .combos-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; }
+    .combo-category {
+      grid-column: 1 / -1;
+      font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--c-text-dim); padding: 0.3rem 0 0.15rem;
+      border-bottom: 1px solid rgba(255,255,255,.08); margin-top: 0.2rem;
     }
-    .combo-item:last-child { border-bottom: none; }
+    .combo-category:first-child { margin-top: 0; }
+    .combo-item {
+      display: flex; flex-direction: column; gap: 0.1rem;
+      font-size: 0.72rem; color: var(--c-text-muted);
+      padding: 0.38rem 0.42rem; border-radius: 7px; transition: background 0.15s;
+      border: 1px solid rgba(255,255,255,.05);
+    }
     .combo-item--active {
       background: rgba(251,191,36,.10); color: var(--c-text);
       box-shadow: inset 0 0 0 1px rgba(251,191,36,.22);
-      border-bottom-color: transparent;
+      border-color: rgba(251,191,36,.22);
     }
-    .combo-item__pair  { font-size: 0.82rem; white-space: nowrap; letter-spacing: -0.05em; }
-    .combo-item__label { font-weight: 600; line-height: 1.2; }
-    .combo-item__bonus { display: flex; gap: 0.35rem; font-weight: 700; font-size: 0.62rem; align-items: center; }
-    .combo-cong { color: #f87171; }
-    .combo-hap  { color: #4ade80; }
+    .combo-item__pair  { font-size: 0.9rem; white-space: nowrap; letter-spacing: -0.03em; }
+    .combo-item__label { font-size: 0.7rem; font-weight: 700; line-height: 1.2; }
+    .combo-item__bonus { display: flex; gap: 0.2rem; flex-wrap: wrap; font-weight: 700; font-size: 0.62rem; }
+    .combo-cong   { color: #f87171; }
+    .combo-hap    { color: #4ade80; }
+    .combo-carbon { color: #6ee7b7; }
 
     /* ── Combos section — mobile (collapsible, below action strip) ─ */
     .mobile-combos { width: 100%; display: none; }
@@ -1528,38 +1540,49 @@
     .mobile-combos__toggle::after { content: '▾'; display: inline-block; transition: transform 0.2s; }
     details[open].mobile-combos .mobile-combos__toggle::after { transform: rotate(-180deg); }
     .mobile-combos__list {
-      display: flex; flex-direction: column; gap: 0.25rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem;
       padding: 0.35rem 0.25rem; border-radius: 8px; background: rgba(255,255,255,.03);
     }
     .mobile-combo-item {
-      display: flex; align-items: center; gap: 0.4rem;
-      font-size: 0.64rem; color: var(--c-text-muted);
-      padding: 0.2rem 0.35rem; border-radius: 5px;
+      display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto;
+      column-gap: 0.3rem; row-gap: 0.05rem; align-items: center;
+      color: var(--c-text-muted); padding: 0.3rem 0.4rem; border-radius: 6px;
+      background: rgba(255,255,255,.03);
     }
     .mobile-combo-item--active { background: rgba(251,191,36,.1); color: var(--c-text); }
-    .mci-pair  { font-size: 0.8rem; flex-shrink: 0; white-space: nowrap; letter-spacing: -0.05em; }
-    .mci-label { flex: 1; font-weight: 600; }
-    .mci-bonus { display: flex; gap: 0.2rem; font-size: 0.6rem; font-weight: 700; }
-
-    /* ── Meter goal marker — pulse when within 10 of target ─────── */
-    @keyframes goal-pulse {
-      0%, 100% { opacity: 0.6; box-shadow: 0 0 4px rgba(255,255,255,.4); }
-      50%       { opacity: 1;   box-shadow: 0 0 12px rgba(255,255,255,.85), 0 0 22px rgba(255,255,255,.25); }
-    }
-    .hud-meter__goal--near { animation: goal-pulse 0.85s ease-in-out infinite; }
+    .mci-pair  { grid-column: 1; grid-row: 1; font-size: 0.85rem; white-space: nowrap; letter-spacing: -0.05em; }
+    .mci-label { grid-column: 1; grid-row: 2; font-weight: 700; font-size: 0.62rem; }
+    .mci-bonus { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; font-size: 0.58rem; font-weight: 700; }
 
     /* Meter numeric value colour states */
-    .hud-meter__value--good  { color: #4ade80; }
-    .hud-meter__value--close { color: #fbbf24; }
+    .hud-meter__value--good   { color: #4ade80; }
+    .hud-meter__value--close  { color: #fbbf24; }
+    .hud-meter__value--danger { color: var(--c-danger); animation: budget-pulse 1s ease-in-out infinite; }
 
     /* ── Mobile action strip ─────────────────────────────────────── */
+    .strip-wrapper {
+      display: none; position: relative; width: 100%; min-width: 0;
+    }
+    @media (max-width: 640px) { .strip-wrapper { display: block; } }
+
+    .strip-arrow {
+      position: absolute; top: 0; bottom: 0; width: 30px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; color: rgba(255,255,255,0.85);
+      pointer-events: none; z-index: 2;
+      transition: opacity 0.25s;
+    }
+    .strip-arrow--left  { left: 0;  background: linear-gradient(90deg,  rgba(10,14,28,0.80) 0%, transparent 100%); }
+    .strip-arrow--right { right: 0; background: linear-gradient(270deg, rgba(10,14,28,0.80) 0%, transparent 100%); }
+    .strip-arrow--hidden { opacity: 0; }
+
     .mobile-action-strip {
-      display: none;
+      display: flex;
       overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
-      gap: 0.4rem; padding: 0.35rem 0.25rem; width: 100%; box-sizing: border-box;
+      flex-wrap: nowrap; gap: 0.4rem; padding: 0.35rem 0.25rem;
+      width: 100%; min-width: 0; box-sizing: border-box;
     }
     .mobile-action-strip::-webkit-scrollbar { display: none; }
-    @media (max-width: 640px) { .mobile-action-strip { display: flex; } }
 
     .mas-card {
       flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
@@ -1573,6 +1596,7 @@
     .mas-card__cong   { font-size: 0.58rem; color: #f87171; font-weight: 600; }
     .mas-card__hap    { font-size: 0.58rem; color: #86efac; font-weight: 600; }
     .mas-card__hap--sad { color: #f87171; }
+    .mas-card__carbon { font-size: 0.58rem; color: #6ee7b7; font-weight: 600; }
 
     /* ── Touch: remove 300ms tap delay on interactive elements ───── */
     .tile, .action-btn, .reset-btn, .hud__music-btn, .hud__sfx-btn, .hud__help-btn, .hud__menu-btn,
@@ -1734,6 +1758,9 @@
       /* Grid: full rounded corners when action panel is hidden */
       #city-grid { border-radius: 12px; }
 
+      /* Constrain map column to viewport so action strip scrolls internally */
+      #map-area { max-width: 100vw; align-items: center; }
+
       /* Hide info bar and legend on mobile — not useful at small sizes */
       #info-bar, #legend { display: none; }
 
@@ -1763,11 +1790,15 @@
         padding: 0.15rem 0 0.2rem;
         border-top: 1px solid rgba(255,255,255,0.10);
       }
-      .hud-meter__label { display: inline-flex; font-size: 0.62rem; color: var(--c-text-muted); }
-      /* Replace bar with compact numeric stat on mobile */
-      .hud-meter__track { display: none; }
+      /* Meters: horizontal layout on mobile — emoji left, stat right */
+      .hud-meter { flex-direction: row; align-items: center; justify-content: space-between; background: none; border: none; padding: 0 0.1rem; gap: 0.3rem; }
+      /* Hide label text + decay; only the emoji span stays visible */
+      .hud-meter__label { font-size: 0; gap: 0; }
+      .hud-meter__label > span:first-child { font-size: 0.82rem; }
+      .hud-meter__decay { display: none; }
+      .hud-meter__value { display: none; }
       .hud-meter__delta { display: none; }
-      .hud-meter__mobile-stat { font-size: 0.85rem; min-width: 0; }
+      .hud-meter__mobile-stat { display: block; font-size: 0.82rem; }
 
       /* Budget always visible, right of meters */
       .hud__budget { order: 3; flex-shrink: 0; }
@@ -1870,12 +1901,12 @@
       <details class="how-to-play">
         <summary class="how-to-play__toggle">How to play</summary>
         <ol class="how-to-play__steps">
-          <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — road, building, or empty lot</li>
-          <li><span class="htp-icon" aria-hidden="true">🚌</span>Place an action: buses &amp; bike lanes on roads, parking on buildings, parks on empty lots</li>
-          <li><span class="htp-icon" aria-hidden="true">📉</span>Each action cuts congestion and boosts happiness — but repeating the same type gives diminishing returns</li>
-          <li><span class="htp-icon" aria-hidden="true">⭐</span>Adjacent actions unlock combos — Bus Stop + Park = <em>Transit Hub</em>, Parking + Park = <em>Green Gateway</em>, and more. Watch for the ★ popup!</li>
+          <li><span class="htp-icon" aria-hidden="true">👆</span>Tap any tile to open the action menu — roads, buildings, and empty lots each accept different actions. Intersections, commercial blocks (🏪), and arenas (🏟️) can't be built on.</li>
+          <li><span class="htp-icon" aria-hidden="true">🚌</span>8 actions to choose from: Bus Stop, Bike Lane, EV Charging, Taxi Network &amp; Road Widening on roads — Parking Garage &amp; Industrial Dev on buildings — Parks on empty lots</li>
+          <li><span class="htp-icon" aria-hidden="true">📉</span>Each action shifts congestion, happiness, and carbon — watch all three meters. Repeating the same action gives diminishing returns, so mix it up.</li>
+          <li><span class="htp-icon" aria-hidden="true">⭐</span>Adjacent actions unlock combos — Bus Stop + Park = <em>Transit Hub</em>, EV Charging + Parking = <em>Clean Commute</em>, and more. Watch for the ★ popup!</li>
           <li><span class="htp-icon" aria-hidden="true">🌦️</span>Weather changes each game and affects action strength — rain boosts bus stops, snow makes bike lanes nearly useless. Check the HUD badge.</li>
-          <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by getting congestion ≤30 and happiness ≥70 before your budget and turns run out</li>
+          <li><span class="htp-icon" aria-hidden="true">🏆</span>Win by meeting your city profile's goals before budget and turns run out. Don't let congestion, carbon, or unhappiness hit their limits or it's game over.</li>
         </ol>
       </details>
 
@@ -1896,31 +1927,31 @@
     </div>
     <div class="hud__meters" role="group" aria-label="City meters">
       <div class="hud-meter hud-meter--happiness">
-        <span class="hud-meter__label"><span aria-hidden="true">😊</span> Happiness</span>
-        <div class="hud-meter__track" role="progressbar" aria-label="Happiness"
-             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="happinessBar">
-          <div class="hud-meter__fill" id="happinessFill"></div>
-          <div class="hud-meter__goal" id="happinessGoal" style="left:70%" title="Goal: reach 70" data-win-label="≥70 WIN"></div>
-        </div>
+        <span class="hud-meter__label"><span aria-hidden="true">😊</span> Happiness <span class="hud-meter__decay" id="happinessDecay" aria-hidden="true"></span></span>
         <span class="hud-meter__value" id="happinessValue">0</span>
         <span class="hud-meter__delta" id="happinessDelta" aria-live="polite"></span>
         <span class="hud-meter__mobile-stat" id="happinessMobileStat" aria-hidden="true"></span>
       </div>
       <div class="hud-meter hud-meter--congestion">
-        <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion</span>
-        <div class="hud-meter__track" role="progressbar" aria-label="Congestion"
-             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="congestionBar">
-          <div class="hud-meter__fill" id="congestionFill"></div>
-          <div class="hud-meter__goal" id="congestionGoal" style="left:30%" title="Goal: get below 30" data-win-label="≤30 WIN"></div>
-        </div>
+        <span class="hud-meter__label"><span aria-hidden="true">🚗</span> Congestion <span class="hud-meter__decay" id="congestionDecay" aria-hidden="true"></span></span>
         <span class="hud-meter__value" id="congestionValue">0</span>
         <span class="hud-meter__delta" id="congestionDelta" aria-live="polite"></span>
         <span class="hud-meter__mobile-stat" id="congestionMobileStat" aria-hidden="true"></span>
+      </div>
+      <div class="hud-meter hud-meter--carbon">
+        <span class="hud-meter__label"><span aria-hidden="true">🌿</span> Carbon <span class="hud-meter__decay" id="carbonDecay" aria-hidden="true"></span></span>
+        <span class="hud-meter__value" id="carbonValue">0</span>
+        <span class="hud-meter__delta" id="carbonDelta" aria-live="polite"></span>
+        <span class="hud-meter__mobile-stat" id="carbonMobileStat" aria-hidden="true"></span>
       </div>
     </div>
     <div class="hud__turns" aria-label="Turns remaining">
       <span class="hud__turns-label">Turns</span>
       <span class="hud__turns-value" id="turnsValue">0 / 15</span>
+    </div>
+    <div class="hud__profile" id="profileBadge" title="" aria-label="City profile">
+      <span class="hud__profile-icon"  id="profileIcon">🏙️</span>
+      <span class="hud__profile-label" id="profileLabel">Standard</span>
     </div>
     <div class="hud__weather" id="weatherBadge" aria-label="Current weather" title="">
       <span class="hud__weather-icon"  id="weatherIcon">☀️</span>
@@ -2036,7 +2067,28 @@
               <td class="mat-name">Road Widening</td>
               <td class="mat-cost">£90</td>
               <td class="mat-tile">road</td>
-              <td><span class="mat-effect"><span class="mat-cong">🚗 −15</span><span class="mat-hap">😊 −5</span></span></td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −15</span><span class="mat-hap">😊 −5</span><span class="mat-carbon">🌱 +8</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🔋</td>
+              <td class="mat-name">EV Charging</td>
+              <td class="mat-cost">£70</td>
+              <td class="mat-tile">road</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −3</span><span class="mat-hap">😊 +2</span><span class="mat-carbon">🌱 −8</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🤖</td>
+              <td class="mat-name">Taxi Network</td>
+              <td class="mat-cost">£110</td>
+              <td class="mat-tile">road</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 −8</span><span class="mat-hap">😊 +10</span><span class="mat-carbon">🌱 −4</span></span></td>
+            </tr>
+            <tr>
+              <td aria-hidden="true">🏗️</td>
+              <td class="mat-name">Industrial Dev</td>
+              <td class="mat-cost" style="color:#fbbf24">+£80</td>
+              <td class="mat-tile">building</td>
+              <td><span class="mat-effect"><span class="mat-cong">🚗 +5</span><span class="mat-hap">😞 −10</span><span class="mat-carbon">🌱 +12</span></span></td>
             </tr>
           </tbody>
         </table>
@@ -2109,13 +2161,14 @@
       <div class="tutorial-slide" data-slide="0">
         <p class="tutorial-slide__title">🗺️ The Map</p>
         <ul class="tutorial-tiles">
-          <li><span class="tutorial-swatch tutorial-swatch--road"></span><b>Road</b> — place Bus Stops, Bike Lanes, Road Widening</li>
-          <li><span class="tutorial-swatch tutorial-swatch--building"></span><b>Building</b> — place Parking Garages</li>
+          <li><span class="tutorial-swatch tutorial-swatch--road"></span><b>Road</b> — place Bus Stops, Bike Lanes, EV Charging, Taxi Network, Road Widening. <em>Intersections can't be built on.</em></li>
+          <li><span class="tutorial-swatch tutorial-swatch--building"></span><b>Building</b> — place Parking Garages or Industrial Dev</li>
           <li><span class="tutorial-swatch tutorial-swatch--empty"></span><b>Empty Lot</b> — place Parks</li>
-          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏭</span><b>Generator</b> — raises congestion each turn unless you suppress it with an adjacent road action</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏪</span><b>Commercial / 🏟️ Arena</b> — decorative landmarks, not buildable</li>
+          <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🏭</span><b>Generator</b> — raises congestion each turn unless suppressed by an adjacent road action</li>
           <li><span style="font-size:1rem;width:14px;text-align:center;flex-shrink:0">🚧</span><b>Blocker</b> — demolish for £50 to create a buildable empty lot</li>
         </ul>
-        <p class="tutorial-slide__title" style="margin-top:0.3rem">🏆 Goal</p>
+        <p class="tutorial-slide__title" style="margin-top:0.3rem">🏆 Goal (varies by city profile)</p>
         <div class="tutorial-win">
           <div class="tutorial-win__card">
             <span class="tutorial-win__icon">🚗</span>
@@ -2126,6 +2179,11 @@
             <span class="tutorial-win__icon">😊</span>
             <div class="tutorial-win__label">Happiness</div>
             <div class="tutorial-win__target">≥ 70</div>
+          </div>
+          <div class="tutorial-win__card">
+            <span class="tutorial-win__icon">🌱</span>
+            <div class="tutorial-win__label">Carbon</div>
+            <div class="tutorial-win__target">stay &lt; 100</div>
           </div>
         </div>
       </div>
@@ -2162,12 +2220,30 @@
             <span class="tutorial-action__emoji">🚧</span>
             <span class="tutorial-action__name">Road Widening</span>
             <span class="tutorial-action__cost">£90 · Road</span>
-            <span class="tutorial-action__fx">−15 🚗  −5 😊</span>
+            <span class="tutorial-action__fx">−15 🚗  −5 😊  +8 🌱</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🔋</span>
+            <span class="tutorial-action__name">EV Charging</span>
+            <span class="tutorial-action__cost">£70 · Road</span>
+            <span class="tutorial-action__fx">−3 🚗  +2 😊  −8 🌱</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🤖</span>
+            <span class="tutorial-action__name">Taxi Network</span>
+            <span class="tutorial-action__cost">£110 · Road</span>
+            <span class="tutorial-action__fx">−8 🚗  +10 😊  −4 🌱</span>
+          </div>
+          <div class="tutorial-action">
+            <span class="tutorial-action__emoji">🏗️</span>
+            <span class="tutorial-action__name">Industrial Dev</span>
+            <span class="tutorial-action__cost">+£80 · Building</span>
+            <span class="tutorial-action__fx">+5 🚗  −10 😊  +12 🌱</span>
           </div>
         </div>
         <div class="tutorial-tip" style="margin-top:0.2rem">
           <span class="tutorial-tip__icon">⚠️</span>
-          <span>Placing the same action repeatedly gives <b>diminishing returns</b> — mix up your choices for maximum effect.</span>
+          <span>Placing the same action repeatedly gives <b>diminishing returns</b> — mix up your choices for maximum effect. 🌱 shows carbon impact.</span>
         </div>
       </div>
 
@@ -2220,6 +2296,16 @@
             <div class="tutorial-combo__label">Industrial Bypass</div>
             <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−5 🚗</div>
           </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🔋 + 🅿️</div>
+            <div class="tutorial-combo__label">Clean Commute</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−4 🚗  −5 🌱</div>
+          </div>
+          <div class="tutorial-combo">
+            <div class="tutorial-combo__pair">🤖 + 🚌</div>
+            <div class="tutorial-combo__label">Seamless Network</div>
+            <div class="tutorial-combo__bonus tutorial-combo__bonus--mixed">−3 🚗  +4 😊</div>
+          </div>
         </div>
         <div class="tutorial-tip">
           <span class="tutorial-tip__icon">💡</span>
@@ -2260,23 +2346,27 @@
         <div class="tutorial-tips">
           <div class="tutorial-tip">
             <span class="tutorial-tip__icon">👆</span>
-            <span>Tap any tile to open the action fan. <b>Wrong-tile actions are greyed out</b> — only valid placements are clickable.</span>
+            <span>Tap any tile to open the action fan. <b>Wrong-tile actions are greyed out.</b> Road intersections, commercial blocks (🏪), and arenas (🏟️) cannot be built on at all.</span>
+          </div>
+          <div class="tutorial-tip">
+            <span class="tutorial-tip__icon">🌱</span>
+            <span>Watch the <b>carbon meter</b> — it rises each turn and spikes from Road Widening and Industrial Dev. Keep it below 100 or it's an instant loss.</span>
           </div>
           <div class="tutorial-tip">
             <span class="tutorial-tip__icon">🏭</span>
-            <span><b>Suppress generators</b> by placing a bus stop, bike lane, or road widening on an adjacent road tile — stops them adding congestion.</span>
+            <span><b>Suppress generators</b> by placing a Bus Stop, Bike Lane, or Road Widening on an adjacent road tile — stops them adding congestion every turn.</span>
           </div>
           <div class="tutorial-tip">
             <span class="tutorial-tip__icon">🚌</span>
             <span><b>Space bus stops out</b> — stops placed far apart earn a Network Bonus for extra congestion reduction.</span>
           </div>
           <div class="tutorial-tip">
-            <span class="tutorial-tip__icon">↩️</span>
-            <span>You get <b>one undo</b> per placement (↩ button or Ctrl+Z). Use it when you accidentally break a combo.</span>
+            <span class="tutorial-tip__icon">🏗️</span>
+            <span><b>Industrial Dev</b> pays +£80 but hurts happiness and carbon badly — use it only if you're desperate for budget, then balance with green actions.</span>
           </div>
           <div class="tutorial-tip">
-            <span class="tutorial-tip__icon">🏗️</span>
-            <span>Demolish blockers (🚧) for <b>£50</b> to unlock empty lots — sometimes the best park location is behind a blocker.</span>
+            <span class="tutorial-tip__icon">↩️</span>
+            <span>You get <b>one undo</b> per placement (↩ button or Ctrl+Z). Use it when you accidentally break a combo or misplace an action.</span>
           </div>
         </div>
       </div>
@@ -2328,6 +2418,27 @@
       <span class="radial-btn__preview"></span>
       <span class="radial-btn__combo"></span>
     </button>
+    <button class="radial-btn" id="radialBtn-ev-charging" data-action="ev-charging" type="button" aria-label="EV Charging £70" touch-action="manipulation">
+      <span class="radial-btn__emoji">🔋</span>
+      <span class="radial-btn__name">EV Charging</span>
+      <span class="radial-btn__cost" style="background:rgba(6,182,212,0.3);color:#a5f3fc;">£70</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
+    </button>
+    <button class="radial-btn" id="radialBtn-self-driving-taxi" data-action="self-driving-taxi" type="button" aria-label="Self-Driving Taxi £110" touch-action="manipulation">
+      <span class="radial-btn__emoji">🤖</span>
+      <span class="radial-btn__name">Taxi Network</span>
+      <span class="radial-btn__cost" style="background:rgba(139,92,246,0.3);color:#ddd6fe;">£110</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
+    </button>
+    <button class="radial-btn" id="radialBtn-industrial-dev" data-action="industrial-dev" type="button" aria-label="Industrial Dev +£80" touch-action="manipulation">
+      <span class="radial-btn__emoji">🏗️</span>
+      <span class="radial-btn__name">Industrial Dev</span>
+      <span class="radial-btn__cost" style="background:rgba(217,119,6,0.3);color:#fde68a;">+£80</span>
+      <span class="radial-btn__preview"></span>
+      <span class="radial-btn__combo"></span>
+    </button>
   </div>
 
   <!-- ── Game area ────────────────────────────────────────────────────── -->
@@ -2361,6 +2472,8 @@
         <div class="legend-item"><div class="legend-swatch" style="background:#3d5020"></div> Empty lot</div>
       </div>
       <!-- Mobile action reference strip — hidden on desktop, shown at ≤640px -->
+      <div class="strip-wrapper" id="stripWrapper">
+      <span class="strip-arrow strip-arrow--left strip-arrow--hidden" id="stripArrowLeft" aria-hidden="true">◀</span>
       <div class="mobile-action-strip" id="mobileActionStrip" aria-label="Action costs and effects">
         <div class="mas-card" data-action="bus-stop"       data-cost="80"  data-base-cong="-10" data-base-happy="6">
           <span class="mas-card__emoji">🚌</span>
@@ -2407,9 +2520,40 @@
           </div>
           <span class="mas-card__weather" id="mas-weather-road-widening"></span>
         </div>
+        <div class="mas-card" data-action="ev-charging"    data-cost="70"  data-base-cong="-3"  data-base-happy="2">
+          <span class="mas-card__emoji">🔋</span>
+          <span class="mas-card__cost">£70</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-ev-charging">🚗 −3</span>
+            <span class="mas-card__hap"  id="mas-hap-ev-charging">😊 +2</span>
+            <span class="mas-card__carbon">🌱 −8</span>
+          </div>
+          <span class="mas-card__weather" id="mas-weather-ev-charging"></span>
+        </div>
+        <div class="mas-card" data-action="self-driving-taxi" data-cost="110" data-base-cong="-8" data-base-happy="10">
+          <span class="mas-card__emoji">🤖</span>
+          <span class="mas-card__cost">£110</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong" id="mas-cong-self-driving-taxi">🚗 −8</span>
+            <span class="mas-card__hap"  id="mas-hap-self-driving-taxi">😊 +10</span>
+            <span class="mas-card__carbon">🌱 −4</span>
+          </div>
+          <span class="mas-card__weather" id="mas-weather-self-driving-taxi"></span>
+        </div>
+        <div class="mas-card" data-action="industrial-dev"  data-cost="0"   data-base-cong="5"   data-base-happy="-10">
+          <span class="mas-card__emoji">🏗️</span>
+          <span class="mas-card__cost" style="color:#fbbf24">+£80</span>
+          <div class="mas-card__effects">
+            <span class="mas-card__cong">🚗 +5</span>
+            <span class="mas-card__hap">😞 −10</span>
+            <span class="mas-card__carbon">🌱 +12</span>
+          </div>
+        </div>
       </div>
+      <span class="strip-arrow strip-arrow--right" id="stripArrowRight" aria-hidden="true">▶</span>
+      </div><!-- .strip-wrapper -->
       <!-- Mobile combos reference — hidden on desktop -->
-      <details class="mobile-combos" id="mobileCombos">
+      <details class="mobile-combos" id="mobileCombos" open>
         <summary class="mobile-combos__toggle">Combos</summary>
         <div class="mobile-combos__list" id="mobileCombosListEl"></div>
       </details>
@@ -2502,6 +2646,57 @@
             </span>
           </button>
         </li>
+        <li>
+          <button class="action-btn" data-action="ev-charging" data-cost="70"
+                  data-emoji="🔋" data-color="#06b6d4" data-valid-tiles="road"
+                  data-base-cong="-3" data-base-happy="2" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🔋</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">EV Charging</span>
+              <span class="action-btn__cost">£70</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −3</span>
+                <span class="effect effect--happy">😊 +2</span>
+                <span class="effect effect--carbon">🌿 −8</span>
+              </span>
+              <span class="action-btn__weather" id="weather-mod-ev-charging"></span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="action-btn" data-action="self-driving-taxi" data-cost="110"
+                  data-emoji="🤖" data-color="#8b5cf6" data-valid-tiles="road"
+                  data-base-cong="-8" data-base-happy="10" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🤖</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Taxi Network</span>
+              <span class="action-btn__cost">£110</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 −8</span>
+                <span class="effect effect--happy">😊 +10</span>
+                <span class="effect effect--carbon">🌿 −4</span>
+              </span>
+              <span class="action-btn__weather" id="weather-mod-self-driving-taxi"></span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="action-btn" data-action="industrial-dev" data-cost="0"
+                  data-emoji="🏗️" data-color="#d97706" data-valid-tiles="building"
+                  data-base-cong="5" data-base-happy="-10" type="button">
+            <span class="action-btn__emoji" aria-hidden="true">🏗️</span>
+            <span class="action-btn__body">
+              <span class="action-btn__name">Industrial Dev</span>
+              <span class="action-btn__cost" style="color:#fde68a;">+£80</span>
+              <span class="action-btn__effects">
+                <span class="effect effect--cong">🚗 +5</span>
+                <span class="effect effect--sad">😞 −10</span>
+                <span class="effect effect--carbon">💨 +12</span>
+              </span>
+              <span class="action-btn__weather" id="weather-mod-industrial-dev"></span>
+            </span>
+          </button>
+        </li>
       </ul>
       <p class="actions-panel__error" id="budgetError" role="alert" aria-live="assertive" hidden>
         <span aria-hidden="true">⚠️</span> Not enough budget!
@@ -2518,18 +2713,21 @@
   <script>
   (function () {
     "use strict";
-    const happinessFill  = document.getElementById("happinessFill");
-    const happinessBar   = document.getElementById("happinessBar");
     const happinessValue = document.getElementById("happinessValue");
     const happinessDelta = document.getElementById("happinessDelta");
-    const happinessGoal  = document.getElementById("happinessGoal");
     const happinessMobileStat = document.getElementById("happinessMobileStat");
-    const congestionFill  = document.getElementById("congestionFill");
-    const congestionBar   = document.getElementById("congestionBar");
     const congestionValue = document.getElementById("congestionValue");
     const congestionDelta = document.getElementById("congestionDelta");
-    const congestionGoal  = document.getElementById("congestionGoal");
     const congestionMobileStat = document.getElementById("congestionMobileStat");
+    const happinessDecayEl  = document.getElementById("happinessDecay");
+    const congestionDecayEl = document.getElementById("congestionDecay");
+    const carbonValue    = document.getElementById("carbonValue");
+    const carbonDeltaEl  = document.getElementById("carbonDelta");
+    const carbonDecayEl  = document.getElementById("carbonDecay");
+    const carbonMobileStat = document.getElementById("carbonMobileStat");
+    const profileBadgeEl    = document.getElementById("profileBadge");
+    const profileIconEl     = document.getElementById("profileIcon");
+    const profileLabelEl    = document.getElementById("profileLabel");
     const turnsValueEl    = document.getElementById("turnsValue");
     const weatherBadgeEl   = document.getElementById("weatherBadge");
     const weatherIconEl    = document.getElementById("weatherIcon");
@@ -2551,9 +2749,15 @@
     function formatBudget(n) { return "£" + Math.round(n).toLocaleString("en-GB"); }
 
     function updateDelta(el, value, target, isLower) {
+      if (!el) return;
+      if (target == null) {
+        el.textContent = '';
+        el.classList.remove("hud-meter__delta--done", "hud-meter__delta--close");
+        return;
+      }
       // isLower = true means we want value ≤ target (congestion); false = value ≥ target (happiness)
-      const done = isLower ? value <= target : value >= target;
-      const gap  = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
+      const done  = isLower ? value <= target : value >= target;
+      const gap   = isLower ? Math.ceil(value - target) : Math.ceil(target - value);
       const close = !done && gap <= 10;
       el.textContent = done ? "✓" : (isLower ? "−" + gap : "+" + gap);
       el.classList.toggle("hud-meter__delta--done",  done);
@@ -2569,37 +2773,66 @@
       const turn       = gs.turn   ?? 0;
       const turnLimit  = gs.turnLimit ?? 15;
 
-      happinessFill.style.width = happiness + "%";
-      happinessBar.setAttribute("aria-valuenow", Math.round(happiness));
-      happinessFill.classList.toggle("hud-meter__fill--critical", happiness < 20);
-      updateDelta(happinessDelta, happiness, 70, false);
-      const hapDone  = happiness >= 70;
-      const hapClose = !hapDone && happiness >= 60;
-      happinessValue.textContent = hapDone ? "✓" : Math.round(happiness) + "→70";
-      happinessValue.classList.toggle("hud-meter__value--good",  hapDone);
-      happinessValue.classList.toggle("hud-meter__value--close", hapClose);
-      if (happinessGoal) happinessGoal.classList.toggle("hud-meter__goal--near", hapClose);
+      // Profile-aware win targets
+      const CPROFILES    = window.CITY_PROFILES || {};
+      const activeProfile = CPROFILES[window.currentProfile] || CPROFILES.standard || {};
+      const pWin         = activeProfile.win || {};
+      const hapTarget    = pWin.happiness  != null ? pWin.happiness  : 70;
+      const congTarget   = pWin.congestion != null ? pWin.congestion : null;
+      const cbnTarget    = pWin.carbon     != null ? pWin.carbon     : null;
+
+      // Profile badge
+      if (profileIconEl)  profileIconEl.textContent  = activeProfile.emoji || '🏙️';
+      if (profileLabelEl) profileLabelEl.textContent = activeProfile.label || 'Standard';
+      if (profileBadgeEl) profileBadgeEl.title        = activeProfile.description || '';
+
+      updateDelta(happinessDelta, happiness, hapTarget, false);
+      const hapDone   = happiness >= hapTarget;
+      const hapClose  = !hapDone && happiness >= hapTarget - 10;
+      const hapDanger = !hapDone && happiness < 20;
+      happinessValue.textContent = hapDone ? "✓ " + hapTarget : Math.round(happiness) + " → " + hapTarget;
+      happinessValue.classList.toggle("hud-meter__value--good",   hapDone);
+      happinessValue.classList.toggle("hud-meter__value--close",  hapClose && !hapDanger);
+      happinessValue.classList.toggle("hud-meter__value--danger", hapDanger);
       if (happinessMobileStat) {
-        happinessMobileStat.textContent = hapDone ? "✓ 70/100" : Math.round(happiness) + "/100 (70)";
+        happinessMobileStat.textContent = hapDone ? "✓ " + hapTarget : Math.round(happiness) + "/" + hapTarget;
         happinessMobileStat.classList.toggle("hud-meter__value--good",  hapDone);
         happinessMobileStat.classList.toggle("hud-meter__value--close", hapClose);
       }
 
-      congestionFill.style.width = congestion + "%";
-      congestionBar.setAttribute("aria-valuenow", Math.round(congestion));
-      congestionFill.classList.toggle("hud-meter__fill--critical", congestion > 80);
-      updateDelta(congestionDelta, congestion, 30, true);
-      const congDone  = congestion <= 30;
-      const congClose = !congDone && congestion <= 40;
-      congestionValue.textContent = congDone ? "✓" : Math.round(congestion) + "→30";
-      congestionValue.classList.toggle("hud-meter__value--good",  congDone);
-      congestionValue.classList.toggle("hud-meter__value--close", congClose);
-      if (congestionGoal) congestionGoal.classList.toggle("hud-meter__goal--near", congClose);
+      updateDelta(congestionDelta, congestion, congTarget, true);
+      const congDone   = congTarget != null && congestion <= congTarget;
+      const congClose  = congTarget != null && !congDone && congestion <= congTarget + 10;
+      const congDanger = !congDone && congestion > 80;
+      congestionValue.textContent = congDone ? "✓ " + congTarget : congTarget != null ? Math.round(congestion) + " → " + congTarget : Math.round(congestion);
+      congestionValue.classList.toggle("hud-meter__value--good",   congDone);
+      congestionValue.classList.toggle("hud-meter__value--close",  congClose && !congDanger);
+      congestionValue.classList.toggle("hud-meter__value--danger", congDanger);
       if (congestionMobileStat) {
-        congestionMobileStat.textContent = congDone ? "✓ 30/100" : Math.round(congestion) + "/100 (30)";
+        congestionMobileStat.textContent = congDone ? "✓ " + congTarget : congTarget != null ? Math.round(congestion) + "/" + congTarget : Math.round(congestion);
         congestionMobileStat.classList.toggle("hud-meter__value--good",  congDone);
         congestionMobileStat.classList.toggle("hud-meter__value--close", congClose);
       }
+
+      const carbon = clamp(gs.carbon ?? 0, 0, 100);
+      updateDelta(carbonDeltaEl, carbon, cbnTarget, true);
+      const cbnDone   = cbnTarget != null && carbon <= cbnTarget;
+      const cbnClose  = cbnTarget != null && !cbnDone && carbon <= cbnTarget + 10;
+      const cbnDanger = !cbnDone && carbon > 80;
+      carbonValue.textContent = cbnDone ? "✓ " + cbnTarget : cbnTarget != null ? Math.round(carbon) + " → " + cbnTarget : Math.round(carbon);
+      carbonValue.classList.toggle("hud-meter__value--good",   cbnDone);
+      carbonValue.classList.toggle("hud-meter__value--close",  cbnClose && !cbnDanger);
+      carbonValue.classList.toggle("hud-meter__value--danger", cbnDanger);
+      if (carbonMobileStat) {
+        carbonMobileStat.textContent = cbnDone ? "✓ " + cbnTarget : cbnTarget != null ? Math.round(carbon) + "/" + cbnTarget : Math.round(carbon);
+        carbonMobileStat.classList.toggle("hud-meter__value--good",  cbnDone);
+        carbonMobileStat.classList.toggle("hud-meter__value--close", cbnClose);
+      }
+
+      const DR = (window.DECAY_RATES) || { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
+      if (happinessDecayEl)  happinessDecayEl.textContent  = DR.happiness + "/t";
+      if (congestionDecayEl) congestionDecayEl.textContent = "+" + DR.congestion + "/t";
+      if (carbonDecayEl)     carbonDecayEl.textContent     = "+" + DR.carbon + "/t";
 
       const turnsLeft = turnLimit - turn;
       turnsValueEl.textContent = turn + " / " + turnLimit;
@@ -2645,13 +2878,17 @@
     window.updateMeters = window.refreshHUD;
 
     function buildContextBadges() {
-      const diff    = window.currentDifficulty || 'normal';
-      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard' };
-      const weather = window.currentWeather || 'sunny';
-      const WMETA   = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
-      const wMeta   = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      const diff       = window.currentDifficulty || 'normal';
+      const diffLabels = { easy: '🌱 Easy', normal: '🏙️ Normal', hard: '🔥 Hard', expert: '💀 Expert' };
+      const weather    = window.currentWeather || 'sunny';
+      const WMETA      = (window.GAME_LOGIC && window.GAME_LOGIC.WEATHER_META) || {};
+      const wMeta      = WMETA[weather] || { label: weather, emoji: '🌤️' };
+      const CP         = window.CITY_PROFILES || {};
+      const prof       = CP[window.currentProfile] || {};
+      const profBadge  = prof.emoji ? `<span class="ctx-badge">${prof.emoji} ${prof.label}</span>` : '';
       return `<span class="ctx-badge ctx-badge--${diff}">${diffLabels[diff] || diff}</span>` +
-             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>`;
+             `<span class="ctx-badge">${wMeta.emoji} ${wMeta.label}</span>` +
+             profBadge;
     }
 
     window.showWinScreen = function showWinScreen() {
@@ -2797,6 +3034,7 @@
       if (cgTile && typeof window.refreshTile === "function") window.refreshTile(cgTile);
       // Restore budget
       window.gameState.budget += snap.cost;
+      if (snap.budgetGain) window.gameState.budget -= snap.budgetGain;
       // Recalculate — updateMeters does turn++, so preserve the pre-undo count
       const prevTurn = window.gameState.turn;
       if (typeof window.updateMeters === "function") window.updateMeters();
@@ -2835,11 +3073,14 @@
     // For Node testing use game-logic.js directly.
 
     var EFFECTS = {
-      "bus-stop":       { congestion: -10, happiness:  +6 },
-      "bike-lane":      { congestion:  -6, happiness:  +8 },
-      "parking-garage": { congestion:  -8, happiness:  +4 },
-      "park":           { congestion:  -4, happiness: +12 },
-      "road-widening":  { congestion: -15, happiness:  -5 },
+      "bus-stop":          { congestion: -10, happiness:  +6, carbon:  -3 },
+      "bike-lane":         { congestion:  -6, happiness:  +8, carbon:  -5 },
+      "parking-garage":    { congestion:  -8, happiness:  +4, carbon:  +4 },
+      "park":              { congestion:  -4, happiness: +12, carbon:  -6 },
+      "road-widening":     { congestion: -15, happiness:  -5, carbon:  +8 },
+      "ev-charging":       { congestion:  -3, happiness:  +2, carbon:  -8 },
+      "self-driving-taxi": { congestion:  -8, happiness: +10, carbon:  -4 },
+      "industrial-dev":    { congestion:  +5, happiness: -10, carbon: +12 },
     };
 
     var WIN_HAPPINESS  = 70;
@@ -2848,36 +3089,46 @@
     var WEATHER_TYPES = ["sunny", "rainy", "overcast", "snowy", "stormy"];
 
     var WEATHER_META = {
-      sunny:    { label: "Sunny",    emoji: "☀️",  hint: "Perfect conditions. All actions at full effect." },
-      rainy:    { label: "Rainy",    emoji: "🌧️",  hint: "Wet roads — bike lanes and parks less effective; bus stops busier." },
-      overcast: { label: "Overcast", emoji: "☁️",  hint: "Grey skies — slight reduction in happiness gains." },
-      snowy:    { label: "Snowy",    emoji: "❄️",  hint: "Icy conditions — bus stops critical; bikes impractical." },
-      stormy:   { label: "Stormy",   emoji: "⛈️",  hint: "Severe weather — only infrastructure actions are effective." },
+      sunny:    { label: "Sunny",    emoji: "☀️",  hint: "Perfect conditions. EVs and autonomous taxis at peak performance." },
+      rainy:    { label: "Rainy",    emoji: "🌧️",  hint: "Wet roads — bike lanes and parks less effective; bus stops busier. EV and taxi networks slightly reduced." },
+      overcast: { label: "Overcast", emoji: "☁️",  hint: "Grey skies — slight happiness reduction. Autonomous taxi sensors less accurate." },
+      snowy:    { label: "Snowy",    emoji: "❄️",  hint: "Icy conditions — bus stops critical; bikes and EVs severely impaired; autonomous taxis unreliable." },
+      stormy:   { label: "Stormy",   emoji: "⛈️",  hint: "Severe weather — only infrastructure works well. EVs and autonomous vehicles near-useless." },
     };
 
     var WEATHER_MULTIPLIERS = {
-      sunny: {},
+      sunny: {
+        "ev-charging":       { cong: 1.15, hap: 1.10 },
+        "self-driving-taxi": { cong: 1.10, hap: 1.05 },
+      },
       rainy: {
-        "bike-lane":  { cong: 0.75, hap: 0.60 },
-        "park":       { cong: 1.00, hap: 0.70 },
-        "bus-stop":   { cong: 1.30, hap: 1.00 },
+        "bike-lane":         { cong: 0.75, hap: 0.60 },
+        "park":              { cong: 1.00, hap: 0.70 },
+        "bus-stop":          { cong: 1.30, hap: 1.00 },
+        "ev-charging":       { cong: 0.85, hap: 0.85 },
+        "self-driving-taxi": { cong: 0.80, hap: 0.85 },
       },
       overcast: {
-        "bike-lane": { hap: 0.85 },
-        "park":      { hap: 0.90 },
+        "bike-lane":         { hap: 0.85 },
+        "park":              { hap: 0.90 },
+        "self-driving-taxi": { cong: 0.90, hap: 0.90 },
       },
       snowy: {
-        "bike-lane":     { cong: 0.40, hap: 0.35 },
-        "park":          { cong: 0.70, hap: 0.50 },
-        "bus-stop":      { cong: 1.40, hap: 1.20 },
-        "road-widening": { cong: 1.30 },
+        "bike-lane":         { cong: 0.40, hap: 0.35 },
+        "park":              { cong: 0.70, hap: 0.50 },
+        "bus-stop":          { cong: 1.40, hap: 1.20 },
+        "road-widening":     { cong: 1.30 },
+        "ev-charging":       { cong: 0.40, hap: 0.45 },
+        "self-driving-taxi": { cong: 0.45, hap: 0.50 },
       },
       stormy: {
-        "bike-lane":      { cong: 0.30, hap: 0.25 },
-        "park":           { cong: 0.50, hap: 0.30 },
-        "bus-stop":       { cong: 1.50, hap: 1.00 },
-        "road-widening":  { cong: 1.25 },
-        "parking-garage": { cong: 1.20 },
+        "bike-lane":         { cong: 0.30, hap: 0.25 },
+        "park":              { cong: 0.50, hap: 0.30 },
+        "bus-stop":          { cong: 1.50, hap: 1.00 },
+        "road-widening":     { cong: 1.25 },
+        "parking-garage":    { cong: 1.20 },
+        "ev-charging":       { cong: 0.25, hap: 0.30 },
+        "self-driving-taxi": { cong: 0.25, hap: 0.30 },
       },
     };
 
@@ -2890,7 +3141,9 @@
       { a: "road-widening",  b: "bus-stop",       congestion: -4, happiness:  0, label: "Express Lane"     },
       { a: "parking-garage", b: "park",           congestion: -2, happiness: +6, label: "Green Gateway"    },
       { a: "parking-garage", b: "bike-lane",      congestion: -3, happiness: +2, label: "Commuter Link"    },
-      { a: "road-widening",  b: "parking-garage", congestion: -5, happiness:  0, label: "Industrial Bypass"},
+      { a: "road-widening",  b: "parking-garage", congestion: -5, happiness:  0, label: "Industrial Bypass"  },
+      { a: "ev-charging",       b: "parking-garage", congestion: -4, happiness:  0, carbon: -5, label: "Clean Commute"    },
+      { a: "self-driving-taxi", b: "bus-stop",       congestion: -3, happiness: +4, label: "Seamless Network" },
     ];
 
     function getGridNeighbours(row, col, grid) {
@@ -2900,29 +3153,42 @@
       }).filter(Boolean);
     }
 
+    function calculateRoadWideningBonus(cgTile, grid) {
+      if (!cgTile || !Array.isArray(grid)) return 0;
+      var isBldg = function (t) { return t.type === 'building' || t.type === 'commercial' || t.type === 'arena'; };
+      return getGridNeighbours(cgTile.row, cgTile.col, grid).filter(isBldg).length * ROAD_WIDENING_BUILDING_BONUS;
+    }
+
     function calculateEffects(placements, grid, weather) {
       var placedCount = {};
       placements.forEach(function (p) {
         placedCount[p.action] = (placedCount[p.action] || 0) + 1;
       });
       var remaining = Object.assign({}, placedCount);
-      var congestionDelta = 0, happinessDelta = 0;
+      var congestionDelta = 0, happinessDelta = 0, carbonDelta = 0;
       placements.forEach(function (p) {
         var effect = EFFECTS[p.action];
         if (!effect) return;
         var nth = remaining[p.action];
         remaining[p.action]--;
         var diminish = Math.pow(0.85, nth - 1);
-        var cDelta = effect.congestion * diminish;
-        var hDelta = effect.happiness  * diminish;
+        var cDelta   = effect.congestion * diminish;
+        var hDelta   = effect.happiness  * diminish;
+        var cbnDelta = (effect.carbon || 0) * diminish;
         var neighbours = getGridNeighbours(p.row, p.col, grid);
-        var adjBuildings = neighbours.filter(function (n) { return n.type === "building"; }).length;
+        var isBldg = function (n) { return n.type === "building" || n.type === "commercial" || n.type === "arena"; };
+        var adjBuildings  = neighbours.filter(isBldg).length;
+        var adjCommercial = neighbours.filter(function (n) { return n.type === "commercial"; }).length;
+        var adjArena      = neighbours.filter(function (n) { return n.type === "arena"; }).length;
         if (p.action === "park")     hDelta += adjBuildings * 3;
         if (p.action === "bus-stop") cDelta -= adjBuildings * 2;
         if (adjBuildings >= 3 && (p.action === "bus-stop" || p.action === "bike-lane")) {
           cDelta *= 1.25;
           hDelta *= 1.25;
         }
+        if (p.action === "bus-stop" && adjCommercial > 0) cDelta *= 1.25;
+        if (p.action === "park"     && adjArena > 0)      hDelta += adjArena * 6;
+        if (p.action === "bus-stop" && adjArena > 0)      cDelta -= adjArena * 5;
         if (weather && WEATHER_MULTIPLIERS[weather]) {
           var wm = WEATHER_MULTIPLIERS[weather][p.action] || {};
           if (wm.cong != null) cDelta *= wm.cong;
@@ -2930,6 +3196,7 @@
         }
         congestionDelta += cDelta;
         happinessDelta  += hDelta;
+        carbonDelta     += cbnDelta;
       });
       // Bus stop network bonus
       var busStops = placements.filter(function (p) { return p.action === "bus-stop"; });
@@ -2955,17 +3222,35 @@
             if ((combo.a === ai && combo.b === aj) || (combo.a === aj && combo.b === ai)) {
               congestionDelta += Math.trunc(combo.congestion * mult);
               happinessDelta  += Math.trunc(combo.happiness  * mult);
+              if (combo.carbon) carbonDelta += Math.trunc(combo.carbon * mult);
             }
           });
         }
       }
-      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta };
+      return { congestionDelta: congestionDelta, happinessDelta: happinessDelta, carbonDelta: carbonDelta };
     }
 
-    function checkWinCondition(state) {
-      var turnsLeft = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
-      if (state.happiness >= WIN_HAPPINESS && state.congestion <= WIN_CONGESTION) return "win";
-      if (state.budget <= 0 || (state.minActionCost > 0 && state.budget < state.minActionCost)) return "lose";
+    function checkWinCondition(state, profileKey) {
+      var happiness     = state.happiness     || 0;
+      var congestion    = state.congestion    || 0;
+      var carbon        = state.carbon        != null ? state.carbon : 0;
+      var budget        = state.budget        || 0;
+      var minActionCost = state.minActionCost || 0;
+      var turnsLeft     = (state.turnsLeft == null) ? Infinity : state.turnsLeft;
+      var profile = profileKey ? CITY_PROFILES[profileKey] : null;
+      if (profile) {
+        var w = profile.win;
+        var hapWon  = w.happiness  == null || happiness  >= w.happiness;
+        var congWon = w.congestion == null || congestion <= w.congestion;
+        var cbnWon  = w.carbon     == null || carbon     <= w.carbon;
+        if (hapWon && congWon && cbnWon) return "win";
+      } else {
+        if (happiness >= WIN_HAPPINESS && congestion <= WIN_CONGESTION) return "win";
+      }
+      if (congestion >= LOSE_THRESHOLDS.congestion) return "lose";
+      if (happiness  <= LOSE_THRESHOLDS.happiness)  return "lose";
+      if (carbon     >= LOSE_THRESHOLDS.carbon)     return "lose";
+      if (budget <= 0 || (minActionCost > 0 && budget < minActionCost)) return "lose";
       if (turnsLeft <= 0) return "lose";
       return "playing";
     }
@@ -2979,10 +3264,21 @@
       expert: { budget: 300, turnLimit: 10, blockerRate: 0.10, generatorCount: 3 },
     };
 
+    var CITY_PROFILES = {
+      standard: { label: 'Standard',    emoji: '🏙️', description: 'Reduce congestion and improve quality of life.',    win: { happiness: 75, congestion: 25 } },
+      green:    { label: 'Green City',  emoji: '🌿', description: 'Build a sustainable, low-carbon city.',             win: { happiness: 65, congestion: 35, carbon: 30 } },
+      transit:  { label: 'Transit Hub', emoji: '🚌', description: 'Create a world-class public transport network.',    win: { happiness: 60, congestion: 20 } },
+      vibrant:  { label: 'Vibrant City',emoji: '🎉', description: 'Create a joyful, people-first city.',              win: { happiness: 85, congestion: 40 } },
+      eco:      { label: 'Eco Warriors',emoji: '♻️', description: 'Slash carbon emissions to save the planet.',       win: { happiness: 70, carbon: 20 } },
+    };
+
     // ── Puzzle-mechanic constants ─────────────────────────────────────────
-    var ZONE_CAP        = 2;
-    var GENERATOR_DELTA = 3;
-    var DEMOLISH_COST   = 50;
+    var ZONE_CAP               = 2;
+    var GENERATOR_DELTA        = 3;
+    var GENERATOR_CARBON_DELTA = 2;
+    var DEMOLISH_COST          = 50;
+    var ROAD_WIDENING_BUILDING_BONUS = 25;
+    var CONGESTION_SURCHARGE_ACTIONS = new Set(['bus-stop', 'bike-lane', 'road-widening', 'ev-charging', 'self-driving-taxi']);
 
     function getBlockId(row, col, roadRows, roadCols) {
       var rowBand = roadRows.filter(function (r) { return r < row; }).length;
@@ -2996,25 +3292,38 @@
       return count >= cap;
     }
 
-    function applyGeneratorTick(generatorTiles, placements) {
+    function getCongestSurcharge(congestion) {
+      return congestion >= 85 ? 1.20 : congestion >= 70 ? 1.10 : 1.00;
+    }
+
+    function applyGeneratorTickFull(generatorTiles, placements) {
       var ROAD_ACTIONS = ['bus-stop', 'bike-lane', 'road-widening'];
-      var delta = 0;
+      var congestion = 0, carbon = 0;
       generatorTiles.forEach(function (gen) {
         var suppressed = placements.some(function (p) {
           if (ROAD_ACTIONS.indexOf(p.action) === -1) return false;
           return (p.row === gen.row && Math.abs(p.col - gen.col) === 1) ||
                  (p.col === gen.col && Math.abs(p.row - gen.row) === 1);
         });
-        if (!suppressed) delta += GENERATOR_DELTA;
+        if (!suppressed) { congestion += GENERATOR_DELTA; carbon += GENERATOR_CARBON_DELTA; }
       });
-      return delta;
+      return { congestion: congestion, carbon: carbon };
     }
-    window.currentDifficulty   = window.currentDifficulty   || 'normal';
-    window.DIFFICULTY_PRESETS  = DIFFICULTY_PRESETS;
+
+    function applyGeneratorTick(generatorTiles, placements) {
+      return applyGeneratorTickFull(generatorTiles, placements).congestion;
+    }
+    var DECAY_RATES    = { congestion: 1.5, happiness: -1.5, carbon: 1.0 };
+    var LOSE_THRESHOLDS = { congestion: 100, happiness: 0, carbon: 100 };
+
+    window.currentDifficulty  = window.currentDifficulty  || 'normal';
+    window.DIFFICULTY_PRESETS = DIFFICULTY_PRESETS;
+    window.DECAY_RATES        = DECAY_RATES;
+    window.LOSE_THRESHOLDS    = LOSE_THRESHOLDS;
 
     function makeInitialState() {
       var p = DIFFICULTY_PRESETS[window.currentDifficulty] || DIFFICULTY_PRESETS.normal;
-      return { congestion: 80, happiness: 20, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
+      return { congestion: 55, happiness: 45, carbon: 35, budget: p.budget, turn: 0, won: false, turnLimit: p.turnLimit };
     }
 
     window.setDifficulty = function setDifficulty(level) {
@@ -3022,14 +3331,20 @@
       window.currentDifficulty = level;
     };
 
+    window.CITY_PROFILES  = CITY_PROFILES;
+    window.currentProfile = window.currentProfile || 'standard';
+
     window.GAME_LOGIC = { EFFECTS, COMBOS, WEATHER_TYPES, WEATHER_META, WEATHER_MULTIPLIERS,
-                          DIFFICULTY_PRESETS, WIN_HAPPINESS, WIN_CONGESTION,
-                          ZONE_CAP, GENERATOR_DELTA, DEMOLISH_COST,
+                          DIFFICULTY_PRESETS, CITY_PROFILES, DECAY_RATES, LOSE_THRESHOLDS,
+                          WIN_HAPPINESS, WIN_CONGESTION,
+                          ZONE_CAP, GENERATOR_DELTA, GENERATOR_CARBON_DELTA, DEMOLISH_COST,
+                          ROAD_WIDENING_BUILDING_BONUS, CONGESTION_SURCHARGE_ACTIONS,
                           calculateEffects, checkWinCondition, getGridNeighbours,
-                          getBlockId, checkZoneCap, applyGeneratorTick };
+                          getBlockId, checkZoneCap, applyGeneratorTick, applyGeneratorTickFull,
+                          getCongestSurcharge, calculateRoadWideningBonus };
 
     // ── Game state ────────────────────────────────────────────────────────
-    const INITIAL = { congestion: 80, happiness: 20, budget: 500, turn: 0, won: false, turnLimit: 15 };
+    const INITIAL = { congestion: 55, happiness: 45, carbon: 35, budget: 500, turn: 0, won: false, turnLimit: 15 };
 
     window.gameState = Object.assign({}, makeInitialState());
 
@@ -3070,12 +3385,17 @@
         return { row: t.row, col: t.col, type: t.type };
       });
 
-      var delta      = calculateEffects(placements, gridData, window.currentWeather || null);
-      var genPenalty = applyGeneratorTick(generatorTiles, placements);
+      var delta   = calculateEffects(placements, gridData, window.currentWeather || null);
+      var genTick = applyGeneratorTickFull(generatorTiles, placements);
 
-      var gs = window.gameState;
-      gs.congestion = Math.max(0, Math.min(100, INITIAL.congestion + delta.congestionDelta + genPenalty));
-      gs.happiness  = Math.max(0, Math.min(100, INITIAL.happiness  + delta.happinessDelta));
+      var gs   = window.gameState;
+      var turn = gs.turn;  // turns elapsed before this recalc
+      gs.congestion = Math.max(0, Math.min(100,
+        INITIAL.congestion + (turn * DECAY_RATES.congestion) + delta.congestionDelta + genTick.congestion));
+      gs.happiness  = Math.max(0, Math.min(100,
+        INITIAL.happiness  + (turn * DECAY_RATES.happiness)  + delta.happinessDelta));
+      gs.carbon     = Math.max(0, Math.min(100,
+        INITIAL.carbon     + (turn * DECAY_RATES.carbon)     + (delta.carbonDelta || 0) + genTick.carbon));
       gs.turn++;
       syncRoadCongestion(gs.congestion);
       // Update generator tile firing visual
@@ -3108,18 +3428,23 @@
 
       var turnsLeft = (gs.turnLimit || 15) - (gs.turn || 0);
       var result = checkWinCondition({
-        happiness: gs.happiness  || 0,
-        congestion: gs.congestion || 0,
-        budget: gs.budget        || 0,
+        happiness:     gs.happiness     || 0,
+        congestion:    gs.congestion    || 0,
+        carbon:        gs.carbon        != null ? gs.carbon : 0,
+        budget:        gs.budget        || 0,
         minActionCost: minCost,
-        turnsLeft: turnsLeft,
-      });
+        turnsLeft:     turnsLeft,
+      }, window.currentProfile);
 
       if (result === "win") {
         gs.won = true;
         if (typeof window.showWinScreen === "function") window.showWinScreen();
       } else if (result === "lose") {
-        const loseReason = turnsLeft <= 0 ? "turns" : "budget";
+        var loseReason = turnsLeft <= 0 ? "turns"
+          : gs.congestion >= LOSE_THRESHOLDS.congestion ? "congestion"
+          : gs.happiness  <= LOSE_THRESHOLDS.happiness  ? "happiness"
+          : gs.carbon     >= LOSE_THRESHOLDS.carbon     ? "carbon"
+          : "budget";
         if (typeof window.showGameOverScreen === "function") window.showGameOverScreen(loseReason);
       }
       return result;
@@ -3132,6 +3457,8 @@
       if (undoBtn) undoBtn.setAttribute('hidden', '');
       window.currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
       document.body.dataset.weather = window.currentWeather;
+      var profileKeys = Object.keys(CITY_PROFILES);
+      window.currentProfile = profileKeys[Math.floor(Math.random() * profileKeys.length)];
       if (typeof window.applyWeatherParticles === 'function') window.applyWeatherParticles(window.currentWeather);
 
       // Generate map — reuse seed if provided (e.g. "restart same map")
@@ -3197,6 +3524,7 @@
       parkCount:      2,    // decorative (pre-existing) park tiles per map
       blockerRate:    0,    // fraction of building tiles → impassable blocker (0 = none)
       generatorCount: 0,    // number of traffic-generator tiles placed adjacent to roads
+      commercialRate: 0.10, // fraction of remaining building tiles → commercial 🏪
     };
 
     /* ── Neighbour helper ────────────────────────────────────────── */
@@ -3366,6 +3694,38 @@
         }
       }
 
+      // Step 6 — Commercial tiles: convert ~10% of remaining building tiles to commercial
+      if (cfg.commercialRate > 0) {
+        var commercialPool = [];
+        for (var r = 0; r < cfg.rows; r++)
+          for (var c = 0; c < cfg.cols; c++)
+            if (grid[r][c] === 'B') commercialPool.push([r, c]);
+        for (var i = commercialPool.length - 1; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = commercialPool[i]; commercialPool[i] = commercialPool[j]; commercialPool[j] = tmp;
+        }
+        var commercialCount = Math.floor(commercialPool.length * cfg.commercialRate);
+        for (var i = 0; i < commercialCount; i++) grid[commercialPool[i][0]][commercialPool[i][1]] = 'C';
+      }
+
+      // Step 7 — Arena tiles: place 1–2 arenas on high-adjacency building cells
+      var arenaCandidates = [];
+      for (var r = 0; r < cfg.rows; r++) {
+        for (var c = 0; c < cfg.cols; c++) {
+          if (grid[r][c] !== 'B') continue;
+          var adjBldg = nbValues(grid, r, c, cfg.rows, cfg.cols)
+                         .filter(function (t) { return t === 'B' || t === 'C'; }).length;
+          if (adjBldg >= 2) arenaCandidates.push([r, c, adjBldg]);
+        }
+      }
+      arenaCandidates.sort(function (a, b) { return (b[2] - a[2]) + (rng() - 0.5) * 0.6; });
+      var arenaCount = 1 + Math.floor(rng() * 2); // 1 or 2
+      var arenaPlaced = 0;
+      for (var i = 0; i < arenaCandidates.length && arenaPlaced < arenaCount; i++) {
+        grid[arenaCandidates[i][0]][arenaCandidates[i][1]] = 'A';
+        arenaPlaced++;
+      }
+
       var result = { grid: grid, seed: seed, config: cfg, roadRows: roadRows, roadCols: roadCols };
       result.validation = validateMap(grid, cfg);
       return result;
@@ -3380,7 +3740,7 @@
           counts[t] = (counts[t] || 0) + 1;
           if (t === 'E') {
             var adjB = nbValues(grid, r, c, cfg.rows, cfg.cols)
-                         .filter(function (n) { return n === 'B' || n === 'P'; }).length;
+                         .filter(function (n) { return n === 'B' || n === 'P' || n === 'C' || n === 'A'; }).length;
             if (adjB > 0) emptyWithAdj++;
           }
         }
@@ -3404,7 +3764,7 @@
   <!-- ── city-map ─────────────────────────────────────────────────────── -->
   <script>
   (function () {
-    const TYPE_MAP = { R:'road', B:'building', P:'park', E:'empty', X:'blocker', G:'generator' };
+    const TYPE_MAP = { R:'road', B:'building', C:'commercial', A:'arena', P:'park', E:'empty', X:'blocker', G:'generator' };
     let selectedTile = null;
     const gridEl  = document.getElementById('city-grid');
     const infoBar = document.getElementById('info-bar');
@@ -3431,7 +3791,13 @@
           const el   = document.createElement('div');
           el.className = `tile ${type}`;
           el.title     = `(${r},${c})`;
-          if (type === 'road') el.dataset.roadDir = roadDir(layout, r, c);
+          if (type === 'road') {
+            el.dataset.roadDir = roadDir(layout, r, c);
+            const cMap = window.currentMap;
+            if (cMap && cMap.roadRows.includes(r) && cMap.roadCols.includes(c)) {
+              el.classList.add('intersection');
+            }
+          }
 
           // Hotspot: count adjacent building/park tiles on this road tile
           let hotspot = 0;
@@ -3439,7 +3805,7 @@
             hotspot = [[-1,0],[1,0],[0,-1],[0,1]].filter(([dr,dc]) => {
               const nr = r+dr, nc = c+dc;
               return nr >= 0 && nr < layout.length && nc >= 0 && nc < layout[0].length &&
-                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P');
+                     (layout[nr][nc] === 'B' || layout[nr][nc] === 'P' || layout[nr][nc] === 'C' || layout[nr][nc] === 'A');
             }).length;
             if (hotspot >= 1) el.dataset.hotspot = hotspot;
           }
@@ -3540,6 +3906,21 @@
 
       if (window.gameState?.won) return;
 
+      // Commercial and arena tiles are decorative — no actions allowed
+      if (tile.classList.contains("commercial") || tile.classList.contains("arena")) {
+        return;
+      }
+      // Road intersections (where a road row and road column cross) are not actionable
+      if (tile.classList.contains("road")) {
+        var _cgT = Array.isArray(window.cityGrid) ? window.cityGrid.find(function (t) { return t.element === tile; }) : null;
+        if (_cgT) {
+          var _m = window.currentMap;
+          if (_m && _m.roadRows.indexOf(_cgT.row) !== -1 && _m.roadCols.indexOf(_cgT.col) !== -1) {
+            return;
+          }
+        }
+      }
+
       // Blocker tile — demolish for DEMOLISH_COST
       if (tile.classList.contains("blocker")) {
         const demolishCost = (window.GAME_LOGIC && window.GAME_LOGIC.DEMOLISH_COST) || 50;
@@ -3596,6 +3977,9 @@
       { action: 'parking-garage', cost: 120, color: '#6366f1', emoji: '🅿️', validTiles: ['building'] },
       { action: 'park',           cost: 60,  color: '#86efac', emoji: '🌳', validTiles: ['empty'] },
       { action: 'road-widening',  cost: 90,  color: '#f97316', emoji: '🚧', validTiles: ['road'] },
+      { action: 'ev-charging',       cost: 70,  color: '#06b6d4', emoji: '🔋', validTiles: ['road'] },
+      { action: 'self-driving-taxi', cost: 110, color: '#8b5cf6', emoji: '🤖', validTiles: ['road'] },
+      { action: 'industrial-dev',    cost: 0,   budgetGain: 80, color: '#d97706', emoji: '🏗️', validTiles: ['building'] },
     ];
 
     const radialEl       = document.getElementById('action-radial');
@@ -3634,9 +4018,10 @@
       radialCloseTimer = null;
       if (typeof window.playSFX === 'function') window.playSFX('tick');
 
-      const TILE_TYPES = ['road', 'building', 'park', 'empty'];
-      const tileType   = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
-      const budget     = window.gameState?.budget ?? 0;
+      const TILE_TYPES  = ['road', 'building', 'park', 'empty'];
+      const tileType    = TILE_TYPES.find(t => tile.classList.contains(t)) || null;
+      const budget      = window.gameState?.budget     ?? 0;
+      const congestion  = window.gameState?.congestion ?? 0;
 
       // Zone-cap context
       const map      = window.currentMap;
@@ -3679,6 +4064,20 @@
         });
       }
 
+      // Section K: pre-compute base delta for marginal preview via calculateEffects
+      const allCurrentPlacements = [];
+      if (Array.isArray(window.cityGrid)) {
+        window.cityGrid.forEach(function (t) {
+          const a = t.element && t.element.dataset.placedAction;
+          if (a) allCurrentPlacements.push({ row: t.row, col: t.col, action: a });
+        });
+      }
+      const glGrid        = Array.isArray(window.cityGrid) ? window.cityGrid : [];
+      const glCalcEffects = window.GAME_LOGIC && window.GAME_LOGIC.calculateEffects;
+      const baseDelta     = glCalcEffects
+        ? glCalcEffects(allCurrentPlacements, glGrid, weather)
+        : { congestionDelta: 0, happinessDelta: 0, carbonDelta: 0 };
+
       // Show only buttons valid for this tile type; hide the rest entirely
       const visibleBtns = [];
       radialBtns.forEach(function (btn) {
@@ -3689,7 +4088,13 @@
           btn.style.display = 'none';
         } else {
           btn.style.display = '';
-          if (budget < meta.cost) {
+          // Section L: apply congestion surcharge to affordability check and cost display
+          const isRoadBtn    = window.GAME_LOGIC?.CONGESTION_SURCHARGE_ACTIONS?.has(meta.action);
+          const btnSurcharge = isRoadBtn && window.GAME_LOGIC?.getCongestSurcharge ? window.GAME_LOGIC.getCongestSurcharge(congestion) : 1;
+          const btnCost      = Math.round(meta.cost * btnSurcharge);
+          const costSpanEl   = btn.querySelector('.radial-btn__cost');
+          if (costSpanEl) costSpanEl.textContent = btnSurcharge > 1 ? '⚠️£' + btnCost : '£' + meta.cost;
+          if (budget < btnCost) {
             btn.classList.add('radial-btn--unaffordable');
           } else if (blockId && window.GAME_LOGIC && window.GAME_LOGIC.checkZoneCap) {
             const validInBlock = Array.isArray(window.cityGrid)
@@ -3702,23 +4107,38 @@
               btn.classList.add('radial-btn--zone-capped');
             }
           }
-          // Effect preview
+          // Section K: full marginal preview using calculateEffects
           const previewEl = btn.querySelector('.radial-btn__preview');
           if (previewEl) {
-            const effect = glEffects[meta.action];
-            if (effect) {
-              const nth     = (placedCounts[meta.action] || 0) + 1;
-              const diminish = Math.pow(0.85, nth - 1);
-              const wm      = wMults[meta.action] || {};
-              const cVal    = Math.round(effect.congestion * diminish * (wm.cong != null ? wm.cong : 1));
-              const hVal    = Math.round(effect.happiness  * diminish * (wm.hap  != null ? wm.hap  : 1));
-              const parts   = [];
-              if (cVal !== 0) parts.push('🚗 ' + (cVal > 0 ? '+' : '') + cVal);
-              if (hVal !== 0) parts.push(hVal >= 0 ? '😊 +' + hVal : '😞 ' + hVal);
-              previewEl.textContent = parts.join(' ');
+            const parts = [];
+            if (glCalcEffects && cgTile) {
+              const hypo      = allCurrentPlacements.concat([{ row: cgTile.row, col: cgTile.col, action: meta.action }]);
+              const hypoDelta = glCalcEffects(hypo, glGrid, weather);
+              const dCong     = Math.round(hypoDelta.congestionDelta - baseDelta.congestionDelta);
+              const dHap      = Math.round(hypoDelta.happinessDelta  - baseDelta.happinessDelta);
+              const dCbn      = Math.round(hypoDelta.carbonDelta     - baseDelta.carbonDelta);
+              if (dCong !== 0) parts.push('🚗 ' + (dCong > 0 ? '+' : '') + dCong);
+              if (dHap  !== 0) parts.push(dHap >= 0 ? '😊 +' + dHap : '😞 ' + dHap);
+              if (dCbn  !== 0) parts.push('🌱 ' + (dCbn > 0 ? '+' : '') + dCbn);
             } else {
-              previewEl.textContent = '';
+              // Fallback: simple per-action calculation
+              const effect = glEffects[meta.action];
+              if (effect) {
+                const nth      = (placedCounts[meta.action] || 0) + 1;
+                const diminish = Math.pow(0.85, nth - 1);
+                const wm       = wMults[meta.action] || {};
+                const cVal     = Math.round(effect.congestion * diminish * (wm.cong != null ? wm.cong : 1));
+                const hVal     = Math.round(effect.happiness  * diminish * (wm.hap  != null ? wm.hap  : 1));
+                if (cVal !== 0) parts.push('🚗 ' + (cVal > 0 ? '+' : '') + cVal);
+                if (hVal !== 0) parts.push(hVal >= 0 ? '😊 +' + hVal : '😞 ' + hVal);
+              }
             }
+            // Section H: road-widening income bonus in preview
+            if (meta.action === 'road-widening' && cgTile && window.GAME_LOGIC?.calculateRoadWideningBonus) {
+              const rwB = window.GAME_LOGIC.calculateRoadWideningBonus(cgTile, glGrid);
+              if (rwB > 0) parts.push('+£' + rwB);
+            }
+            previewEl.textContent = parts.join(' ');
           }
           // Combo hint
           const comboEl = btn.querySelector('.radial-btn__combo');
@@ -3800,16 +4220,32 @@
     }
 
     function doPlace(tile, meta) {
-      const budget = window.gameState?.budget ?? 0;
-      if (budget < meta.cost) { showBudgetError(); return; }
+      const budget      = window.gameState?.budget     ?? 0;
+      const congestion  = window.gameState?.congestion ?? 0;
+      const GL          = window.GAME_LOGIC || {};
+
+      // Section L: congestion surcharge on road actions
+      const isRoadAct  = GL.CONGESTION_SURCHARGE_ACTIONS && GL.CONGESTION_SURCHARGE_ACTIONS.has(meta.action);
+      const surcharge  = isRoadAct && GL.getCongestSurcharge ? GL.getCongestSurcharge(congestion) : 1;
+      const actualCost = Math.round(meta.cost * surcharge);
+
+      if (budget < actualCost) { showBudgetError(); return; }
 
       if (typeof window.playSFX === 'function') window.playSFX('place');
       placeTile(tile, meta);
       const cgTile = window.cityGrid?.find(function (t) { return t.element === tile; });
-      showPlacementPopup(tile, meta, cgTile);
-      window.gameState.budget -= meta.cost;
+
+      // Section H: road-widening income bonus per adjacent building tile
+      const rwBonus         = (meta.action === 'road-widening' && GL.calculateRoadWideningBonus)
+        ? GL.calculateRoadWideningBonus(cgTile, window.cityGrid || [])
+        : 0;
+      const totalBudgetGain = (meta.budgetGain || 0) + rwBonus;
+
+      showPlacementPopup(tile, meta, cgTile, totalBudgetGain);
+      window.gameState.budget -= actualCost;
+      if (totalBudgetGain) window.gameState.budget += totalBudgetGain;
       // Save undo snapshot — one level only; next placement overwrites
-      window.lastPlacement = { element: tile, action: meta.action, cost: meta.cost };
+      window.lastPlacement = { element: tile, action: meta.action, cost: actualCost, budgetGain: totalBudgetGain };
       const undoBtn = document.getElementById('hudUndo');
       if (undoBtn) undoBtn.removeAttribute('hidden');
       if (typeof window.updateMeters    === "function") window.updateMeters();
@@ -3883,7 +4319,7 @@
     }
 
     // Base effects used for popup preview (adjacency/diminish applied live in game-state)
-    function showPlacementPopup(tileEl, action, cgTile) {
+    function showPlacementPopup(tileEl, action, cgTile, budgetGain) {
       const effects = window.GAME_LOGIC?.EFFECTS ?? {};
       const effect  = effects[action.action];
       if (!effect) return;
@@ -3892,11 +4328,14 @@
       const diminish = Math.pow(0.85, Math.max(0, placed - 1));
       const hVal     = Math.round(effect.happiness  * diminish);
       const cVal     = Math.round(effect.congestion * diminish);
+      const cbnVal   = Math.round((effect.carbon || 0) * diminish);
 
       let inner = "";
+      if (budgetGain) inner += `<span class="popup-budget">+£${budgetGain}</span>`;
       if (hVal > 0) inner += `<span class="popup-happy">😊 +${hVal}</span>`;
       if (hVal < 0) inner += `<span class="popup-cong">😞 ${hVal}</span>`;
       inner += `<span class="popup-cong">🚗 ${cVal}</span>`;
+      if (cbnVal !== 0) inner += `<span class="popup-carbon">🌱 ${cbnVal > 0 ? '+' : ''}${cbnVal}</span>`;
 
       // Detect new combos formed by this placement
       if (cgTile && Array.isArray(window.cityGrid) && window.GAME_LOGIC?.COMBOS) {
@@ -3949,30 +4388,67 @@
 
     function buildComboLists() {
       const combos = window.GAME_LOGIC?.COMBOS || [];
-      const EMOJI  = { 'bus-stop':'🚌','bike-lane':'🚲','parking-garage':'🅿️','park':'🌳','road-widening':'🚧' };
+      const EMOJI = {
+        'bus-stop':'🚌','bike-lane':'🚲','parking-garage':'🅿️','park':'🌳','road-widening':'🚧',
+        'ev-charging':'🔋','self-driving-taxi':'🤖','industrial-dev':'🏗️',
+      };
+      const CATEGORY = {
+        'Transit Hub':       '🚌 Transit',
+        'Active Streets':    '🚌 Transit',
+        'Park & Ride':       '🚌 Transit',
+        'Express Lane':      '🚌 Transit',
+        'Seamless Network':  '🚌 Transit',
+        'Pedestrian Zone':   '🌳 Green Space',
+        'Green Network':     '🌳 Green Space',
+        'Green Gateway':     '🌳 Green Space',
+        'Commuter Link':     '🌳 Green Space',
+        'Industrial Bypass': '🏗️ Infrastructure',
+        'Clean Commute':     '🏗️ Infrastructure',
+      };
+      const CAT_ORDER = ['🚌 Transit', '🌳 Green Space', '🏗️ Infrastructure'];
+      const grouped = {};
+      CAT_ORDER.forEach(function(cat) { grouped[cat] = []; });
+      combos.forEach(function(c) {
+        const cat = CATEGORY[c.label] || '🔧 Other';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(c);
+      });
+
       const desktopList = document.getElementById('combosList');
       const mobileList  = document.getElementById('mobileCombosListEl');
-      combos.forEach(function (c) {
-        const ea = EMOJI[c.a] || '?', eb = EMOJI[c.b] || '?';
-        let bonus = '';
-        if (c.congestion !== 0) bonus += '<span class="combo-cong">🚗 ' + (c.congestion > 0 ? '+' : '') + c.congestion + '</span>';
-        if (c.happiness  !== 0) bonus += '<span class="combo-hap">😊 '  + (c.happiness  > 0 ? '+' : '') + c.happiness  + '</span>';
+
+      CAT_ORDER.forEach(function(cat) {
+        const items = grouped[cat];
+        if (!items || !items.length) return;
         if (desktopList) {
-          const li = document.createElement('li');
-          li.className = 'combo-item'; li.dataset.combo = c.label;
-          li.innerHTML = '<span class="combo-item__pair">' + ea + '+' + eb + '</span>' +
-                         '<span class="combo-item__label">' + c.label + '</span>' +
-                         '<span class="combo-item__bonus">' + bonus + '</span>';
-          desktopList.appendChild(li);
+          const catLi = document.createElement('li');
+          catLi.className = 'combo-category';
+          catLi.textContent = cat;
+          desktopList.appendChild(catLi);
         }
-        if (mobileList) {
-          const div = document.createElement('div');
-          div.className = 'mobile-combo-item'; div.dataset.combo = c.label;
-          div.innerHTML = '<span class="mci-pair">' + ea + '+' + eb + '</span>' +
-                          '<span class="mci-label">' + c.label + '</span>' +
-                          '<span class="mci-bonus">' + bonus + '</span>';
-          mobileList.appendChild(div);
-        }
+        items.forEach(function(c) {
+          const ea = EMOJI[c.a] || '?', eb = EMOJI[c.b] || '?';
+          let bonus = '';
+          if (c.congestion !== 0) bonus += '<span class="combo-cong">🚗 ' + (c.congestion > 0 ? '+' : '') + c.congestion + '</span>';
+          if (c.happiness  !== 0) bonus += '<span class="combo-hap">😊 '  + (c.happiness  > 0 ? '+' : '') + c.happiness  + '</span>';
+          if (c.carbon)            bonus += '<span class="combo-carbon">🌱 ' + (c.carbon > 0 ? '+' : '') + c.carbon + '</span>';
+          if (desktopList) {
+            const li = document.createElement('li');
+            li.className = 'combo-item'; li.dataset.combo = c.label;
+            li.innerHTML = '<span class="combo-item__pair">' + ea + '+' + eb + '</span>' +
+                           '<span class="combo-item__label">' + c.label + '</span>' +
+                           '<span class="combo-item__bonus">' + bonus + '</span>';
+            desktopList.appendChild(li);
+          }
+          if (mobileList) {
+            const div = document.createElement('div');
+            div.className = 'mobile-combo-item'; div.dataset.combo = c.label;
+            div.innerHTML = '<span class="mci-pair">' + ea + '+' + eb + '</span>' +
+                            '<span class="mci-label">' + c.label + '</span>' +
+                            '<span class="mci-bonus">' + bonus + '</span>';
+            mobileList.appendChild(div);
+          }
+        });
       });
     }
 
@@ -4002,9 +4478,18 @@
     }
 
     window.updateActionAvailability = function () {
-      const budget  = window.gameState?.budget ?? 0;
-      const weather = window.currentWeather || "sunny";
-      const wMultipliers = window.GAME_LOGIC?.WEATHER_MULTIPLIERS?.[weather] || {};
+      const budget        = window.gameState?.budget     ?? 0;
+      const congestion    = window.gameState?.congestion ?? 0;
+      const weather       = window.currentWeather || "sunny";
+      const wMultipliers  = window.GAME_LOGIC?.WEATHER_MULTIPLIERS?.[weather] || {};
+      const glRoadActions = window.GAME_LOGIC?.CONGESTION_SURCHARGE_ACTIONS;
+      const glSurcharge   = window.GAME_LOGIC?.getCongestSurcharge;
+
+      function effectiveCost(action, baseCost) {
+        const isRoad = glRoadActions && glRoadActions.has(action);
+        const mult   = isRoad && glSurcharge ? glSurcharge(congestion) : 1;
+        return { cost: Math.round(baseCost * mult), surcharge: mult };
+      }
 
       function calcLiveEffects(action, baseCong, baseHappy) {
         const placed = document.querySelectorAll('[data-placed-action="' + action + '"]').length;
@@ -4018,8 +4503,12 @@
 
       // Desktop action panel
       document.querySelectorAll(".action-btn[data-cost]").forEach(function (btn) {
-        btn.classList.toggle("action-btn--disabled", Number(btn.getAttribute("data-cost")) > budget);
         const action    = btn.getAttribute("data-action");
+        const baseCost  = Number(btn.getAttribute("data-cost"));
+        const { cost: effCost, surcharge } = effectiveCost(action, baseCost);
+        btn.classList.toggle("action-btn--disabled", effCost > budget);
+        const costSpan = btn.querySelector(".action-btn__cost");
+        if (costSpan) costSpan.textContent = surcharge > 1 ? "⚠️ £" + effCost : "£" + baseCost;
         const baseCong  = Number(btn.getAttribute("data-base-cong"));
         const baseHappy = Number(btn.getAttribute("data-base-happy"));
         if (!action || isNaN(baseCong) || isNaN(baseHappy)) return;
@@ -4038,9 +4527,13 @@
       // Mobile action strip
       document.querySelectorAll(".mas-card[data-cost]").forEach(function (card) {
         const action    = card.getAttribute("data-action");
+        const baseCost  = Number(card.getAttribute("data-cost"));
         const baseCong  = Number(card.getAttribute("data-base-cong"));
         const baseHappy = Number(card.getAttribute("data-base-happy"));
-        card.classList.toggle("mas-card--unaffordable", Number(card.getAttribute("data-cost")) > budget);
+        const { cost: effCost, surcharge } = effectiveCost(action, baseCost);
+        card.classList.toggle("mas-card--unaffordable", effCost > budget);
+        const costSpan = card.querySelector(".mas-card__cost");
+        if (costSpan) costSpan.textContent = surcharge > 1 ? "⚠️£" + effCost : "£" + baseCost;
         if (!action || isNaN(baseCong) || isNaN(baseHappy)) return;
         const { cong, happy } = calcLiveEffects(action, baseCong, baseHappy);
         const congSpan  = card.querySelector(".mas-card__cong");
@@ -4059,6 +4552,23 @@
     };
 
     buildComboLists();
+
+    // Scroll-position arrows for the mobile action strip
+    (function () {
+      var strip  = document.getElementById('mobileActionStrip');
+      var arrowL = document.getElementById('stripArrowLeft');
+      var arrowR = document.getElementById('stripArrowRight');
+      function syncArrows() {
+        if (!strip || !arrowL || !arrowR) return;
+        arrowL.classList.toggle('strip-arrow--hidden', strip.scrollLeft <= 2);
+        arrowR.classList.toggle('strip-arrow--hidden',
+          strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 2);
+      }
+      if (strip) {
+        strip.addEventListener('scroll', syncArrows, { passive: true });
+        setTimeout(syncArrows, 200);
+      }
+    })();
 
     attachGridListener();
 
